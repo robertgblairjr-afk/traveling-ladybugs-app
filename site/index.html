@@ -5254,6 +5254,67 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzkey.lit{background:var(--kc);color:#fff;transform:translateY(6px)}
 </style>`);
 
+/* ===== v23.11: jigsaw from the paintings, and the Challenge passport (one gold stamp per puzzle type, cosmetic only) ===== */
+RZ_MAKE.jigsaw = function(){ const e = easy(), C = e ? 3 : 4, R = e ? 2 : 3, img = rzOne([...new Set(Object.values(BG))]);
+  return {type:'jigsaw', title:'Jigsaw: put the picture together!', C, R, img, order:cshuf([...Array(C*R).keys()]), sig:img+':'+C+'x'+R}; };
+RZ_FAM.jigsaw = {cat:'slide'};
+function rzJigsawPlay(g){
+  const {C, R} = g, e = easy(), tw = Math.floor(520/C), th = Math.floor(tw*9/16*C/R), BW = tw*C, BH = th*R, L = 70, T = 150, N = C*R;
+  const f = e ? .62 : .58;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${N}</div>
+    <div class="rzjig" id="rzj" style="left:${L}px;top:${T}px;width:${BW}px;height:${BH}px;${e?`background-image:url(${g.img});`:''}">${Array.from({length:N},(_,k)=>`<button class="rzjslot" data-k="${k}" aria-label="Spot ${k+1}" style="left:${(k%C)*tw}px;top:${Math.floor(k/C)*th}px;width:${tw}px;height:${th}px"></button>`).join('')}</div>
+    <div class="rzjtray" id="rzjt">${g.order.map(k=>`<button class="rzjpc" data-k="${k}" aria-label="Picture piece" style="width:${Math.round(tw*f)}px;height:${Math.round(th*f)}px;background-image:url(${g.img});background-size:${Math.round(BW*f)}px ${Math.round(BH*f)}px;background-position:${-Math.round((k%C)*tw*f)}px ${-Math.round(Math.floor(k/C)*th*f)}px"></button>`).join('')}</div>`);
+  let sel = null, n = 0; const tray = document.getElementById('rzjt'), board = document.getElementById('rzj');
+  const hintT = ()=> sel ? board.querySelector(`.rzjslot[data-k="${sel.dataset.k}"]`) : tray.querySelector('.rzjpc');
+  tray.querySelectorAll('.rzjpc').forEach(b=>b.onclick=()=>{ if(!G.live) return; poke(); tray.querySelectorAll('.rzjpc').forEach(x=>x.classList.remove('sel')); sel = b; b.classList.add('sel'); tone(660,.08,'triangle',.12); armHint(hintT); });
+  board.querySelectorAll('.rzjslot').forEach(s=>s.onclick=()=>{ if(!G.live || !sel || s.classList.contains('got')) return;
+    if(s.dataset.k===sel.dataset.k){ poke(); const k = +s.dataset.k; s.classList.add('got'); s.style.backgroundImage = `url(${g.img})`; s.style.backgroundSize = `${BW}px ${BH}px`; s.style.backgroundPosition = `${-(k%C)*tw}px ${-Math.floor(k/C)*th}px`;
+      sel.remove(); sel = null; n++; tone(523+n*40,.12,'triangle',.14); document.getElementById('cnt').textContent = `${n} / ${N}`;
+      if(n>=N){ clearHint(); G.getT = null; board.classList.add('solved'); setTimeout(()=>cityDone('rz',0), 900); } else armHint(hintT); }
+    else { miss(); sfx.oops(); s.classList.remove('shake'); void s.offsetWidth; s.classList.add('shake'); } });
+  armHint(hintT);
+}
+{ const base = rzPlay; rzPlay = function(b, again){ if(b && b.g && b.g.type==='jigsaw'){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); rzJigsawPlay(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; } return base.apply(this, arguments); }; }
+/* passport */
+const RZ_STAMP = {maze:['🧭','Maze'], slide:['🧩','Slide picture'], jigsaw:['🖼️','Jigsaw'], dots:['✏️','Dot to dot'], trace:['🔤','Tracing'], tune:['🎹','Copy the tune'],
+  peek:['👀','Peekaboo'], find:['🔍','Hide and seek'], order:['1️⃣','In order'], match:['🃏','Memory'], doors:['🚪','Doors'],
+  letter:['🅰️','Find the letter'], case:['🔡','Big and little'], letterpop:['🎈','Letter balloons'], abcorder:['🔠','ABC order'], firstsound:['👂','First sounds'], rhyme:['🎵','Rhymes'], spell:['📝','Spelling'],
+  count:['🔢','Counting'], numfind:['#️⃣','Find the number'], more:['⚖️','Which has more'], add:['➕','Adding'], pattern:['🔁','Patterns'], shapes:['🔷','Shapes'], sort:['📏','Small to big'], tapcount:['🥁','Tap and count']};
+{ const base = rzWin; rzWin = function(){ const live = G.live, t = rzCur && rzCur.g && rzCur.g.type; base.apply(this, arguments);
+  if(live && t){ RZ.pp = RZ.pp && typeof RZ.pp==='object' ? RZ.pp : {}; const first = !RZ.pp[t]; RZ.pp[t] = (RZ.pp[t]||0) + 1; rzSave();
+    if(first){ const card = document.querySelector('.modal .rzwin .rzwtxt'); if(card){ const d = document.createElement('div'); d.className = 'ppnew'; d.innerHTML = `<span>${(RZ_STAMP[t]||['⭐'])[0]}</span> New passport stamp: <b>${(RZ_STAMP[t]||['',t])[1]}</b>!`; card.insertBefore(d, card.querySelector('.row')); } } } }; }
+function rzPassport(){
+  hush(); G.live = false; const pp = RZ.pp || {}, fams = Object.keys(RZ_STAMP).filter(f=>RZ_MAKE[f]), got = fams.filter(f=>pp[f]).length;
+  app.innerHTML = `<div class="screen ppscr"><div class="sbpaper"></div>
+    <div class="hdr"><div class="left"><button class="iconbtn" id="rzback" aria-label="Back to the pavilion">&#8592;</button><div><div class="sub">Razzle's Puzzle Passport</div><h2>${got} of ${fams.length} stamps</h2></div></div>
+    <div class="left">${fsOK?`<button class="iconbtn" data-act="fs" aria-label="Full screen">${ICON_FS}</button>`:''}<button class="iconbtn" data-act="sound" aria-label="Sound on or off">${soundOn?ICON.sound:ICON.mute}</button></div></div>
+    <div class="ppgrid">${fams.map(f=>`<div class="ppst ${pp[f]?'on':''}" title="${RZ_STAMP[f][1]}"><span>${pp[f]?RZ_STAMP[f][0]:'?'}</span><small>${RZ_STAMP[f][1]}</small>${pp[f]>1?`<em>×${pp[f]}</em>`:''}</div>`).join('')}</div>
+    <div class="sbtip">${got>=fams.length ? '&#127881; Every stamp! You are a Master Explorer!' : 'Solve a new kind of puzzle to get its stamp.'}</div></div>`;
+  cbind(); document.getElementById('rzback').onclick = ()=>{ sfx.pop(); rzHub(); };
+}
+{ const base = rzHub; rzHub = function(){ base.apply(this, arguments); const f = app.querySelector('.rzfoot'); if(!f) return;
+  const b = document.createElement('button'); b.className = 'lvlb sbhubbtn'; b.id = 'pphub'; const n = Object.keys(RZ.pp||{}).length;
+  b.innerHTML = `&#128706; Passport<small>${n} ${n===1?'stamp':'stamps'}</small>`; b.onclick = ()=>{ sfx.pop(); rzPassport(); }; f.insertBefore(b, f.firstChild); }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzjig{position:absolute;z-index:4;background-color:rgba(255,253,246,.9);background-size:100% 100%;border-radius:12px;box-shadow:0 8px 0 rgba(0,0,0,.12)}
+.rzjig:not(.solved)[style*="background-image"]::before{content:'';position:absolute;inset:0;background:rgba(255,253,246,.72);border-radius:12px}
+.rzjslot{position:absolute;border:2px dashed rgba(91,58,30,.35);background:transparent no-repeat;cursor:pointer;padding:0;z-index:1}
+.rzjslot.got{border:1px solid rgba(255,255,255,.7)}
+.rzjig.solved .rzjslot{border-color:transparent}
+.rzjtray{position:absolute;left:620px;right:20px;top:150px;bottom:110px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:10px;z-index:4;background:rgba(255,253,246,.85);border-radius:20px;padding:12px}
+.rzjpc{border-radius:10px;border:4px solid #fff;box-shadow:0 4px 0 rgba(0,0,0,.15);background-repeat:no-repeat;cursor:pointer;padding:0}
+.rzjpc.sel{border-color:#F4A300;transform:scale(1.06)}
+.ppnew{margin:6px 0 4px;font-weight:800;font-size:18px;color:#7A4A10;background:#FFF6D6;border-radius:999px;padding:4px 14px;display:inline-block}
+.ppnew span{font-size:24px;vertical-align:middle}
+.ppgrid{position:absolute;left:40px;right:40px;top:90px;display:grid;grid-template-columns:repeat(7,1fr);gap:12px;z-index:3}
+.ppst{position:relative;height:118px;border-radius:50%;aspect-ratio:1;margin:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;border:4px dashed #D9BF8C;background:rgba(255,255,255,.5);color:#B9A27A;transform:rotate(-6deg)}
+.ppst.on{border:5px double #C0392B;background:#FFF8EA;color:#C0392B;transform:rotate(4deg)}
+.ppst span{font-size:38px;line-height:1}
+.ppst small{font-weight:800;font-size:12px;text-align:center;line-height:1.05;margin-top:4px;max-width:96px}
+.ppst em{position:absolute;right:2px;bottom:6px;font-style:normal;font-size:12px;font-weight:800;background:#C0392B;color:#fff;border-radius:999px;padding:0 6px}
+</style>`);
+
 /* ===== nav.js (v23.10): a Home button (little house) on every screen with a top bar, so children can always get back to
    the start screen (and from there to Challenge Mode, friends, grown-ups). Runs after every screen change. ===== */
 const HOME_SVG = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h5v-6h3v6h5V10"/></svg>';
@@ -5271,6 +5332,45 @@ function addHomeBtn(){
 }
 new MutationObserver(addHomeBtn).observe(document.getElementById('app'), {childList:true});
 document.head.insertAdjacentHTML('beforeend', '<style>.homebtn{color:#1D1D2B;margin-right:6px}</style>');
+
+/* ===== homescr.js (v23.11): a tidier start screen with room for everything.
+   Top: progress + level under the title. Middle: the globe stays clear. Bottom: a dock with the big
+   "Keep exploring!" button and tiles for Challenge Mode, Meet our friends and (once open) Razzle's scrapbook + passport. ===== */
+{ const base = showTitle; showTitle = function(){ const r = base.apply(this, arguments);
+  const scr = app.querySelector('.worldtitle'), mid = scr && scr.querySelector('.wt-mid'); if(!mid) return r;
+  scr.classList.add('home2');
+  const top = document.createElement('div'); top.className = 'wt-top';
+  const prog = mid.querySelector('.wt-prog'), lvl = mid.querySelector('.lvl'); if(prog) top.appendChild(prog); if(lvl) top.appendChild(lvl);
+  scr.appendChild(top);
+  const go = document.getElementById('go'), rz = document.getElementById('rzbox'), fr = document.getElementById('frb');
+  const dock = document.createElement('div'); dock.className = 'wt-dock';
+  const tiles = document.createElement('div'); tiles.className = 'wt-tiles';
+  const tile = (icon, label, sub, fn, cls, id)=>{ const b = document.createElement('button'); b.className = 'wtile ' + (cls||''); if(id) b.id = id; b.innerHTML = `<span>${icon}</span><b>${label}</b>${sub?`<small>${sub}</small>`:''}`; b.onclick = fn; return b; };
+  if(fr){ const t = tile('&#127757;', 'Meet our friends', '15 bug friends', ()=>fr.click(), 'wfr', 'wtfr'); fr.style.display = 'none'; tiles.appendChild(t); }
+  if(rz){ tiles.appendChild(rz); }
+  if(typeof RZ!=='undefined' && RZ.u){ const s = (RZ.sb && RZ.sb.inv) ? RZ.sb.inv.length : 0;
+    tiles.appendChild(tile('&#128210;', 'My scrapbook', s ? `${s} keepsake${s===1?'':'s'}` : 'from Challenge Mode', ()=>{ unlockAudio(); sfx.pop(); sbBook(Math.floor(Math.max(0,s-1)/6)); }, 'wsb', 'wtsb'));
+    const n = Object.keys(RZ.pp||{}).length; tiles.appendChild(tile('&#128706;', 'Passport', `${n} stamp${n===1?'':'s'}`, ()=>{ unlockAudio(); sfx.pop(); rzPassport(); }, 'wpp', 'wtpp')); }
+  if(go) dock.appendChild(go); dock.appendChild(tiles); mid.replaceWith(dock);
+  return r; }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.home2 .wt-top{position:absolute;left:18px;top:18px;z-index:5;display:flex;flex-direction:column;align-items:flex-start;gap:6px;white-space:nowrap;max-width:186px}
+.home2 .wt-top .lvl{display:flex;flex-direction:column;gap:5px;position:static;transform:none}
+.home2 .bflychip.ontitle{left:auto!important;right:18px!important;top:84px!important;bottom:auto!important;transform:none!important}
+.home2 .wt-top .lvlb{padding:3px 12px;font-size:15px;flex-direction:row;gap:6px}
+.home2 .wt-top .lvlb small{font-size:12px}
+.home2 .wt-top .wt-prog{font-size:15px}
+.home2 .wt-dock{position:absolute;left:210px;right:210px;bottom:14px;z-index:4;display:flex;flex-direction:column;align-items:center;gap:10px}
+.home2 #go{font-size:30px;padding:10px 46px 8px;min-height:60px}
+.wt-tiles{display:flex;gap:10px;justify-content:center;flex-wrap:nowrap}
+.wtile{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:120px;height:84px;padding:6px 10px;border-radius:18px;background:rgba(255,255,255,.94);border:3px solid #fff;box-shadow:0 5px 0 rgba(0,0,0,.14);font-family:'Baloo 2',sans-serif;color:#1D1D2B;cursor:pointer;line-height:1.05}
+.wtile span{font-size:30px;line-height:1}
+.wtile b{font-size:17px;font-weight:800}
+.wtile small{font-size:12px;font-weight:700;color:#7A6640}
+.home2 .rzbox{height:84px;min-width:150px;border-radius:18px}
+.home2 .rzbox.open{flex-direction:column;gap:0;font-size:18px;padding:4px 12px}
+.home2 .rzbox.open img{height:44px}
+</style>`);
 
 /* ---------- hook music + wipes into the screens ---------- */
 {
