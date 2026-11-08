@@ -5823,7 +5823,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzhq .rzmopts{margin-top:-4px}
 .rznum{font:800 52px 'Baloo 2',Arial;color:#1D1D2B;width:96px;height:96px}
 .rzhq:has(.rzmopts){top:420px}
-.rzpond{position:absolute;left:200px;right:150px;top:150px;height:400px;z-index:4;overflow:hidden;border-radius:30px;background:linear-gradient(rgba(120,190,240,.55),rgba(40,110,190,.6));box-shadow:inset 0 6px 0 rgba(255,255,255,.4)}
+.rzpond{position:absolute;left:200px;right:150px;top:150px;height:400px;z-index:4;overflow:hidden;border-radius:30px;background:linear-gradient(rgba(120,190,240,.38),rgba(40,110,190,.5)),url(bg/097.webp) center 62%/cover;box-shadow:inset 0 6px 0 rgba(255,255,255,.4)}
 .rzfish{position:absolute;width:150px;height:86px;cursor:pointer;padding:0;animation-timing-function:linear;animation-fill-mode:forwards}
 .rzfish svg{width:100%;height:100%}.rzfish svg.flip{transform:scaleX(-1)}
 .rzfish b{position:absolute;left:40px;top:14px;width:62px;text-align:center;font:800 46px 'Baloo 2',Arial;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.3)}
@@ -6016,6 +6016,174 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzcpc.on{transform:scale(1.15);box-shadow:0 0 0 4px #1D1D2B}
 </style>`);
 
+/* ===== rzfun5.js (v23.18): hard mazes + more Challenge games + more motion (Chester: "Are mazes in the game? Make the mazes hard")
+   - bigmaze:  "Giant maze" big perfect mazes (no shortcuts): Easy 9x6, Challenge 14x8 with 4 gems. (cat maze)
+   - darkmaze: "Lantern maze" only the area around the ladybug is lit: Easy 7x5, Challenge 11x7 with 3 gems. (cat maze)
+   - The normal Challenge maze is bigger too (11x6 instead of 9x5), with fewer shortcuts.
+   - bins:     "Sort it out" put each picture in the right basket (colour, or land / sea / sky). (cat detect)
+   - stickmem: "Sticker memory" flip Grok's scrapbook stickers to find pairs. (cat slide)
+   - bop:      "Bug bop" tap the ladybugs when they pop up (Challenge: not the bees!). (cat play)
+   - balance:  "Balance the scale" add apples until both sides weigh the same. (cat num)
+   Motion: Razzle hops when a child gets something right and tilts his head on a wrong tap; pavilion doors breathe. ===== */
+function rzMazeGen(W, H, loops){ const N = W*H, wall = Array.from({length:N}, ()=>[1,1,1,1]), D = [[0,-1],[1,0],[0,1],[-1,0]];
+  const seen = new Array(N).fill(false), st = [Math.floor(Math.random()*N)]; seen[st[0]] = true;
+  while(st.length){ const c = st[st.length-1], x = c%W, y = (c/W)|0;
+    const nb = cshuf([0,1,2,3]).filter(d=>{ const nx = x+D[d][0], ny = y+D[d][1]; return nx>=0 && ny>=0 && nx<W && ny<H && !seen[ny*W+nx]; });
+    if(!nb.length){ st.pop(); continue; } const d = nb[0], n = (y+D[d][1])*W + x+D[d][0]; wall[c][d] = 0; wall[n][(d+2)%4] = 0; seen[n] = true; st.push(n); }
+  for(let k=0;k<loops;k++){ const c = Math.floor(Math.random()*N), x = c%W, y = (c/W)|0, d = rzOne([1,2]); const nx = x+D[d][0], ny = y+D[d][1]; if(nx<W && ny<H){ wall[c][d] = 0; wall[ny*W+nx][(d+2)%4] = 0; } }
+  return wall; }
+function rzMazeBuild(type, W, H, loops, nGems, title){ const wall = rzMazeGen(W, H, loops);
+  const corners = [0, W-1, (H-1)*W, H*W-1], start = rzOne(corners), dist = rzBfs(wall, W, H, start), goal = dist.indexOf(Math.max(...dist));
+  const gems = nGems ? cshuf([...Array(W*H).keys()].filter(c=>c!==start && c!==goal && dist[c]>=4)).slice(0, nGems) : [];
+  return {type, title, W, H, wall, start, goal, gems, sig:W+'x'+H+':'+start+':'+wall.map(w=>w[1]+''+w[2]).join('')+':'+goal+':'+gems.slice().sort((a,b)=>a-b).join(',')}; }
+/* the normal Challenge maze: bigger, fewer shortcuts */
+{ const base = RZ_MAKE.maze; RZ_MAKE.maze = function(){ if(easy()) return base(); return rzMazeBuild('maze', 11, 6, 1, 3, 'Maze: grab the gems, then reach the treasure!'); }; }
+RZ_MAKE.bigmaze = function(){ const e = easy(); return e ? rzMazeBuild('bigmaze', 9, 6, 0, 0, 'Giant maze: find the way to the treasure!') : rzMazeBuild('bigmaze', 14, 8, 0, 4, 'Giant maze: grab 4 gems, then find the treasure!'); };
+RZ_MAKE.darkmaze = function(){ const e = easy(); const g = e ? rzMazeBuild('darkmaze', 7, 5, 1, 0, 'Lantern maze: it is dark! Find the treasure!') : rzMazeBuild('darkmaze', 11, 7, 0, 3, 'Lantern maze: find 3 gems in the dark, then the treasure!'); g.fog = e ? 2.6 : 1.9; return g; };
+function rzFogOn(g){ const box = document.getElementById('rzm'); if(!box) return; const fog = document.createElement('div'); fog.className = 'rzfog'; box.appendChild(fog);
+  const cs = box.offsetWidth / g.W, seen = new Set();
+  const upd = ()=>{ const bug = box.querySelector('.rzbug'); if(!bug) return; const m = (bug.getAttribute('transform')||'').match(/translate\(([\d.]+)[ ,]+([\d.]+)/); if(!m) return;
+    const x = +m[1], y = +m[2], r = cs*g.fog; seen.add(Math.round(x)+','+Math.round(y));
+    fog.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(20,16,40,0) 0px, rgba(20,16,40,0) ${(r*0.55).toFixed(0)}px, rgba(20,16,40,.93) ${r.toFixed(0)}px)`;
+    fog.style.webkitMaskImage = fog.style.maskImage = 'none'; };
+  upd(); new MutationObserver(upd).observe(document.getElementById('rzmsvg'), {childList:true}); }
+Object.assign(RZ_FAM, {bigmaze:{cat:'maze'}, darkmaze:{cat:'maze'}});
+
+/* ---------- Sort it out ---------- */
+const RZ_BINS = [
+  {k:'colour', bins:[['red','🔴',['🍎','🍓','🚒','🌹','🍒','🎈']],['yellow','🟡',['🍌','🌻','🐥','🧀','⭐','🍋']],['green','🟢',['🐸','🥦','🍀','🥒','🐢','🍐']]]},
+  {k:'home', bins:[['land','🌳',['🐶','🦁','🐘','🐰','🦒','🐻']],['sea','🌊',['🐟','🐙','🐳','🦀','🐬','🐠']],['sky','☁️',['🦅','🦋','🐝','🕊️','🦉','🐦']]]},
+  {k:'food', bins:[['fruit','🧺',['🍎','🍌','🍇','🍉','🍓','🍐']],['veg','🥗',['🥕','🥦','🌽','🥒','🍆','🫑']]]}];
+RZ_MAKE.bins = function(){ const e = easy(), set = rzOne(RZ_BINS), per = e ? 2 : 3, bins = set.bins;
+  const items = cshuf(bins.flatMap((b,i)=>cshuf(b[2]).slice(0, per).map(x=>[x,i])));
+  return {type:'bins', title: set.k==='colour' ? 'Put each one in the basket of its colour!' : set.k==='home' ? 'Who lives on land, in the sea, or in the sky?' : 'Fruit or vegetable? Sort them!', set:set.k, bins:bins.map(b=>[b[0],b[1]]), items, sig:set.k+items.map(i=>i[0]).join('')}; };
+function rzBinsPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.items.length}</div>
+    <div class="rzbinsit" id="rzbi">${g.items.map(([x,i],k)=>`<button class="rzbit" data-k="${k}" aria-label="Picture">${x}</button>`).join('')}</div>
+    <div class="rzbins">${g.bins.map(([n,ic],i)=>`<button class="rzbin" data-i="${i}" aria-label="${n} basket"><span>${ic}</span><b>${n}</b><div class="rzbinin"></div></button>`).join('')}</div>`);
+  let sel = null, n = 0;
+  const hint = ()=> sel ? document.querySelector(`.rzbin[data-i="${g.items[+sel.dataset.k][1]}"]`) : document.querySelector('.rzbit:not(.done)');
+  document.querySelectorAll('.rzbit').forEach(b=>b.onclick=()=>{ if(!G.live || b.classList.contains('done')) return; poke(); document.querySelectorAll('.rzbit').forEach(x=>x.classList.remove('sel')); sel = b; b.classList.add('sel'); tone(660,.07,'triangle',.1); armHint(hint); });
+  document.querySelectorAll('.rzbin').forEach(bn=>bn.onclick=()=>{ if(!G.live || !sel) return; const it = g.items[+sel.dataset.k];
+    if(+bn.dataset.i===it[1]){ poke(); sel.classList.add('done'); sel.classList.remove('sel'); const s = document.createElement('i'); s.textContent = it[0]; bn.querySelector('.rzbinin').appendChild(s); bn.classList.remove('gulp'); void bn.offsetWidth; bn.classList.add('gulp'); sel = null; n++; tone(540+n*40,.1,'triangle',.14);
+      document.getElementById('cnt').textContent = `${n} / ${g.items.length}`; if(n>=g.items.length){ clearHint(); G.getT = null; rzDoneLater(900); } else armHint(hint); }
+    else { miss(); bn.classList.remove('shake'); void bn.offsetWidth; bn.classList.add('shake'); tone(220,.12,'sine',.1); } });
+  armHint(hint);
+}
+
+/* ---------- Sticker memory (Grok's scrapbook stickers) ---------- */
+RZ_MAKE.stickmem = function(){ const e = easy(), pairs = e ? 3 : 6, ids = cshuf(SB_ITEMS.map(x=>x[0])).slice(0, pairs);
+  return {type:'stickmem', title:'Sticker memory: find the matching pairs!', cards:cshuf([...ids, ...ids]), sig:ids.join(',')}; };
+function rzStickmemPlay(g){
+  const n = g.cards.length, cols = n<=6 ? 3 : 4, sz = n<=6 ? 150 : 118;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Pairs: 0 / ${n/2}</div>
+    <div class="rzsm" style="grid-template-columns:repeat(${cols},${sz}px)">${g.cards.map((id,k)=>`<button class="rzsmc" data-k="${k}" style="width:${sz}px;height:${sz}px" aria-label="Card"><div class="rzsmi"><div class="rzsmf">${sbSticker(id, sz-30)}</div><div class="rzsmb">🐞</div></div></button>`).join('')}</div>`);
+  let open = [], got = 0, lock = false;
+  document.querySelectorAll('.rzsmc').forEach(c=>c.onclick=()=>{ if(!G.live || lock || c.classList.contains('up')) return; poke(); c.classList.add('up'); open.push(c); tone(600,.06,'triangle',.1);
+    if(open.length===2){ const [a,b] = open; open = []; if(g.cards[+a.dataset.k]===g.cards[+b.dataset.k]){ a.classList.add('ok'); b.classList.add('ok'); got++; tone(780,.14,'triangle',.15); document.getElementById('cnt').textContent = `Pairs: ${got} / ${n/2}`; if(got>=n/2){ clearHint(); G.getT = null; rzDoneLater(900); } }
+      else { lock = true; setTimeout(()=>{ a.classList.remove('up'); b.classList.remove('up'); lock = false; }, 900); } } });
+  armHint(()=>null);
+}
+
+/* ---------- Bug bop ---------- */
+RZ_MAKE.bop = function(){ const e = easy(); return {type:'bop', title: e ? 'Bug bop! Tap the ladybugs!' : 'Bug bop! Tap the ladybugs, not the bees!', need:e ? 8 : 12, bees:!e, stay:e ? 1700 : 1150, sig:'bop'+(e?'e':'c')+Math.floor(Math.random()*20)}; };
+function rzBopPlay(g){
+  const holes = [[230,250],[430,250],[630,250],[830,250],[330,420],[530,420],[730,420]];
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">🐞 0 / ${g.need}</div>
+    <div class="rzbop" id="rzbp">${holes.map(([x,y],k)=>`<div class="rzhole" style="left:${x}px;top:${y}px"><button class="rzcrit" data-k="${k}" aria-label="Pop-up"></button></div>`).join('')}</div>`);
+  let got = 0, timer = 0; const crits = [...document.querySelectorAll('.rzcrit')];
+  function pop(){ if(!G.live || !document.getElementById('rzbp') || got>=g.need){ clearInterval(timer); return; }
+    const free = crits.filter(c=>!c.classList.contains('up')); if(!free.length) return; const c = rzOne(free), bee = g.bees && Math.random() < .35;
+    c.dataset.bee = bee ? '1' : '0'; c.textContent = bee ? '🐝' : '🐞'; c.classList.remove('hit'); c.classList.add('up');
+    clearTimeout(c._t); c._t = setTimeout(()=>c.classList.remove('up'), g.stay); }
+  crits.forEach(c=>c.onclick=()=>{ if(!G.live || !c.classList.contains('up') || c.classList.contains('hit')) return;
+    if(c.dataset.bee==='1'){ miss(); tone(200,.15,'sawtooth',.06); c.classList.add('hit'); setTimeout(()=>c.classList.remove('up'), 250); return; }
+    poke(); c.classList.add('hit'); got++; tone(700+got*30,.1,'square',.08); document.getElementById('cnt').textContent = `🐞 ${got} / ${g.need}`; clearTimeout(c._t); setTimeout(()=>c.classList.remove('up'), 300);
+    if(got>=g.need){ clearHint(); G.getT = null; clearInterval(timer); rzDoneLater(800); } });
+  pop(); timer = setInterval(pop, easy() ? 900 : 650);
+  armHint(()=>document.querySelector('.rzcrit.up:not(.hit)[data-bee="0"]'));
+}
+
+/* ---------- Balance the scale ---------- */
+RZ_MAKE.balance = function(){ const e = easy(); let L;
+  if(e){ L = [1 + Math.floor(Math.random()*5)]; } else { const a = 1 + Math.floor(Math.random()*5), b = 1 + Math.floor(Math.random()*5); L = [a, b]; }
+  const t = L.reduce((x,y)=>x+y, 0); return {type:'balance', title: e ? 'Make the scale balance!' : 'Add apples so both sides weigh the same!', L, t, sig:L.join('+')}; };
+function rzBalancePlay(g){
+  const e = easy();
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">${e ? '' : `${g.L.join(' + ')} = ?`}</div>
+    <div class="rzscale"><div class="rzbeam" id="rzbm"><div class="rzpan l"><div class="rzpanin">${g.L.map((n,i)=>`<span class="grp">${'🍎'.repeat(n)}</span>`).join('')}</div></div><div class="rzpan r"><div class="rzpanin" id="rzpr"></div></div></div><div class="rzpost"></div></div>
+    <div class="rzbalb"><button class="big ghost" id="rzbminus">&#8722; Take one</button><button class="big green" id="rzbplus">&#43; Add an apple</button></div>`);
+  let r = 0; const beam = document.getElementById('rzbm'), pr = document.getElementById('rzpr');
+  const tilt = ()=>{ const d = Math.max(-1, Math.min(1, (g.t - r)/Math.max(3, g.t))); beam.style.transform = `rotate(${(-d*14).toFixed(1)}deg)`; pr.textContent = '🍏'.repeat(r); document.getElementById('cnt').textContent = e ? `${r}` : `${g.L.join(' + ')} = ${r===g.t ? g.t : '?'}`;
+    if(r===g.t){ clearHint(); G.getT = null; beam.classList.add('even'); if(r<=20) lsoft(String(r), ['N:'+r]); tone(523,.15,'triangle',.15); tone(659,.15,'triangle',.15,.12); tone(784,.25,'triangle',.15,.24); rzDoneLater(1300); } };
+  document.getElementById('rzbplus').onclick = ()=>{ if(!G.live || r>=20 || r===g.t) return; poke(); r++; tone(400+r*20,.08,'triangle',.12); if(r>g.t) miss(); tilt(); };
+  document.getElementById('rzbminus').onclick = ()=>{ if(!G.live || r<=0 || r===g.t) return; poke(); r--; tone(300,.08,'sine',.1); tilt(); };
+  tilt(); armHint(()=> r < g.t ? document.getElementById('rzbplus') : document.getElementById('rzbminus'));
+}
+
+Object.assign(RZ_FAM, {bins:{cat:'detect'}, stickmem:{cat:'slide'}, bop:{cat:'play'}, balance:{cat:'num'}});
+Object.assign(RZ_STAMP, {bigmaze:['🗺️','Giant maze'], darkmaze:['🏮','Lantern maze'], bins:['🧺','Sort it out'], stickmem:['🃏','Sticker memory'], bop:['🔨','Bug bop'], balance:['⚖️','Balance the scale']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type;
+  const f = {bins:rzBinsPlay, stickmem:rzStickmemPlay, bop:rzBopPlay, balance:rzBalancePlay}[t];
+  if(f || t==='bigmaze' || t==='darkmaze'){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush();
+    if(f) f(b.g); else { rzMazePlay(b.g, CITIES.rz); if(t==='darkmaze') rzFogOn(b.g); }
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+/* Undo for the big mazes too */
+{ const base = cgameShell; cgameShell = function(id){ const r = base.apply(this, arguments);
+  if(id==='rz' && rzCur && (rzCur.g.type==='bigmaze' || rzCur.g.type==='darkmaze') && !document.getElementById('rzundo')){ const bar = app.querySelector('.rzbar');
+    if(bar){ bar.insertAdjacentHTML('afterbegin', `<button class="rzb" id="rzundo" aria-label="Undo">&#8630;<small>Undo</small></button>`); document.getElementById('rzundo').onclick = ()=>{ sfx.pop(); rzUndo && rzUndo(); }; } }
+  return r; }; }
+
+/* ---------- motion: Razzle cheers a right tap, tilts his head at a wrong one ---------- */
+{ const p0 = poke; poke = function(){ const r = p0.apply(this, arguments); const b = document.querySelector('.rzbadge'); if(b){ b.classList.remove('rzyay','rzhmm'); void b.offsetWidth; b.classList.add('rzyay'); } return r; }; }
+{ const m0 = miss; miss = function(){ const r = m0.apply(this, arguments); const b = document.querySelector('.rzbadge'); if(b){ b.classList.remove('rzyay','rzhmm'); void b.offsetWidth; b.classList.add('rzhmm'); } return r; }; }
+
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzfog{position:absolute;inset:0;border-radius:18px;pointer-events:none;transition:background .15s}
+.rzbadge.rzyay > :first-child{animation:rzyay .45s ease-out}
+.rzbadge.rzhmm > :first-child{animation:rzhmm .6s ease-in-out}
+@keyframes rzyay{40%{transform:translateY(-22px) rotate(-6deg)}}
+@keyframes rzhmm{30%{transform:rotate(-12deg)}70%{transform:rotate(9deg)}}
+.rzcat:not(.rzany){animation:fadeUp .45s both, rzbreathe 4s ease-in-out 1s infinite}
+@keyframes rzbreathe{50%{transform:translateY(-3px)}}
+.rzbinsit{position:absolute;left:0;right:0;top:140px;z-index:4;display:flex;flex-wrap:wrap;justify-content:center;gap:12px;padding:0 140px}
+.rzbit{width:92px;height:92px;border-radius:22px;background:#fff;font-size:56px;line-height:1;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.12)}
+.rzbit.sel{box-shadow:0 0 0 6px #F4A300;transform:translateY(-4px)}
+.rzbit.done{visibility:hidden}
+.rzbins{position:absolute;left:0;right:0;top:370px;z-index:4;display:flex;justify-content:center;gap:24px}
+.rzbin{width:200px;height:200px;border-radius:24px 24px 60px 60px;background:#C98B4B;border:6px solid #8D5A2B;display:flex;flex-direction:column;align-items:center;padding-top:8px;cursor:pointer;color:#fff;box-shadow:0 8px 0 rgba(0,0,0,.15)}
+.rzbin span{font-size:44px;line-height:1}.rzbin b{font:800 22px 'Baloo 2',Arial;text-transform:capitalize}
+.rzbinin{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;font-size:30px;padding:4px}
+.rzbinin i{font-style:normal;animation:pop .35s}
+.rzbin.gulp{animation:pop .35s}.rzbin.shake{animation:shake .4s}
+.rzsm{position:absolute;left:50%;top:140px;transform:translateX(-50%);z-index:4;display:grid;gap:12px}
+.rzsmc{perspective:600px;background:transparent;padding:0;cursor:pointer}
+.rzsmi{position:relative;width:100%;height:100%;transition:transform .35s;transform-style:preserve-3d}
+.rzsmc.up .rzsmi{transform:rotateY(180deg)}
+.rzsmf,.rzsmb{position:absolute;inset:0;border-radius:20px;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 5px 0 rgba(0,0,0,.14)}
+.rzsmf{background:#FFFDF6;transform:rotateY(180deg)}
+.rzsmb{background:repeating-linear-gradient(45deg,#E5383B 0 14px,#F05A5D 14px 28px);font-size:50px;border:5px solid #fff}
+.rzsmc.ok .rzsmf{box-shadow:0 0 0 5px #3FA34D}
+.rzbop{position:absolute;inset:0;z-index:4;pointer-events:none}
+.rzhole{position:absolute;width:150px;height:120px;margin-left:-75px;overflow:hidden;pointer-events:none}
+.rzhole:after{content:'';position:absolute;left:5px;right:5px;bottom:0;height:40px;border-radius:50%;background:radial-gradient(ellipse,#4A2E17 55%,#7A5230 70%);z-index:0}
+.rzcrit{position:absolute;left:30px;bottom:-100px;width:90px;height:100px;font-size:72px;line-height:1;background:transparent;z-index:1;pointer-events:auto;cursor:pointer;transition:bottom .2s ease-out}
+.rzcrit.up{bottom:14px}.rzcrit.hit{transform:scale(.8) rotate(20deg);filter:brightness(1.4)}
+.rzhole:before{content:'';position:absolute;left:5px;right:5px;bottom:-22px;height:40px;border-radius:50%;background:#6FAE52;z-index:2}
+.rzscale{position:absolute;left:50%;top:160px;transform:translateX(-50%);width:720px;height:330px;z-index:4}
+.rzpost{position:absolute;left:350px;top:60px;width:20px;height:260px;background:#8D6A2E;border-radius:10px}
+.rzpost:after{content:'';position:absolute;left:-60px;bottom:-10px;width:140px;height:24px;border-radius:12px;background:#6B4F22}
+.rzbeam{position:absolute;left:60px;top:50px;width:600px;height:16px;background:#C9962F;border-radius:8px;transform-origin:50% 50%;transition:transform .5s cubic-bezier(.3,1.5,.5,1);z-index:2}
+.rzbeam.even{box-shadow:0 0 0 4px #3FA34D}
+.rzpan{position:absolute;top:8px;width:220px;height:150px}
+.rzpan.l{left:-60px}.rzpan.r{right:-60px}
+.rzpanin{position:absolute;left:0;right:0;top:60px;min-height:70px;background:rgba(255,253,246,.95);border-radius:0 0 110px 110px;border:5px solid #C9962F;display:flex;flex-wrap:wrap;justify-content:center;align-content:flex-start;font-size:34px;padding:6px;line-height:1.1}
+.rzpanin .grp{margin:0 6px}
+.rzpan:before{content:'';position:absolute;left:108px;top:0;width:4px;height:60px;background:#8D6A2E}
+.rzbalb{position:absolute;left:0;right:0;top:520px;z-index:4;display:flex;justify-content:center;gap:16px}
+</style>`);
+
 /* ===== mouth.js (v23.17): bigger, livelier talking mouths (Chester: "the mouth animations barely move")
    Lisa and Lucas: a real open mouth (dark with a tongue) now opens and closes with the voice, syllable by syllable,
    drawn over their painted mouth. The voice meter is also more sensitive, which helps the 15 friends' mouths too. ===== */
@@ -6082,7 +6250,7 @@ document.head.insertAdjacentHTML('beforeend', '<style>.homebtn{color:#1D1D2B;mar
   if(typeof RZ!=='undefined' && RZ.u){ const s = (RZ.sb && RZ.sb.inv) ? RZ.sb.inv.length : 0;
     const last = s && typeof sbSticker==='function' ? sbSticker(RZ.sb.inv[s-1], 40) : ''; tiles.appendChild(tile(last || '&#128210;', 'My scrapbook', s ? `${s} keepsake${s===1?'':'s'}` : 'from Challenge Mode', ()=>{ unlockAudio(); sfx.pop(); sbBook(Math.floor(Math.max(0,s-1)/6)); }, 'wsb', 'wtsb'));
     const n = Object.keys(RZ.pp||{}).length; tiles.appendChild(tile('&#128706;', 'Passport', `${n} stamp${n===1?'':'s'}`, ()=>{ unlockAudio(); sfx.pop(); rzPassport(); }, 'wpp', 'wtpp')); }
-  const h1 = scr.querySelector('.wt-head h1'); if(h1 && !h1.querySelector('.wl')) h1.innerHTML = [...h1.textContent].map((ch,k)=>ch===' ' ? ' ' : `<span class="wl" style="animation-delay:${(k*0.06).toFixed(2)}s">${ch}</span>`).join('');
+  const h1 = scr.querySelector('.wt-head h1'); if(h1 && !h1.querySelector('.wl')) { let k = 0; h1.innerHTML = h1.textContent.split(' ').map(w=>`<span class="ww">${[...w].map(ch=>`<span class="wl" style="animation-delay:${(k++*0.06).toFixed(2)}s">${ch}</span>`).join('')}</span>`).join(' '); }
   if(go) dock.appendChild(go); dock.appendChild(tiles); mid.replaceWith(dock);
   return r; }; }
 document.head.insertAdjacentHTML('beforeend', `<style>
@@ -6101,9 +6269,11 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .wfaces img{width:34px;height:34px;border-radius:50%;object-fit:cover;object-position:50% 20%;background:#FFF3D6;border:2px solid #fff;margin-left:-8px;box-shadow:0 2px 0 rgba(0,0,0,.12)}
 .wfaces img:first-child{margin-left:0}
 .wtile .sbst{display:block}
+.home2 .wt-head h1 .ww{display:inline-block;white-space:nowrap}
 .home2 .wt-head h1 .wl{display:inline-block;animation:wwave 6s ease-in-out infinite}
 @keyframes wwave{0%,8%,100%{transform:translateY(0)}4%{transform:translateY(-7px)}}
-@media (prefers-reduced-motion: reduce){.home2 .wt-head h1 .wl{animation:none}}
+@media (prefers-reduced-motion: reduce){.home2 .wt-head h1 .ww{display:inline-block;white-space:nowrap}
+.home2 .wt-head h1 .wl{animation:none}}
 .wtile:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.14)}
 .wtile b{font-size:17px;font-weight:800}
 .wtile small{font-size:12px;font-weight:700;color:#7A6640}
@@ -6111,6 +6281,101 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .home2 .rzbox.open{flex-direction:column;gap:0;font-size:18px;padding:4px 12px}
 .home2 .rzbox.open img{height:44px}
 </style>`);
+
+/* ===== home3.js (v23.18): Grok's finished home-screen painting (GROK_047, "Finish the home screen ... send it to Claude").
+   The painting already has Lisa and Lucas in it, so the flying runtime ladybugs, globe and side characters are hidden here.
+   Fit: the whole 16:9 scene is kept (no side crop, per Grok's note); it sits on the ground and the sky continues above it.
+   Life added on top without moving the painted characters: blinking eyes, a glint across Lisa's magnifier, drifting clouds,
+   twinkles over the map, and a red pin popping onto the map for every place already solved. Title + buttons sit in the open
+   space on the right, as Grok suggested. Also: a Bedtime room (Grok's good-night painting bg/106) from the moon button. ===== */
+const HS = {W:1024, H:576, top:124, k:0.8,
+  eyes:[[143.75,357.5,26,29,'#FAA85C'],[200,355,34,36,'#EAB273'],[397,362.5,22,28,'#F9A354'],[442.5,372.5,22,28,'#F9A354']],
+  map:[140,140,527,300],
+  pins:{alaska:[.07,.22], nyc:[.27,.33], mexico:[.17,.45], costarica:[.22,.53], peru:[.27,.68], ireland:[.455,.21], london:[.475,.24], paris:[.485,.29],
+    rome:[.515,.33], greece:[.545,.35], egypt:[.565,.42], kenya:[.59,.57], india:[.70,.45], japan:[.88,.35], australia:[.89,.75]}};
+function hsSolved(){ const out = []; if(S.crown) out.push('london'); if(S.india && S.india.done && S.india.done.length>=4) out.push('india');
+  Object.entries(S.cities||{}).forEach(([id,c])=>{ if(c && c.done && c.done.length>=4) out.push(id); }); return out; }
+{ const base = showTitle; showTitle = function(){ const r = base.apply(this, arguments);
+  const scr = app.querySelector('.worldtitle'); if(!scr || scr.classList.contains('home3')) return r;
+  scr.classList.add('home3');
+  const P = (x,y)=>[x*HS.k, y*HS.k + HS.top];
+  const lids = HS.eyes.map(([x,y,w,h,c],i)=>{ const [X,Y] = P(x,y); return `<i class="hslid" style="left:${(X-w*HS.k*0.62).toFixed(1)}px;top:${(Y-h*HS.k*0.62).toFixed(1)}px;width:${(w*HS.k*1.24).toFixed(1)}px;height:${(h*HS.k*1.24).toFixed(1)}px;--lc:${c};animation-delay:${i<2?0:1.7}s"></i>`; }).join('');
+  const [gx, gy] = P(200, 355), solved = hsSolved(), [mx,my,mw,mh] = HS.map;
+  const pins = solved.map((id,k)=>{ const p = HS.pins[id]; if(!p) return ''; const [X,Y] = P(mx + p[0]*mw, my + p[1]*mh); return `<i class="hspin" style="left:${X.toFixed(0)}px;top:${Y.toFixed(0)}px;animation-delay:${(0.4 + k*0.18).toFixed(2)}s"></i>`; }).join('');
+  const tw = Array.from({length:7},(_,k)=>{ const [X,Y] = P(mx + Math.random()*mw, my + Math.random()*mh); return `<i class="hstw" style="left:${X.toFixed(0)}px;top:${Y.toFixed(0)}px;animation-delay:${(k*0.9).toFixed(1)}s"></i>`; }).join('');
+  scr.insertAdjacentHTML('afterbegin', `<div class="hsart" aria-hidden="true"><div class="hssky"></div><img class="hsimg" src="hs/home.webp" alt="">
+    <i class="hscloud c1"></i><i class="hscloud c2"></i><i class="hscloud c3"></i>${lids}<i class="hsglint" style="left:${(gx-30).toFixed(0)}px;top:${(gy-32).toFixed(0)}px"></i>${pins}${tw}</div>`);
+  // Bedtime (Grok's good-night room)
+  const corner = scr.querySelector('.corner');
+  if(corner && !corner.querySelector('#bedbtn')){ const b = document.createElement('button'); b.className = 'cornerbtn'; b.id = 'bedbtn'; b.setAttribute('aria-label','Bedtime'); b.innerHTML = '&#127769; Bedtime'; b.onclick = ()=>{ unlockAudio(); sfx.pop(); showBedtime(); }; corner.insertBefore(b, corner.firstChild); }
+  return r; }; }
+
+/* ---------- Bedtime room ---------- */
+const BED_SONG = [0,0,4,4,5,5,4, 3,3,2,2,1,1,0];
+function showBedtime(){
+  hush(); try{ music.stop(); }catch(e){} G.live = false; document.querySelectorAll('.modal').forEach(m=>m.remove());
+  const n = (typeof RZ!=='undefined' && RZ.n) || 0, places = hsSolved().length;
+  app.innerHTML = `<div class="screen bedscr"><img class="bedimg" src="bg/106.webp" alt="">
+    <div class="hdr"><div class="left"><button class="iconbtn" id="bedback" aria-label="Back to the start screen">&#8592;</button><div><div class="sub">Time to rest</div><h2>Good night, explorer!</h2></div></div>
+    <div class="left">${fsOK?`<button class="iconbtn" data-act="fs" aria-label="Full screen">${ICON_FS}</button>`:''}<button class="iconbtn" data-act="sound" aria-label="Sound on or off">${soundOn?ICON.sound:ICON.mute}</button></div></div>
+    ${Array.from({length:14},(_,k)=>`<i class="bedstar" style="left:${360 + Math.random()*300}px;top:${150 + Math.random()*170}px;animation-delay:${(k*0.37).toFixed(2)}s"></i>`).join('')}
+    <div class="bedpups"><div class="bedp l">${puppet('lisa', 190)}</div><div class="bedp r">${puppet('lucas', 190)}</div></div>
+    <div class="bedcard"><b>Sleep tight!</b><span>Today's adventures: ${places} ${places===1?'place':'places'} solved${n ? ` &middot; ${n} Challenge ${n===1?'puzzle':'puzzles'}` : ''}</span>
+    <div class="row"><button class="big ghost" id="bedsong">&#127925; Play the lullaby</button><button class="big green" id="bedhome">Back to the start</button></div></div>
+    <div class="bedzz"><i>z</i><i>z</i><i>Z</i></div></div>`;
+  cbind(); requestAnimationFrame(()=>document.querySelectorAll('.bedscr .pup').forEach(p=>p.classList.add('idle')));
+  const home = ()=>{ sfx.pop(); showTitle(); };
+  document.getElementById('bedback').onclick = home; document.getElementById('bedhome').onclick = home;
+  let playing = false;
+  const lull = ()=>{ if(playing || !soundOn) return; playing = true; const N = [523,587,659,698,784,880,988,1047];
+    BED_SONG.forEach((s,j)=>setTimeout(()=>{ if(!document.querySelector('.bedscr')) return; tone(N[s]/2, .7, 'sine', .14); tone(N[s], .5, 'triangle', .05); }, j*620));
+    setTimeout(()=>{ playing = false; }, BED_SONG.length*620); };
+  document.getElementById('bedsong').onclick = lull; setTimeout(lull, 900);
+}
+
+document.head.insertAdjacentHTML('beforeend', `<style>
+.home3 > :not(.hsart):not(.corner):not(.wt-head):not(.wt-top):not(.wt-dock):not(.bflychip):not(.bfly):not(.modal){display:none!important}
+.hsart{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:#FCF3D7}
+.hssky{position:absolute;left:0;right:0;top:0;height:140px;background:linear-gradient(#F3EBD2,#FCF3D7)}
+.hsimg{position:absolute;left:0;top:124px;width:1024px;height:576px;display:block}
+.hslid{position:absolute;border-radius:50%;background:var(--lc);transform-origin:50% 0;transform:scaleY(0);animation:hsblink 5.3s infinite;box-shadow:inset 0 -3px 0 rgba(60,30,10,.55)}
+@keyframes hsblink{0%,92%,100%{transform:scaleY(0)}95%,97%{transform:scaleY(1)}}
+.hsglint{position:absolute;width:60px;height:64px;border-radius:50%;overflow:hidden}
+.hsglint:after{content:'';position:absolute;top:-20px;left:-40px;width:22px;height:110px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.85),rgba(255,255,255,0));transform:rotate(25deg);animation:hsglint 6s ease-in-out infinite 2s}
+@keyframes hsglint{0%,70%{left:-40px}85%,100%{left:80px}}
+.hscloud{position:absolute;width:150px;height:46px;border-radius:50px;background:radial-gradient(ellipse at 50% 60%,rgba(255,255,255,.95),rgba(255,255,255,.55) 55%,rgba(255,255,255,0) 72%);filter:blur(1px);animation:hscloud linear infinite}
+.hscloud.c1{top:40px;animation-duration:70s;animation-delay:-20s}
+.hscloud.c2{top:95px;width:110px;animation-duration:95s;animation-delay:-60s;opacity:.8}
+.hscloud.c3{top:200px;width:180px;animation-duration:120s;animation-delay:-5s;opacity:.7}
+@keyframes hscloud{from{transform:translateX(-220px)}to{transform:translateX(1260px)}}
+.hspin{position:absolute;width:14px;height:20px;margin:-20px 0 0 -7px;border-radius:50% 50% 50% 0;transform:rotate(-45deg) scale(0);background:#E5383B;box-shadow:inset -2px -2px 0 rgba(0,0,0,.18);animation:hspin .5s cubic-bezier(.3,1.6,.6,1) forwards}
+.hspin:after{content:'';position:absolute;left:4px;top:4px;width:6px;height:6px;border-radius:50%;background:#fff}
+@keyframes hspin{to{transform:rotate(-45deg) scale(1)}}
+.hstw{position:absolute;width:10px;height:10px;margin:-5px;background:radial-gradient(circle,#fff 0 25%,rgba(255,255,255,0) 70%);animation:fxtw 3.4s ease-in-out infinite;opacity:.2}
+.home3 .wt-head{left:568px!important;right:auto!important;top:150px!important;width:420px!important;transform:none!important;margin:0!important;z-index:3}
+.home3 .wt-head h1{font-size:46px!important;line-height:1.02!important;white-space:normal!important}
+.home3 .wt-dock{left:576px!important;right:30px!important;bottom:22px!important}
+.home3 .wt-tiles{display:grid!important;grid-template-columns:1fr 1fr;gap:10px!important;width:100%}
+.home3 .wtile,.home3 .rzbox{min-width:0!important;width:100%;height:78px!important}
+.home3 #go{width:100%;font-size:32px}
+.home3 .wt-top{z-index:3}
+html.calm .hscloud,html.calm .hsglint:after,html.calm .hstw{animation:none}
+.bedscr{background:#2A1E14}
+.bedimg{position:absolute;left:0;top:0;width:1024px;height:700px;object-fit:cover}
+.bedstar{position:absolute;width:8px;height:8px;margin:-4px;background:radial-gradient(circle,#FFF6C8 0 30%,rgba(255,246,200,0) 70%);animation:fxtw 2.6s ease-in-out infinite;opacity:.3;z-index:1}
+.bedpups{position:absolute;left:0;right:0;bottom:120px;display:flex;justify-content:center;gap:190px;z-index:2;pointer-events:none}
+.bedp{transform-origin:50% 100%}
+.bedcard{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:3;background:rgba(255,248,230,.95);border-radius:24px;padding:10px 22px;display:flex;flex-direction:column;align-items:center;gap:4px;box-shadow:0 6px 0 rgba(0,0,0,.18);white-space:nowrap}
+.bedcard b{font-size:26px}.bedcard span{font-weight:700;color:#7A6640}
+.bedcard .row{gap:12px}.bedcard .big{font-size:20px;padding:8px 18px}
+.bedzz{position:absolute;left:650px;top:270px;z-index:2;pointer-events:none}
+.bedzz i{position:absolute;font:800 28px 'Baloo 2',Arial;color:#FFF3C4;font-style:normal;opacity:0;animation:bedzz 4.2s ease-out infinite;text-shadow:0 2px 4px rgba(0,0,0,.3)}
+.bedzz i:nth-child(2){animation-delay:1.4s;font-size:34px}.bedzz i:nth-child(3){animation-delay:2.8s;font-size:42px}
+@keyframes bedzz{0%{opacity:0;transform:translate(0,0)}20%{opacity:1}100%{opacity:0;transform:translate(40px,-110px)}}
+#bedbtn{background:#2F3A6B;color:#FFF3C4}
+</style>`);
+/* Razzle's one-time reveal only shows on the start screen (it used to pop up over the Bedtime room) */
+{ const base = rzReveal; rzReveal = function(){ if(!app.querySelector('.worldtitle')) return; return base.apply(this, arguments); }; }
 
 /* ---------- hook music + wipes into the screens ---------- */
 {
