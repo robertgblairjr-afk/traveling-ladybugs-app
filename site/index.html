@@ -2223,18 +2223,9 @@ function globeScene(){
     <image href="art/lucas_bust.webp" x="-29" y="-58" width="58" height="76" preserveAspectRatio="xMidYMin meet"/></g></svg>`;
 }
 function titleJingle(){
+  // v23.15: the little start-screen jingle is gone (Chester); the Gentle Exploration music starts straight away.
   if(!soundOn) return; const c = ctx(); if(!c || c.state!=='running') return;
-  music.stop();
-  const N = m => 440*Math.pow(2,(m-69)/12);
-  // "The Tra-vel-ing La-dy-bugs!"
-  const mel = [[67,0,.16],[72,.18,.16],[76,.36,.16],[74,.54,.16],[72,.72,.16],[76,.9,.22],[79,1.14,.22],[84,1.4,.7]];
-  mel.forEach(([m,t,d])=>{ tone(N(m), d, 'triangle', .2, t); tone(N(m+12), d*.8, 'sine', .05, t); });
-  // bass + chords
-  [[48,0,.5],[53,.54,.5],[55,1.08,.3],[48,1.4,.9]].forEach(([m,t,d])=>tone(N(m), d, 'sine', .16, t));
-  [[60,64,67],[65,69,72],[67,71,74],[72,76,79]].forEach((ch,k)=>ch.forEach(m=>tone(N(m), k===3?.8:.42, 'triangle', .045, [0,.54,1.08,1.4][k])));
-  // sparkle on top
-  [88,91,96,100].forEach((m,k)=>tone(N(m), .18, 'sine', .05, 2.0+k*.08));
-  setTimeout(()=>{ if(app.querySelector('.worldtitle')) music.play('travel'); }, 3000);
+  if(app.querySelector('.worldtitle')) music.play('travel');
 }
 function showTitle(){
   const london = S.crown ? 1 : 0, india = S.india && S.india.done.length>=4 ? 1 : 0;
