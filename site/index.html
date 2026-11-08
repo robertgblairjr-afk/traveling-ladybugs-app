@@ -6184,6 +6184,313 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzbalb{position:absolute;left:0;right:0;top:520px;z-index:4;display:flex;justify-content:center;gap:16px}
 </style>`);
 
+/* ===== rzfun6.js (v23.19): five more Challenge games + a little bug parade on every win
+   - ttt:     "Three in a row" vs Razzle (Easy: Razzle plays randomly; Challenge: Razzle blocks and tries to win). A Razzle win or a draw just starts a new round. (cat play)
+   - race:    "Ladybug race" roll the dice, count the dots, hop that many squares to the flower (Challenge: two dice). (cat num)
+   - story:   "What happens next?" put 3 (Easy) or 4 (Challenge) pictures in order: egg to hen, seed to flower... (cat detect)
+   - drum:    "Drum along" copy the beat on the drum: short and long taps... Easy 3 beats, Challenge 5. (cat play)
+   - build:   "Build it like the picture" make the snowman / robot / ice cream match the little picture. (cat slide)
+   Nothing is lost on a wrong tap. ===== */
+/* ---------- Three in a row ---------- */
+RZ_MAKE.ttt = function(){ const e = easy(); return {type:'ttt', title: e ? 'Three in a row! You are the ladybug.' : 'Beat Razzle at three in a row!', smart:!e, need:1, sig:'ttt'+(e?'e':'c')+Math.floor(Math.random()*50)}; };
+const RZ_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+function rzTttWin(b, p){ return RZ_LINES.find(l=>l.every(i=>b[i]===p)); }
+function rzTttPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">You: 🐞 &nbsp; Razzle: 🪲</div>
+    <div class="rzttt" id="rztt">${Array.from({length:9},(_,i)=>`<button class="rztc" data-i="${i}" aria-label="Square ${i+1}"></button>`).join('')}</div><div class="rzmsay rzttm" id="rztm">Your turn! Tap a square.</div>`);
+  let b = Array(9).fill(''), busy = false; const cells = [...document.querySelectorAll('.rztc')], msg = t=>{ document.getElementById('rztm').textContent = t; };
+  const paint = ()=>cells.forEach((c,i)=>{ c.textContent = b[i]==='x' ? '🐞' : b[i]==='o' ? '🪲' : ''; });
+  function razzle(){ const free = b.map((v,i)=>v?null:i).filter(i=>i!==null); if(!free.length) return;
+    let pick = null;
+    if(g.smart){ const tryWin = p=>free.find(i=>{ const t = b.slice(); t[i] = p; return rzTttWin(t, p); });
+      pick = tryWin('o'); if(pick==null) pick = Math.random() < .8 ? tryWin('x') : null; if(pick==null && !b[4] && Math.random()<.6) pick = 4; }
+    if(pick==null) pick = rzOne(free); b[pick] = 'o'; paint(); cells[pick].classList.add('pop'); tone(330,.1,'triangle',.12); }
+  function reset(t){ msg(t); setTimeout(()=>{ if(!G.live) return; b = Array(9).fill(''); paint(); cells.forEach(c=>c.classList.remove('pop','win')); busy = false; msg('New round! Your turn.'); }, 1500); }
+  cells.forEach((c,i)=>c.onclick=()=>{ if(!G.live || busy || b[i]) return; poke(); b[i] = 'x'; paint(); c.classList.add('pop'); tone(620,.1,'triangle',.14);
+    const w = rzTttWin(b, 'x'); if(w){ busy = true; w.forEach(k=>cells[k].classList.add('win')); msg('Three in a row! You win!'); clearHint(); G.getT = null; rzDoneLater(1200); return; }
+    if(b.every(v=>v)){ busy = true; reset("It's a tie! Let's play again."); return; }
+    busy = true; msg('Razzle is thinking...'); setTimeout(()=>{ if(!G.live) return; razzle(); const r = rzTttWin(b, 'o');
+      if(r){ r.forEach(k=>cells[k].classList.add('win')); miss(); reset('Razzle got three! Try again!'); return; }
+      if(b.every(v=>v)){ reset("It's a tie! Let's play again."); return; } busy = false; msg('Your turn!'); }, 700); });
+  armHint(()=>{ if(busy) return null; const free = b.map((v,i)=>v?null:i).filter(i=>i!==null); const win = free.find(i=>{ const t = b.slice(); t[i] = 'x'; return rzTttWin(t,'x'); }); return cells[win!=null ? win : free[0]]; });
+}
+
+/* ---------- Ladybug race ---------- */
+RZ_MAKE.race = function(){ const e = easy(); return {type:'race', title: e ? 'Roll the dice and hop to the flower!' : 'Roll two dice and hop to the flower!', len:e ? 12 : 20, dice:e ? 1 : 2, sig:'race'+(e?'e':'c')+Math.floor(Math.random()*40)}; };
+const RZ_PIPS = {1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+function rzDie(n){ return `<span class="rzdie">${Array.from({length:9},(_,k)=>`<i class="${RZ_PIPS[n].includes(k)?'on':''}"></i>`).join('')}</span>`; }
+function rzRacePlay(g){
+  const per = Math.ceil((g.len+1)/2), rows = 2, sz = g.len<=12 ? 104 : 74;
+  const sq = Array.from({length:g.len+1},(_,k)=>{ const r = Math.floor(k/per), c0 = k%per; const c = r%2 ? per-1-c0 : c0; return [c, r]; });
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Roll the dice!</div>
+    <div class="rzrace" id="rzrc" style="width:${per*sz}px;height:${rows*sz}px">${sq.map(([c,r],k)=>`<button class="rzsq ${k===g.len?'end':''}" data-k="${k}" style="left:${c*sz}px;top:${r*sz}px;width:${sz-6}px;height:${sz-6}px" aria-label="Square ${k}">${k===g.len?'🌸':k||'🏁'}</button>`).join('')}
+    <div class="rzrb" id="rzrb" style="width:${sz-6}px;height:${sz-6}px;font-size:${sz*.55}px">🐞</div></div>
+    <div class="rzdice"><div id="rzdv"></div><button class="big green" id="rzroll">🎲 Roll!</button></div>`);
+  let pos = 0, left = 0, target = 0; const bug = document.getElementById('rzrb'), roll = document.getElementById('rzroll');
+  const place = k=>{ const [c,r] = sq[k]; bug.style.left = (c*sz)+'px'; bug.style.top = (r*sz)+'px'; };
+  place(0);
+  roll.onclick = ()=>{ if(!G.live || left>0) return; poke(); const d = Array.from({length:g.dice},()=>1+Math.floor(Math.random()*6)); let n = d.reduce((a,b)=>a+b,0);
+    document.getElementById('rzdv').innerHTML = d.map(rzDie).join(''); document.querySelectorAll('.rzdie').forEach(x=>{ x.classList.add('rolling'); });
+    tone(300,.05,'square',.06); tone(360,.05,'square',.06,.08); tone(420,.05,'square',.06,.16);
+    left = Math.min(n, g.len-pos); target = pos + left; roll.disabled = true; document.getElementById('cnt').textContent = `Hop ${n}! Tap the squares: ${pos+1}...`;
+    if(n<=20) setTimeout(()=>lsoft(String(n), ['N:'+n]), 500); armHint(()=>document.querySelector(`.rzsq[data-k="${pos+1}"]`)); };
+  document.querySelectorAll('.rzsq').forEach(s=>s.onclick=()=>{ if(!G.live || !left) return; const k = +s.dataset.k;
+    if(k===pos+1){ poke(); pos = k; left--; place(pos); bug.classList.remove('jump'); void bug.offsetWidth; bug.classList.add('jump'); s.classList.add('step'); tone(500+pos*15,.08,'triangle',.13); if(pos<=20) lsoft(String(pos), ['N:'+pos]);
+      if(pos>=g.len){ clearHint(); G.getT = null; document.getElementById('cnt').textContent = 'You made it to the flower!'; rzDoneLater(1000); return; }
+      if(!left){ roll.disabled = false; document.getElementById('cnt').textContent = 'Roll again!'; armHint(()=>roll); } }
+    else { miss(); s.classList.remove('shake'); void s.offsetWidth; s.classList.add('shake'); } });
+  armHint(()=>roll);
+}
+
+/* ---------- What happens next? ---------- */
+const RZ_STORIES = [['🥚','🐣','🐥','🐔'],['🌱','🌿','🌷','💐'],['🐛','🛌','🦋','🌸'],['☁️','🌧️','🌈','☀️'],['🌑','🌓','🌕','🌛'],['🍞','🧈','🥪','😋'],['👶','🧒','🧑','👴'],['🥣','🍰','🎂','🥳'],['🌰','🌱','🌳','🍎'],['💧','🧊','⛄','☃️'],['🌅','☀️','🌇','🌙']];
+RZ_MAKE.story = function(){ const e = easy(), s = rzOne(RZ_STORIES), seq = e ? [s[0], s[1], s[3]] : s.slice(); let sh; do{ sh = cshuf(seq.slice()); }while(sh.join('')===seq.join(''));
+  return {type:'story', title:'What happens next? Put them in order!', seq, sh, sig:seq.join('')}; };
+function rzStoryPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">1, 2, 3${g.seq.length>3?', 4':''}!</div>
+    <div class="rzstory">${g.seq.map((x,k)=>`<div class="rzslot" data-k="${k}"><small>${k+1}</small></div>${k<g.seq.length-1?'<b>&#10140;</b>':''}`).join('')}</div>
+    <div class="rzstray">${g.sh.map(x=>`<button class="rzstp" data-x="${x}" aria-label="Picture">${x}</button>`).join('')}</div>`);
+  let k = 0;
+  document.querySelectorAll('.rzstp').forEach(b=>b.onclick=()=>{ if(!G.live || b.classList.contains('used')) return;
+    if(b.dataset.x===g.seq[k]){ poke(); b.classList.add('used'); const sl = document.querySelector(`.rzslot[data-k="${k}"]`); sl.innerHTML = `<span>${b.dataset.x}</span>`; sl.classList.add('got'); k++; tone(500+k*90,.12,'triangle',.15);
+      if(k>=g.seq.length){ clearHint(); G.getT = null; document.querySelectorAll('.rzslot').forEach((s,j)=>setTimeout(()=>s.classList.add('cheer'), j*150)); rzDoneLater(1300); } }
+    else { miss(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); tone(220,.12,'sine',.1); } });
+  armHint(()=>document.querySelector(`.rzstp[data-x="${g.seq[k]}"]`));
+}
+
+/* ---------- Drum along ---------- */
+RZ_MAKE.drum = function(){ const e = easy(), n = e ? 3 : 5, R = Array.from({length:n},()=>Math.random() < (e ? .25 : .4) ? 2 : 1); // 1 = quick, 2 = long gap after
+  return {type:'drum', title:'Drum along! Copy the beat.', R, sig:R.join('')}; };
+function rzDrumPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Listen...</div>
+    <div class="rzdrumw"><div class="rzbeats" id="rzbt">${g.R.map((d,k)=>`<i class="${d===2?'long':''}" data-k="${k}"></i>`).join('')}</div>
+    <button class="rzdrum" id="rzdr" aria-label="Drum"><span>🥁</span></button><button class="big ghost" id="rzdl">&#127925; Listen again</button></div>`);
+  let k = 0, busy = true, last = 0; const scr = app.querySelector('.screen'), dr = document.getElementById('rzdr'), dots = [...document.querySelectorAll('#rzbt i')];
+  const boom = ()=>{ tone(110,.25,'sine',.7); tone(220,.06,'square',.12); dr.classList.remove('hit'); void dr.offsetWidth; dr.classList.add('hit'); };
+  function demo(){ busy = true; k = 0; dots.forEach(d=>d.classList.remove('on','ok')); document.getElementById('cnt').textContent = 'Listen...'; let t = 500;
+    g.R.forEach((d,j)=>{ setTimeout(()=>{ if(!G.live || !scr.isConnected) return; boom(); dots[j].classList.add('on'); }, t); t += d===2 ? 900 : 450; });
+    setTimeout(()=>{ if(!G.live || !scr.isConnected) return; dots.forEach(d=>d.classList.remove('on')); busy = false; last = 0; document.getElementById('cnt').textContent = 'Your turn! Tap the drum.'; armHint(()=>dr); }, t + 200); }
+  dr.onclick = ()=>{ if(!G.live || busy) return; poke(); boom(); const now = performance.now();
+    if(k>0){ const gap = now - last, want = g.R[k-1]; const isLong = gap > 650; if((want===2) !== isLong && !easy()){ miss(); document.getElementById('cnt').textContent = want===2 ? 'Oops, wait a little longer there! Listen again.' : 'Oops, a bit quicker! Listen again.'; busy = true; setTimeout(demo, 1100); return; } }
+    dots[k].classList.add('ok'); last = now; k++;
+    if(k>=g.R.length){ busy = true; clearHint(); G.getT = null; document.getElementById('cnt').textContent = 'Great drumming!'; rzDoneLater(900); } };
+  document.getElementById('rzdl').onclick = ()=>{ if(!busy){ sfx.pop(); demo(); } };
+  setTimeout(demo, 600);
+}
+
+/* ---------- Build it like the picture ---------- */
+const RZ_BUILDS = {
+  snowman:{n:'snowman', parts:[['hat',['🎩','👒','🧢','👑']],['face',['😊','😄','😮','😎']],['scarf',['🧣','🎀','👔','📿']]]},
+  robot:{n:'robot', parts:[['head',['🤖','👽','🎃','🐸']],['arms',['🦾','✋','🔧','🌸']],['feet',['👟','🥾','🛼','🩴']]]},
+  icecream:{n:'ice cream', parts:[['top',['🍒','🍓','⭐','🍫']],['scoop',['🍨','🍦','🧁','🍧']],['cone',['🍪','🧇','🥨','🍩']]]}};
+RZ_MAKE.build = function(){ const e = easy(), k = rzOne(Object.keys(RZ_BUILDS)), B = RZ_BUILDS[k], nOpt = e ? 2 : 4;
+  const want = B.parts.map(([n,o])=>rzOne(o)), opts = B.parts.map(([n,o],i)=>cshuf([want[i], ...cshuf(o.filter(x=>x!==want[i])).slice(0, nOpt-1)]));
+  return {type:'build', title:`Build the ${B.n} like the picture!`, k, want, opts, sig:k+want.join('')}; };
+function rzBuildPlay(g){
+  const B = RZ_BUILDS[g.k];
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.want.length}</div>
+    <div class="rzbuild"><div class="rzbex"><small>Make this:</small>${g.want.map(x=>`<span>${x}</span>`).join('')}</div>
+    <div class="rzbmade" id="rzbm">${g.want.map((x,i)=>`<span class="rzbm" data-i="${i}">?</span>`).join('')}</div>
+    <div class="rzbopts">${g.opts.map((row,i)=>`<div class="rzbrow"><b>${B.parts[i][0]}</b>${row.map(x=>`<button class="rzbo" data-i="${i}" data-x="${x}" aria-label="${B.parts[i][0]}">${x}</button>`).join('')}</div>`).join('')}</div></div>`);
+  let n = 0;
+  document.querySelectorAll('.rzbo').forEach(b=>b.onclick=()=>{ if(!G.live) return; const i = +b.dataset.i, slot = document.querySelector(`.rzbm[data-i="${i}"]`); if(slot.classList.contains('got')) return;
+    slot.textContent = b.dataset.x; slot.classList.remove('pop'); void slot.offsetWidth; slot.classList.add('pop');
+    if(b.dataset.x===g.want[i]){ poke(); slot.classList.add('got'); n++; tone(560+n*80,.12,'triangle',.15); document.getElementById('cnt').textContent = `${n} / ${g.want.length}`; if(n>=g.want.length){ clearHint(); G.getT = null; rzDoneLater(1100); } }
+    else { miss(); tone(220,.12,'sine',.1); setTimeout(()=>{ if(!slot.classList.contains('got')) slot.textContent = '?'; }, 700); } });
+  armHint(()=>{ const i = [...document.querySelectorAll('.rzbm')].findIndex(s=>!s.classList.contains('got')); return i<0 ? null : document.querySelector(`.rzbo[data-i="${i}"][data-x="${g.want[i]}"]`); });
+}
+
+Object.assign(RZ_FAM, {ttt:{cat:'play'}, race:{cat:'num'}, story:{cat:'detect'}, drum:{cat:'play'}, build:{cat:'slide'}});
+Object.assign(RZ_STAMP, {ttt:['⭕','Three in a row'], race:['🎲','Ladybug race'], story:['📖','What happens next'], drum:['🥁','Drum along'], build:['⛄','Build it']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {ttt:rzTttPlay, race:rzRacePlay, story:rzStoryPlay, drum:rzDrumPlay, build:rzBuildPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+/* a little bug parade marches across the bottom of the win card */
+{ const base = rzWin; rzWin = function(){ base.apply(this, arguments); const card = document.querySelector('.modal .rzwin'); if(!card || document.documentElement.classList.contains('calm')) return;
+  const p = document.createElement('div'); p.className = 'rzparade'; p.innerHTML = ['🐞','🐝','🦋','🐞','🐛'].map((x,k)=>`<span style="animation-delay:${k*0.35}s">${x}</span>`).join(''); card.appendChild(p); }; }
+
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzttt{position:absolute;left:50%;top:140px;transform:translateX(-50%);z-index:4;display:grid;grid-template-columns:repeat(3,120px);gap:10px;background:rgba(255,253,246,.94);padding:14px;border-radius:24px;box-shadow:0 8px 0 rgba(0,0,0,.12)}
+.rztc{width:120px;height:120px;border-radius:18px;background:#fff;border:4px solid #E9DCC0;font-size:76px;line-height:1;cursor:pointer}
+.rztc.pop{animation:pop .3s}.rztc.win{background:#DFF5D8;border-color:#3FA34D}
+.rzttm{position:absolute;left:50%;top:572px;transform:translateX(-50%);z-index:4;white-space:nowrap}
+.rzrace{position:absolute;left:50%;top:150px;transform:translateX(-50%);z-index:4}
+.rzsq{position:absolute;border-radius:16px;background:rgba(255,253,246,.94);border:4px solid #D9BF8C;font:800 26px 'Baloo 2',Arial;color:#7A6640;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.1)}
+.rzsq.step{background:#FFF0B8}.rzsq.end{background:#FCE4EC;font-size:40px}.rzsq.shake{animation:shake .35s}
+.rzrb{position:absolute;display:flex;align-items:center;justify-content:center;transition:left .25s, top .25s;pointer-events:none;z-index:2}
+.rzrb.jump{animation:rzjump .3s}
+.rzdice{position:absolute;left:0;right:0;top:500px;z-index:4;display:flex;justify-content:center;align-items:center;gap:20px}
+#rzdv{display:flex;gap:10px}
+.rzdie{width:70px;height:70px;border-radius:14px;background:#fff;border:4px solid #1D1D2B;display:grid;grid-template-columns:repeat(3,1fr);padding:6px;gap:2px;box-shadow:0 4px 0 rgba(0,0,0,.15)}
+.rzdie i{border-radius:50%}.rzdie i.on{background:#E5383B}
+.rzdie.rolling{animation:rzroll .45s}
+@keyframes rzroll{0%{transform:rotate(-200deg) scale(.4)}100%{transform:none}}
+.rzstory{position:absolute;left:0;right:0;top:160px;z-index:4;display:flex;justify-content:center;align-items:center;gap:8px}
+.rzstory b{font-size:36px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.rzslot{width:130px;height:130px;border-radius:24px;border:5px dashed #D9BF8C;background:rgba(255,253,246,.8);display:flex;align-items:center;justify-content:center;position:relative;font-size:80px}
+.rzslot small{font:800 30px 'Baloo 2',Arial;color:#B9A27A}
+.rzslot.got{border-style:solid;border-color:#3FA34D;background:#fff}
+.rzslot.got span{animation:pop .4s}.rzslot.cheer{animation:rzyay .5s}
+.rzstray{position:absolute;left:0;right:0;top:370px;z-index:4;display:flex;justify-content:center;gap:16px}
+.rzstp{width:116px;height:116px;border-radius:24px;background:#fff;font-size:72px;line-height:1;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.12)}
+.rzstp.used{visibility:hidden}.rzstp.shake{animation:shake .4s}
+.rzdrumw{position:absolute;left:0;right:0;top:140px;z-index:4;display:flex;flex-direction:column;align-items:center;gap:14px}
+.rzbeats{display:flex;align-items:center;gap:10px;background:rgba(255,253,246,.94);border-radius:999px;padding:10px 20px}
+.rzbeats i{width:30px;height:30px;border-radius:50%;background:#E9DCC0}
+.rzbeats i.long{margin-right:34px}
+.rzbeats i.on{background:#F4A300;transform:scale(1.3)}.rzbeats i.ok{background:#3FA34D}
+.rzdrum{width:230px;height:230px;border-radius:50%;background:radial-gradient(circle,#FFF6E2 55%,#C8262A 56%,#C8262A 66%,#E9B949 67%);box-shadow:0 10px 0 rgba(0,0,0,.18);cursor:pointer}
+.rzdrum span{font-size:110px;line-height:1}.rzdrum.hit{animation:rzhit .18s}
+@keyframes rzhit{50%{transform:scale(.92)}}
+.rzbuild{position:absolute;left:0;right:0;top:140px;z-index:4;display:flex;justify-content:center;gap:26px;align-items:flex-start}
+.rzbex,.rzbmade{display:flex;flex-direction:column;align-items:center;background:rgba(255,253,246,.95);border-radius:24px;padding:10px 16px;box-shadow:0 6px 0 rgba(0,0,0,.12)}
+.rzbex span{font-size:44px;line-height:1.15}.rzbex small{font-weight:800}
+.rzbmade{min-width:150px}
+.rzbm{font-size:84px;line-height:1.15;color:#D9BF8C;font-weight:800}
+.rzbm.got{color:inherit}.rzbm.pop{animation:pop .3s}
+.rzbopts{display:flex;flex-direction:column;gap:10px}
+.rzbrow{display:flex;align-items:center;gap:10px;background:rgba(255,253,246,.9);border-radius:20px;padding:8px 12px}
+.rzbrow b{width:64px;font-size:17px;text-transform:capitalize}
+.rzbo{width:84px;height:84px;border-radius:18px;background:#fff;font-size:52px;line-height:1;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.12)}
+.rzparade{position:absolute;left:0;right:0;bottom:-6px;height:40px;overflow:hidden;pointer-events:none}
+.rzparade span{position:absolute;left:-40px;bottom:4px;font-size:30px;animation:rzmarch 3.6s linear infinite}
+@keyframes rzmarch{0%{left:-40px;transform:translateY(0)}25%{transform:translateY(-6px)}50%{transform:translateY(0)}75%{transform:translateY(-6px)}100%{left:100%;transform:translateY(0)}}
+</style>`);
+
+/* ===== rzfun7.js (v23.19): four more Challenge games
+   - lights:  "Light the lanterns" tap a lantern to switch it and its neighbours; light them all (Easy 3x3 plus-shape off, Challenge 4x4). (cat maze)
+   - grid:    "Picture puzzle" each row and column has each picture once (Easy 3x3 with 2 blanks, Challenge 4x4 with 4 blanks, one per row so every gap has one answer). (cat detect)
+   - sumpop:  "Make the number" pop two bubbles that add up to the number (Easy: make 3 to 5; Challenge: 6 to 10, 3 rounds). (cat num)
+   - shell:   "Where did the ladybug go?" watch the cups swap, then tap the one hiding the ladybug (Easy 3 slow swaps, Challenge 6 fast). (cat detect)
+   Nothing is lost on a wrong tap. ===== */
+/* ---------- Light the lanterns (lights-out, always solvable: made by pressing from all-lit) ---------- */
+RZ_MAKE.lights = function(){ const e = easy(), N = e ? 3 : 4, presses = e ? 2 + Math.floor(Math.random()*2) : 4 + Math.floor(Math.random()*3);
+  let on = Array(N*N).fill(1); const P = cshuf([...Array(N*N).keys()]).slice(0, presses);
+  const flip = (a,k)=>{ const r = Math.floor(k/N), c = k%N; [[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr,dc])=>{ const rr = r+dr, cc = c+dc; if(rr>=0&&rr<N&&cc>=0&&cc<N) a[rr*N+cc] ^= 1; }); };
+  P.forEach(k=>flip(on,k)); if(on.every(x=>x)) flip(on, 0);
+  return {type:'lights', title:'Light every lantern! A tap changes its neighbours too.', N, on, sol:P, sig:N+':'+on.join('')}; };
+function rzLightsPlay(g){
+  const N = g.N, sz = N===3 ? 120 : 96, on = g.on.slice(), sol = new Set(g.sol); let taps = 0;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Taps: 0</div>
+    <div class="rzlights" style="grid-template-columns:repeat(${N},${sz}px)">${on.map((v,k)=>`<button class="rzlan ${v?'on':''}" data-k="${k}" style="width:${sz}px;height:${sz}px" aria-label="Lantern"><span>🏮</span></button>`).join('')}</div>`);
+  const btn = [...document.querySelectorAll('.rzlan')];
+  const flip = k=>{ const r = Math.floor(k/N), c = k%N; [[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr,dc])=>{ const rr = r+dr, cc = c+dc; if(rr>=0&&rr<N&&cc>=0&&cc<N){ const j = rr*N+cc; on[j] ^= 1; btn[j].classList.toggle('on', !!on[j]); btn[j].classList.remove('flick'); void btn[j].offsetWidth; btn[j].classList.add('flick'); } }); };
+  btn.forEach(b=>b.onclick=()=>{ if(!G.live) return; poke(); const k = +b.dataset.k; flip(k); if(sol.has(k)) sol.delete(k); else sol.add(k); taps++; tone(on[k]?700:420,.08,'triangle',.12);
+    document.getElementById('cnt').textContent = `Taps: ${taps}`;
+    if(on.every(x=>x)){ clearHint(); G.getT = null; document.querySelector('.rzlights').classList.add('glowall'); tone(523,.15,'triangle',.15); tone(784,.25,'triangle',.15,.15); rzDoneLater(1200); } });
+  // the hint shows one lantern from a solution (pressing every lantern in the solution set once solves it)
+  armHint(()=>{ const k = [...sol][0]; return k==null ? null : btn[k]; });
+}
+
+/* ---------- Picture puzzle (Latin square) ---------- */
+const RZ_GRIDSETS = [['🍎','🍌','🍇','🍓'],['🐶','🐱','🐰','🐻'],['⭐','🌙','☀️','☁️'],['🚗','🚂','⛵','✈️'],['🔴','🟡','🔵','🟢']];
+RZ_MAKE.grid = function(){ const e = easy(), N = e ? 3 : 4, set = cshuf(rzOne(RZ_GRIDSETS)).slice(0, N), blanks = e ? 2 : 4;
+  const rows = cshuf([...Array(N).keys()]), cols = cshuf([...Array(N).keys()]), sym = cshuf([...Array(N).keys()]);
+  const sol = []; for(let r=0;r<N;r++) for(let c=0;c<N;c++) sol.push(set[sym[(rows[r]+cols[c])%N]]);
+  // blanks: no two in the same row AND column pair so each blank has a unique answer by its row alone
+  const hole = []; const usedR = new Set(); for(const k of cshuf([...Array(N*N).keys()])){ const r = Math.floor(k/N); if(hole.length>=blanks) break; if(usedR.has(r)) continue; hole.push(k); usedR.add(r); }
+  return {type:'grid', title:'Each row and each column has every picture once. Fill the gaps!', N, set, sol, hole, sig:sol.join('')+hole.join(',')}; };
+function rzGridPlay(g){
+  const N = g.N, sz = N===3 ? 120 : 100; let cur = null, n = 0;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.hole.length}</div>
+    <div class="rzgridw"><div class="rzgrid" style="grid-template-columns:repeat(${N},${sz}px)">${g.sol.map((x,k)=>g.hole.includes(k) ? `<button class="rzgc hole" data-k="${k}" style="width:${sz}px;height:${sz}px" aria-label="Gap">?</button>` : `<div class="rzgc" style="width:${sz}px;height:${sz}px">${x}</div>`).join('')}</div>
+    <div class="rzgpick">${g.set.map(x=>`<button class="rzgp" data-x="${x}" aria-label="Picture">${x}</button>`).join('')}</div></div>`);
+  const holes = [...document.querySelectorAll('.rzgc.hole')];
+  const choose = h=>{ holes.forEach(x=>x.classList.remove('sel')); cur = h; if(h) h.classList.add('sel'); };
+  choose(holes[0]);
+  holes.forEach(h=>h.onclick=()=>{ if(!G.live || h.classList.contains('done')) return; poke(); choose(h); tone(600,.06,'triangle',.1); });
+  document.querySelectorAll('.rzgp').forEach(p=>p.onclick=()=>{ if(!G.live || !cur) return; const k = +cur.dataset.k;
+    if(p.dataset.x===g.sol[k]){ poke(); cur.textContent = p.dataset.x; cur.classList.add('done'); n++; tone(560+n*60,.12,'triangle',.15); document.getElementById('cnt').textContent = `${n} / ${g.hole.length}`;
+      const next = holes.find(h=>!h.classList.contains('done')); choose(next || null); if(!next){ clearHint(); G.getT = null; rzDoneLater(1000); } }
+    else { miss(); cur.classList.remove('shake'); void cur.offsetWidth; cur.classList.add('shake'); tone(220,.12,'sine',.1); } });
+  armHint(()=> cur ? document.querySelector(`.rzgp[data-x="${g.sol[+cur.dataset.k]}"]`) : null);
+}
+
+/* ---------- Make the number ---------- */
+RZ_MAKE.sumpop = function(){ const e = easy(), rounds = e ? 2 : 3, R = [];
+  for(let r=0;r<rounds;r++){ const t = e ? 3 + Math.floor(Math.random()*3) : 6 + Math.floor(Math.random()*5); const a = 1 + Math.floor(Math.random()*(t-1)), b = t - a;
+    const nums = [a, b]; while(nums.length < (e ? 4 : 6)){ const x = 1 + Math.floor(Math.random()*9); if(!nums.includes(x) || nums.length>3) nums.push(x); }
+    R.push({t, a, b, nums:cshuf(nums)}); }
+  return {type:'sumpop', title:'Pop two bubbles that make the number!', R, sig:R.map(r=>r.t+':'+r.nums.join('')).join('|')}; };
+function rzSumpopPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Round 1 / ${g.R.length}</div>
+    <div class="rzsum"><div class="rzsumt"><span id="rzsa">?</span> + <span id="rzsb">?</span> = <b id="rzst"></b></div><div class="rzsumb" id="rzsbb"></div></div>`);
+  let r = 0, pick = [];
+  function round(){ const R = g.R[r]; pick = []; document.getElementById('cnt').textContent = `Round ${r+1} / ${g.R.length}`; document.getElementById('rzst').textContent = R.t; document.getElementById('rzsa').textContent = '?'; document.getElementById('rzsb').textContent = '?';
+    document.getElementById('rzsbb').innerHTML = R.nums.map((x,k)=>`<button class="rzsbub" data-k="${k}" style="animation-delay:${(k*.3).toFixed(1)}s" aria-label="${x}">${x}</button>`).join('');
+    if(R.t<=20) lsoft(String(R.t), ['N:'+R.t]);
+    document.querySelectorAll('.rzsbub').forEach(b=>b.onclick=()=>{ if(!G.live || b.classList.contains('pop') || pick.length>=2) return; poke(); const v = R.nums[+b.dataset.k]; pick.push(b); b.classList.add('pop'); tone(500+pick.length*120,.1,'triangle',.14);
+      document.getElementById(pick.length===1 ? 'rzsa' : 'rzsb').textContent = v;
+      if(pick.length===2){ const s = pick.reduce((a,x)=>a + R.nums[+x.dataset.k], 0);
+        if(s===R.t){ clearHint(); sfx.chime(); r++; if(r>=g.R.length){ G.getT = null; rzDoneLater(1100); } else setTimeout(round, 1300); }
+        else { miss(); document.getElementById('rzst').classList.add('shake'); setTimeout(()=>{ if(!G.live) return; document.getElementById('rzst').classList.remove('shake'); pick.forEach(x=>x.classList.remove('pop')); pick = []; document.getElementById('rzsa').textContent = '?'; document.getElementById('rzsb').textContent = '?'; }, 900); } } });
+    armHint(()=>{ const R2 = g.R[r]; if(!R2) return null; const want = pick.length ? R2.t - R2.nums[+pick[0].dataset.k] : R2.a; return [...document.querySelectorAll('.rzsbub:not(.pop)')].find(b=>R2.nums[+b.dataset.k]===want) || null; }); }
+  round();
+}
+
+/* ---------- Where did the ladybug go? (shell game) ---------- */
+RZ_MAKE.shell = function(){ const e = easy(), cups = e ? 3 : 4, swaps = e ? 3 : 6, sp = e ? 700 : 430, start = Math.floor(Math.random()*cups);
+  const S = Array.from({length:swaps},()=>{ const a = Math.floor(Math.random()*cups); let b; do{ b = Math.floor(Math.random()*cups); }while(b===a); return [a,b]; });
+  return {type:'shell', title:'Watch the cups! Where is the ladybug hiding?', cups, S, sp, start, sig:start+':'+S.map(x=>x.join('')).join(',')}; };
+function rzShellPlay(g){
+  const W = 170, L0 = Math.round(512 - g.cups*W/2);
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Watch closely...</div>
+    <div class="rzshell" id="rzsh">${Array.from({length:g.cups},(_,i)=>`<button class="rzcup" data-i="${i}" style="left:${L0+i*W}px" aria-label="Cup ${i+1}"><span class="cup"></span></button>`).join('')}<div class="rzhid2" id="rzhb" style="left:${L0+g.start*W}px">🐞</div></div>
+    <button class="big ghost rzshagain" id="rzsag">&#8635; Watch again</button>`);
+  const cups = [...document.querySelectorAll('.rzcup')], bug = document.getElementById('rzhb'), scr = app.querySelector('.screen'); let slot = cups.map((c,i)=>i), busy = true, bugCup = g.start;
+  const place = ()=>cups.forEach((c,i)=>{ c.style.left = (L0 + slot[i]*W) + 'px'; });
+  function run(){ busy = true; slot = cups.map((c,i)=>i); place(); bugCup = g.start; bug.style.left = (L0+g.start*W)+'px'; bug.style.opacity = 1; cups.forEach(c=>c.classList.remove('lift','up'));
+    document.getElementById('cnt').textContent = 'Watch closely...';
+    cups[g.start].classList.add('up'); setTimeout(()=>{ if(!scr.isConnected) return; cups[g.start].classList.remove('up'); setTimeout(()=>{ bug.style.opacity = 0; }, 300); }, 1100);
+    let t = 1700; g.S.forEach(([a,b])=>{ setTimeout(()=>{ if(!scr.isConnected) return; const ia = slot.indexOf(a), ib = slot.indexOf(b); slot[ia] = b; slot[ib] = a; place(); tone(300,.05,'sine',.06); }, t); t += g.sp + 150; });
+    setTimeout(()=>{ if(!scr.isConnected) return; busy = false; document.getElementById('cnt').textContent = 'Which cup? Tap it!'; armHint(()=>cups[g.start]); }, t + 200); }
+  cups.forEach((c,i)=>c.onclick=()=>{ if(!G.live || busy) return; c.classList.add('lift');
+    if(i===g.start){ poke(); busy = true; bug.style.left = c.style.left; bug.style.opacity = 1; clearHint(); G.getT = null; tone(660,.12,'triangle',.15); tone(880,.2,'triangle',.15,.12); document.getElementById('cnt').textContent = 'You found the ladybug!'; rzDoneLater(1200); }
+    else { miss(); tone(220,.12,'sine',.1); setTimeout(()=>c.classList.remove('lift'), 700); } });
+  document.getElementById('rzsag').onclick = ()=>{ if(!busy){ sfx.pop(); run(); } };
+  cups.forEach(c=>c.style.transition = `left ${g.sp}ms ease-in-out, transform .3s`);
+  setTimeout(run, 500);
+}
+
+Object.assign(RZ_FAM, {lights:{cat:'maze'}, grid:{cat:'detect'}, sumpop:{cat:'num'}, shell:{cat:'detect'}});
+Object.assign(RZ_STAMP, {lights:['🏮','Light the lanterns'], grid:['🔲','Picture puzzle'], sumpop:['➕','Make the number'], shell:['🥤','Find the ladybug']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {lights:rzLightsPlay, grid:rzGridPlay, sumpop:rzSumpopPlay, shell:rzShellPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzlights{position:absolute;left:50%;top:140px;transform:translateX(-50%);z-index:4;display:grid;gap:10px;background:rgba(40,30,60,.82);padding:16px;border-radius:24px;box-shadow:0 8px 0 rgba(0,0,0,.18)}
+.rzlan{border-radius:20px;background:#3A2F55;cursor:pointer;transition:background .2s}
+.rzlan span{font-size:56px;line-height:1;filter:grayscale(1) brightness(.55);transition:filter .2s}
+.rzlan.on{background:#FFE9A8;box-shadow:0 0 22px #FFD23F}.rzlan.on span{filter:none}
+.rzlan.flick{animation:pop .25s}
+.rzlights.glowall{box-shadow:0 0 40px #FFD23F}
+.rzgridw{position:absolute;left:0;right:0;top:130px;z-index:4;display:flex;justify-content:center;align-items:center;gap:30px}
+.rzgrid{display:grid;gap:6px;background:rgba(255,253,246,.95);padding:12px;border-radius:22px;box-shadow:0 8px 0 rgba(0,0,0,.12)}
+.rzgc{border-radius:14px;background:#fff;border:3px solid #E9DCC0;display:flex;align-items:center;justify-content:center;font-size:60px;line-height:1}
+.rzgc.hole{border:4px dashed #D9BF8C;background:#FFFBEF;color:#D9BF8C;font:800 46px 'Baloo 2',Arial;cursor:pointer}
+.rzgc.hole.sel{border-color:#F4A300;box-shadow:0 0 0 4px #FFE0A0}
+.rzgc.hole.done{border:3px solid #3FA34D;color:inherit;font-size:60px;font-family:inherit}
+.rzgc.shake{animation:shake .4s}
+.rzgpick{display:flex;flex-direction:column;gap:10px;background:rgba(255,253,246,.9);padding:12px;border-radius:22px}
+.rzgp{width:90px;height:90px;border-radius:18px;background:#fff;font-size:56px;line-height:1;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.12)}
+.rzsum{position:absolute;left:0;right:0;top:140px;z-index:4;display:flex;flex-direction:column;align-items:center;gap:20px}
+.rzsumt{background:rgba(255,253,246,.95);border-radius:24px;padding:6px 30px;font:800 56px 'Baloo 2',Arial;box-shadow:0 6px 0 rgba(0,0,0,.12)}
+.rzsumt span{color:#2B7BE4}.rzsumt b{color:#C0392B}.rzsumt b.shake{display:inline-block;animation:shake .4s}
+.rzsumb{display:flex;flex-wrap:wrap;justify-content:center;gap:20px;max-width:720px}
+.rzsbub{width:110px;height:110px;border-radius:50%;font:800 52px 'Baloo 2',Arial;color:#1D1D2B;cursor:pointer;border:3px solid #fff;background:radial-gradient(circle at 32% 28%,#fff 0 10%,rgba(200,235,255,.9) 30%,rgba(150,210,255,.75) 70%,#fff 100%);box-shadow:0 0 18px rgba(120,200,255,.6);animation:bob 2.4s ease-in-out infinite}
+.rzsbub.pop{opacity:.35;transform:scale(.85)}
+.rzshell{position:absolute;left:0;right:0;top:190px;height:300px;z-index:4}
+.rzcup{position:absolute;top:60px;width:150px;height:170px;background:transparent;cursor:pointer;z-index:2}
+.rzcup .cup{display:block;margin:10px auto 0;width:124px;height:140px;background:linear-gradient(90deg,#C8262A,#E5383B 40%,#C8262A);clip-path:polygon(18% 0,82% 0,100% 100%,0 100%);border-radius:10px;transition:transform .3s;position:relative;box-shadow:inset 0 -14px 0 #8E1B1E}
+.rzcup .cup:after{content:'';position:absolute;left:0;right:0;top:40%;height:14px;background:#FFD23F;opacity:.9}
+.rzcup.up .cup,.rzcup.lift .cup{transform:translateY(-75px)}
+.rzhid2{position:absolute;top:150px;width:150px;text-align:center;font-size:60px;z-index:1;transition:opacity .3s, left .2s}
+.rzshagain{position:absolute;left:50%;top:520px;transform:translateX(-50%);z-index:4}
+</style>`);
+
 /* ===== mouth.js (v23.17): bigger, livelier talking mouths (Chester: "the mouth animations barely move")
    Lisa and Lucas: a real open mouth (dark with a tongue) now opens and closes with the voice, syllable by syllable,
    drawn over their painted mouth. The voice meter is also more sensitive, which helps the 15 friends' mouths too. ===== */
@@ -6334,7 +6641,7 @@ function showBedtime(){
 }
 
 document.head.insertAdjacentHTML('beforeend', `<style>
-.home3 > :not(.hsart):not(.corner):not(.wt-head):not(.wt-top):not(.wt-dock):not(.bflychip):not(.bfly):not(.modal){display:none!important}
+.home3 > :not(.hsart):not(.corner):not(.wt-head):not(.wt-top):not(.wt-dock):not(.bflychip):not(.bfly):not(.modal):not(.tlbupd){display:none!important}
 .hsart{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:#FCF3D7}
 .hssky{position:absolute;left:0;right:0;top:0;height:140px;background:linear-gradient(#F3EBD2,#FCF3D7)}
 .hsimg{position:absolute;left:0;top:124px;width:1024px;height:576px;display:block}
@@ -6376,6 +6683,25 @@ html.calm .hscloud,html.calm .hsglint:after,html.calm .hstw{animation:none}
 </style>`);
 /* Razzle's one-time reveal only shows on the start screen (it used to pop up over the Bedtime room) */
 { const base = rzReveal; rzReveal = function(){ if(!app.querySelector('.worldtitle')) return; return base.apply(this, arguments); }; }
+
+/* ===== update.js (v23.19): the tablet app tells grown-ups when a newer version is out.
+   Only inside the app (window.TLB_APP). Once per launch it reads a tiny version file from the game's GitHub page
+   (no data is sent, nothing is stored about the player). If it is newer than this app (window.TLB_CODE, set by the app),
+   a "New version ready" pill shows on the start screen; tapping it hands the download link to the tablet's browser. ===== */
+let TLB_NEWER = null, TLB_CHECKED = false;
+function tlbCheckUpdate(){ if(!window.TLB_APP || TLB_CHECKED) return; TLB_CHECKED = true;
+  fetch('https://raw.githubusercontent.com/robertgblairjr-afk/traveling-ladybugs-app/main/version.json?t=' + Date.now(), {cache:'no-store'})
+    .then(r=>r.ok ? r.json() : null).then(v=>{ if(v && +v.code > +(window.TLB_CODE||0)){ TLB_NEWER = v; tlbShowUpdate(); } }).catch(()=>{}); }
+function tlbShowUpdate(){ const scr = app.querySelector('.worldtitle'); if(!scr || !TLB_NEWER || scr.querySelector('#tlbupd')) return;
+  const a = document.createElement('a'); a.id = 'tlbupd'; a.href = TLB_APK_URL; a.className = 'tlbupd';
+  a.innerHTML = `<b>&#127881; New version ${TLB_NEWER.name||''} is ready!</b><small>Grown-ups: tap to download, then tap Install. Progress is kept.</small>`;
+  scr.appendChild(a); }
+{ const base = showTitle; showTitle = function(){ const r = base.apply(this, arguments); tlbCheckUpdate(); tlbShowUpdate(); return r; }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.tlbupd{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:9;display:flex;flex-direction:column;align-items:center;background:#2F3A6B;color:#FFF3C4;border-radius:18px;padding:6px 18px;text-decoration:none;box-shadow:0 5px 0 rgba(0,0,0,.2);animation:pulse 2s ease-in-out infinite}
+.tlbupd b{font-size:18px}.tlbupd small{font-size:12px;font-weight:700;opacity:.9}
+.home3 > .tlbupd{display:flex!important}
+</style>`);
 
 /* ---------- hook music + wipes into the screens ---------- */
 {

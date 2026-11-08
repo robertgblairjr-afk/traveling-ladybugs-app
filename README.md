@@ -27,4 +27,6 @@ A children's detective and learning game (ages 3 to 6) from Lisa Blair's picture
 
 To update, download and install the newer file the same way. Saved progress is kept.
 
+From version 23.19 on, the app checks `version.json` here when it starts and shows grown-ups a "New version ready" button on the start screen when a newer APK is up. Bump `code` (the APK versionCode) and `name` in `version.json` with every new APK.
+
 The Traveling Ladybugs, characters and game are owned by Traveling Ladybugs, LLC. Developed by Gloss Mountain Games, LLC.
