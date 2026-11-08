@@ -5334,6 +5334,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
    - numpop:  "Number bubbles" pop the numbers in order (1 to 5, 1 to 10, by twos, or down from 10; cat num)
    - spot:    "Spot the difference" on two copies of a painting (cat detect)
    Nothing is lost on a wrong tap: it just wobbles. ===== */
+function rzDoneLater(ms){ const scr = app.querySelector('.screen'); if(rzDoneLater.t) clearTimeout(rzDoneLater.t); rzDoneLater.t = setTimeout(()=>{ rzDoneLater.t = 0; if(scr && scr.isConnected) cityDone('rz',0); }, ms); }
 const RZ_WORDS = {apple:'🍎',balloon:'🎈',bat:'🦇',bear:'🐻',bee:'🐝',bell:'🔔',bike:'🚲',boat:'⛵',box:'📦',bus:'🚌',cactus:'🌵',cake:'🎂',camel:'🐫',car:'🚗',cat:'🐱',crab:'🦀',
   dish:'🍽️',dog:'🐶',drum:'🥁',eagle:'🦅',fish:'🐟',fox:'🦊',gift:'🎁',goat:'🐐',hat:'🎩',house:'🏠',kangaroo:'🦘',key:'🔑',king:'🤴',lion:'🦁',log:'🪵',monkey:'🐵',moon:'🌙',
   mountain:'⛰️',mouse:'🐭',octopus:'🐙',paw:'🐾',pig:'🐷',pizza:'🍕',ring:'💍',snake:'🐍',snow:'❄️',spoon:'🥄',star:'⭐',statue:'🗽',sun:'☀️',sunflower:'🌻',taxi:'🚕',train:'🚂',
@@ -5365,7 +5366,7 @@ function rzSoundsPlay(g){
     b.onclick = ()=>{ if(!G.live || b.classList.contains('pop')) return;
       if(b.dataset.t==='1'){ poke(); b.classList.add('pop'); got++; tone(700+got*80,.12,'triangle',.16); lsoft(w, ['W:'+w]);
         document.getElementById('cnt').textContent = `${got} / ${g.need}`; setTimeout(()=>b.remove(), 400);
-        if(got>=g.need){ clearHint(); G.getT = null; setTimeout(()=>cityDone('rz',0), 900); } }
+        if(got>=g.need){ clearHint(); G.getT = null; rzDoneLater(900); } }
       else { miss(); tone(200,.15,'sine',.1); lsoft(w, ['W:'+w]); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } };
     box.appendChild(b); n++; }
   spawn(); setTimeout(spawn, 700);
@@ -5389,7 +5390,7 @@ function rzNumpopPlay(g){
   const cur = ()=>box.querySelector(`.rznb[data-v="${g.seq[k]}"]`);
   box.querySelectorAll('.rznb').forEach(b=>b.onclick=()=>{ if(!G.live || b.classList.contains('pop')) return; const v = +b.dataset.v;
     if(v===g.seq[k]){ poke(); b.classList.add('pop'); lsoft(String(v), ['N:'+v]); tone(520+k*40,.12,'triangle',.16); k++;
-      if(k>=g.seq.length){ document.getElementById('cnt').textContent = 'All popped!'; clearHint(); G.getT = null; setTimeout(()=>cityDone('rz',0), 900); }
+      if(k>=g.seq.length){ document.getElementById('cnt').textContent = 'All popped!'; clearHint(); G.getT = null; rzDoneLater(900); }
       else { document.getElementById('cnt').textContent = `Next: ${g.seq[k]}`; if(e){ box.querySelectorAll('.rznb').forEach(x=>x.classList.remove('next')); cur().classList.add('next'); } armHint(cur); } }
     else { miss(); tone(200,.15,'sine',.1); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } });
   if(e) cur().classList.add('next');
@@ -5420,7 +5421,7 @@ function rzSpotPlay(g){
     b.style.left = (d.x-8) + 'px'; b.style.top = (d.y-8) + 'px'; p.appendChild(b);
     b.onclick = ev=>{ ev.stopPropagation(); if(!G.live || d.found) return; d.found = true; poke(); got++; tone(660+got*60,.14,'triangle',.16);
       document.querySelectorAll(`.rzsd[data-k="${k}"]`).forEach(x=>x.classList.add('got')); document.getElementById('cnt').textContent = `${got} / ${g.D}`;
-      if(got>=g.D){ clearHint(); G.getT = null; setTimeout(()=>cityDone('rz',0), 1000); } }; }));
+      if(got>=g.D){ clearHint(); G.getT = null; rzDoneLater(1000); } }; }));
   [p1,p2].forEach(p=>p.onclick = ()=>{ if(!G.live) return; p.classList.remove('shake'); void p.offsetWidth; p.classList.add('shake'); tone(220,.1,'sine',.06); });
   armHint(()=>p2.querySelector('.rzsd:not(.got)'));
 }
@@ -5458,6 +5459,217 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .ppgrid{grid-template-columns:repeat(8,1fr)!important;gap:10px!important}
 .ppst{height:104px!important}
 </style>`);
+
+/* ===== rzfun2.js (v23.16): five more Challenge Mode puzzle types + a little more motion
+   - song:    "Play a song" on the piano (old public-domain nursery tunes), follow the glowing key (Easy) or the coloured notes (Challenge). cat detect
+   - missing: "What's missing?" look at the pictures, the curtain closes, one picture goes away: which one? cat detect
+   - shadow:  "Shadow match" tap a picture, then its shadow. cat slide
+   - feed:    "Snack count" give the animal the right number of treats. cat num
+   - catch:   "Catch the stars" move the basket to catch falling stars (Challenge: only the stars count). cat maze
+   Nothing is lost on a wrong tap. ===== */
+const RZ_KC = ['#E5383B','#F4A300','#FFD23F','#3FA34D','#2B7BE4','#6A4CC7','#C64FB2','#1E9E8F'], RZ_NOTE = [523,587,659,698,784,880,988,1047];
+const RZ_SONGS = {
+  twinkle:{n:'Twinkle, Twinkle, Little Star', s:[0,0,4,4,5,5,4, 3,3,2,2,1,1,0]},
+  mary:{n:'Mary Had a Little Lamb', s:[2,1,0,1,2,2,2, 1,1,1,2,4,4]},
+  buns:{n:'Hot Cross Buns', s:[2,1,0, 2,1,0, 0,0,0,0,1,1,1,1, 2,1,0]},
+  row:{n:'Row, Row, Row Your Boat', s:[0,0,0,1,2, 2,1,2,3,4]},
+  frere:{n:'Are You Sleeping?', s:[0,1,2,0, 0,1,2,0, 2,3,4, 2,3,4]},
+  scale:{n:'Up the Rainbow', s:[0,1,2,3,4,5,6,7]}};
+RZ_MAKE.song = function(){ const e = easy(), k = rzOne(Object.keys(RZ_SONGS)), S = RZ_SONGS[k];
+  const s = e ? S.s.slice(0, Math.min(S.s.length, k==='buns' ? 6 : 7)) : S.s.slice();
+  return {type:'song', title:`Play the song: ${S.n}!`, song:k, s, sig:k+':'+s.length}; };
+function rzSongPlay(g){
+  const e = easy();
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.s.length}</div>
+    <div class="rztune rzsong"><div class="rzsheet" id="rzsh">${g.s.map((n,j)=>`<span class="rznote" data-j="${j}" style="--kc:${RZ_KC[n]}"></span>`).join('')}</div>
+    <div class="rzkeys" id="rzk">${RZ_KC.map((c,i)=>`<button class="rzkey" data-i="${i}" style="--kc:${c}" aria-label="Key ${i+1}"><span>${'CDEFGABC'[i]}</span></button>`).join('')}</div>
+    <button class="big ghost" id="rzlisten">&#127925; Listen</button></div>`);
+  const keys = [...document.querySelectorAll('#rzk .rzkey')], notes = [...document.querySelectorAll('.rznote')]; let k = 0, busy = false;
+  const ping = (i, d)=>{ const b = keys[i]; b.classList.add('lit'); tone(RZ_NOTE[i], .35, 'triangle', .22); tone(RZ_NOTE[i]*2, .2, 'sine', .04); setTimeout(()=>b.classList.remove('lit'), d||300); };
+  function mark(){ notes.forEach((n,j)=>{ n.classList.toggle('done', j<k); n.classList.toggle('now', j===k); });
+    keys.forEach((b,i)=>b.classList.toggle('glow', e && k<g.s.length && i===g.s[k])); }
+  keys.forEach(b=>b.onclick=()=>{ if(!G.live || busy) return; const i = +b.dataset.i;
+    if(i===g.s[k]){ poke(); ping(i); k++; document.getElementById('cnt').textContent = `${k} / ${g.s.length}`; mark();
+      if(k>=g.s.length){ clearHint(); G.getT = null; busy = true; setTimeout(()=>{ g.s.forEach((n,j)=>setTimeout(()=>{ if(G.live) ping(n, 200); }, j*260)); }, 400); rzDoneLater(700 + g.s.length*260); }
+      else armHint(()=>keys[g.s[k]]); }
+    else { miss(); tone(RZ_NOTE[i], .2, 'triangle', .07); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } });
+  document.getElementById('rzlisten').onclick = ()=>{ if(busy) return; sfx.pop(); busy = true; const part = g.s.slice(k, k+7); part.forEach((n,j)=>setTimeout(()=>ping(n, 300), 300+j*480)); setTimeout(()=>{ busy = false; }, 300+part.length*480); };
+  mark(); armHint(()=>keys[g.s[k]]);
+}
+
+/* ---------- What's missing? ---------- */
+RZ_MAKE.missing = function(){ const e = easy(), N = e ? 4 : 6, rounds = e ? 2 : 3, all = cshuf(Object.keys(RZ_WORDS));
+  const R = []; for(let r=0; r<rounds; r++){ const items = all.slice(r*8, r*8+N), gone = rzOne(items); const others = e ? cshuf(all.slice(40)).slice(0,2) : cshuf(items.filter(w=>w!==gone)).slice(0,3);
+    R.push({items, gone, opts:cshuf([gone, ...others])}); }
+  return {type:'missing', title:"What's missing? Look closely!", R, look:e?4200:3600, sig:R.map(r=>r.items.join(',')+'-'+r.gone).join('|')}; };
+function rzMissingPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Round 1 / ${g.R.length}</div>
+    <div class="rzmtab" id="rzmt"></div><div class="rzcurt" id="rzcu"><div></div><div></div></div>
+    <div class="rzmq" id="rzmq"></div>`);
+  let r = 0; const tab = document.getElementById('rzmt'), cur = document.getElementById('rzcu'), q = document.getElementById('rzmq');
+  function round(){ const R = g.R[r]; q.innerHTML = '<div class="rzmsay">Look closely! Remember them all.</div>'; document.getElementById('cnt').textContent = `Round ${r+1} / ${g.R.length}`;
+    tab.innerHTML = R.items.map(w=>`<span class="rzmi" data-w="${w}">${RZ_WORDS[w]}</span>`).join(''); cur.classList.remove('shut');
+    setTimeout(()=>{ if(!G.live) return; cur.classList.add('shut'); tone(330,.3,'sine',.1);
+      setTimeout(()=>{ if(!G.live) return; const el = tab.querySelector(`[data-w="${R.gone}"]`); if(el) el.classList.add('gone'); cur.classList.remove('shut'); tone(440,.2,'triangle',.12);
+        q.innerHTML = `<div class="rzmsay">Which one went away?</div><div class="rzmopts">${R.opts.map(w=>`<button class="rzmo" data-w="${w}" aria-label="${w}">${RZ_WORDS[w]}</button>`).join('')}</div>`;
+        armHint(()=>q.querySelector(`.rzmo[data-w="${R.gone}"]`));
+        q.querySelectorAll('.rzmo').forEach(b=>b.onclick=()=>{ if(!G.live) return; const w = b.dataset.w; lsoft(w, ['W:'+w]);
+          if(w===R.gone){ poke(); clearHint(); b.classList.add('ok'); if(el){ el.classList.remove('gone'); el.classList.add('back'); } sfx.chime(); r++;
+            q.querySelectorAll('.rzmo').forEach(x=>x.onclick=null);
+            if(r>=g.R.length){ G.getT = null; rzDoneLater(1200); } else setTimeout(round, 1600); }
+          else { miss(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } }); }, 900); }, g.look); }
+  round();
+}
+
+/* ---------- Shadow match ---------- */
+RZ_MAKE.shadow = function(){ const e = easy(), N = e ? 3 : 5, words = cshuf(Object.keys(RZ_WORDS).filter(w=>!['snow','wave','dish','paw','log'].includes(w))).slice(0, N);
+  return {type:'shadow', title:'Match each picture to its shadow!', words, sh:cshuf(words.slice()), sig:words.join(',')}; };
+function rzShadowPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.words.length}</div>
+    <div class="rzshw"><div class="rzshc" id="rzsa">${g.words.map(w=>`<button class="rzshp" data-w="${w}" aria-label="${w}">${RZ_WORDS[w]}</button>`).join('')}</div>
+    <div class="rzsharr">&#10140;</div>
+    <div class="rzshc" id="rzsb">${g.sh.map(w=>`<button class="rzshs" data-w="${w}" aria-label="Shadow"><span>${RZ_WORDS[w]}</span></button>`).join('')}</div></div>`);
+  let sel = null, n = 0; const A = document.getElementById('rzsa'), B = document.getElementById('rzsb');
+  const target = ()=> sel ? B.querySelector(`.rzshs[data-w="${sel.dataset.w}"]`) : A.querySelector('.rzshp:not(.got)');
+  A.querySelectorAll('.rzshp').forEach(b=>b.onclick=()=>{ if(!G.live || b.classList.contains('got')) return; poke(); A.querySelectorAll('.rzshp').forEach(x=>x.classList.remove('sel')); sel = b; b.classList.add('sel'); lsoft(b.dataset.w, ['W:'+b.dataset.w]); armHint(target); });
+  B.querySelectorAll('.rzshs').forEach(s=>s.onclick=()=>{ if(!G.live || s.classList.contains('got')) return;
+    if(!sel){ s.classList.remove('shake'); void s.offsetWidth; s.classList.add('shake'); return; }
+    if(s.dataset.w===sel.dataset.w){ poke(); s.classList.add('got'); sel.classList.add('got'); sel.classList.remove('sel'); sel = null; n++; tone(600+n*70,.14,'triangle',.16);
+      document.getElementById('cnt').textContent = `${n} / ${g.words.length}`;
+      if(n>=g.words.length){ clearHint(); G.getT = null; rzDoneLater(1000); } else armHint(target); }
+    else { miss(); sfx.oops(); s.classList.remove('shake'); void s.offsetWidth; s.classList.add('shake'); } });
+  armHint(target);
+}
+
+/* ---------- Snack count ---------- */
+const RZ_EATERS = ['bear','monkey','lion','pig','dog','cat','zebra','camel','goat','turtle','mouse','kangaroo','fox','whale'];
+const RZ_TREATS = [['🍎','apples'],['🍌','bananas'],['🍓','strawberries'],['🥕','carrots'],['🍪','cookies'],['🧀','cheese bites'],['🍇','grapes'],['🥜','nuts']];
+RZ_MAKE.feed = function(){ const e = easy(), a = rzOne(RZ_EATERS), t = rzOne(RZ_TREATS), n = e ? 1 + Math.floor(Math.random()*5) : 4 + Math.floor(Math.random()*7);
+  return {type:'feed', title:`Give the ${a} ${n} ${n===1 ? t[1].replace(/ies$/,'y').replace(/s$/,'') : t[1]}!`, a, t, n, pile:e ? 8 : 12, sig:a+t[0]+n}; };
+function rzFeedPlay(g){
+  const e = easy();
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">${e ? `0 / ${g.n}` : 'Count carefully!'}</div>
+    <div class="rzfa"><div class="rzfan" id="rzan">${RZ_WORDS[g.a]}</div><div class="rzfnum">${g.n}</div><div class="rzplate" id="rzpl"></div>
+    ${e ? '' : `<button class="big green" id="rzfdone">Done!</button>`}</div>
+    <div class="rzfpile" id="rzfp">${Array.from({length:g.pile},(_,k)=>`<button class="rzft" data-k="${k}" aria-label="${g.t[1]}">${g.t[0]}</button>`).join('')}</div>`);
+  const plate = document.getElementById('rzpl'), pile = document.getElementById('rzfp'); let n = 0;
+  const upd = ()=>{ if(e) document.getElementById('cnt').textContent = `${n} / ${g.n}`; };
+  const finish = ()=>{ clearHint(); G.getT = null; const an = document.getElementById('rzan'); an.classList.add('yum'); tone(520,.12,'triangle',.18); tone(780,.2,'triangle',.18,.14); rzDoneLater(1300); };
+  pile.querySelectorAll('.rzft').forEach(b=>b.onclick=()=>{ if(!G.live) return; poke();
+    if(b.parentNode===pile){ if(e && n>=g.n) return; plate.appendChild(b); n++; tone(440+n*50,.1,'triangle',.15); if(n<=20) lsoft(String(n), ['N:'+n]); upd(); if(e && n===g.n) finish(); }
+    else { pile.appendChild(b); n--; tone(300,.1,'sine',.12); upd(); } });
+  const d = document.getElementById('rzfdone');
+  if(d) d.onclick = ()=>{ if(!G.live) return; poke(); if(n===g.n){ d.disabled = true; finish(); }
+    else { miss(); sfx.oops(); document.getElementById('cnt').textContent = n < g.n ? `That's ${n}. A few more!` : `That's ${n}. Too many! Tap one to take it back.`; } };
+  armHint(()=> (!e && n===g.n) ? d : (n < g.n ? pile.querySelector('.rzft') : plate.querySelector('.rzft')));
+  setTimeout(()=>lsoft(String(g.n), ['N:'+g.n]), 1200);
+}
+
+/* ---------- Catch the stars ---------- */
+RZ_MAKE.catch = function(){ const e = easy(), need = e ? 8 : 12, only = !e;
+  return {type:'catch', title: only ? 'Catch only the stars!' : 'Catch the falling stars!', need, only, speed:e?4.6:3.6, sig:'c'+need+':'+Math.floor(Math.random()*9)}; };
+function rzCatchPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">&#11088; 0 / ${g.need}</div>
+    <div class="rzcz" id="rzcz"><div class="rzbask" id="rzbk">🧺</div></div><div class="rzctip">Slide your finger to move the basket!</div>`);
+  const zone = document.getElementById('rzcz'), bk = document.getElementById('rzbk'); let bx = 400, got = 0, timer = 0;
+  const W = 820; const setB = x=>{ bx = Math.max(40, Math.min(W-40, x)); bk.style.left = bx + 'px'; }; setB(410);
+  const toLocal = ev=>{ const r = zone.getBoundingClientRect(); return (ev.clientX - r.left) / (r.width / W); };
+  zone.addEventListener('pointerdown', ev=>{ setB(toLocal(ev)); poke(); }); zone.addEventListener('pointermove', ev=>{ if(ev.pointerType==='mouse' || ev.buttons || ev.pressure>0) setB(toLocal(ev)); });
+  const OTHER = ['🍂','🫧','🌸','🍃'];
+  function drop(){ if(!G.live || !zone.isConnected || got>=g.need) return;
+    const star = !g.only || Math.random() < .6, it = document.createElement('div'); it.className = 'rzfall'; it.dataset.star = star ? '1' : '0';
+    it.textContent = star ? '⭐' : rzOne(OTHER); const x = 50 + Math.random()*(W-100); it.style.left = x + 'px'; zone.appendChild(it);
+    const t0 = performance.now(), dur = (g.speed + Math.random()*.8)*1000;
+    (function fall(now){ if(!it.isConnected) return; const p = (now - t0)/dur; const y = -60 + p*500; it.style.top = y + 'px';
+      if(y > 380 && y < 440 && Math.abs(x - bx) < 70 && !it.dataset.caught){ it.dataset.caught = '1'; it.classList.add('caught');
+        if(it.dataset.star==='1' && got<g.need){ got++; tone(700+got*40,.12,'triangle',.16); document.getElementById('cnt').innerHTML = `&#11088; ${got} / ${g.need}`; bk.classList.remove('bump'); void bk.offsetWidth; bk.classList.add('bump');
+          if(got>=g.need){ clearHint(); G.getT = null; clearInterval(timer); rzDoneLater(700); } }
+        else { tone(240,.1,'sine',.08); }
+        setTimeout(()=>it.remove(), 300); return; }
+      if(p >= 1){ it.remove(); return; } requestAnimationFrame(fall); })(t0); }
+  drop(); timer = setInterval(()=>{ if(!G.live || !zone.isConnected){ clearInterval(timer); return; } drop(); }, easy() ? 1300 : 900);
+  armHint(()=>bk);
+}
+
+Object.assign(RZ_FAM, {song:{cat:'detect'}, missing:{cat:'detect'}, shadow:{cat:'slide'}, feed:{cat:'num'}, catch:{cat:'maze'}});
+Object.assign(RZ_STAMP, {song:['🎶','Play a song'], missing:['❓',"What's missing"], shadow:['🌑','Shadow match'], feed:['🍌','Snack count'], catch:['🧺','Catch the stars']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {song:rzSongPlay, missing:rzMissingPlay, shadow:rzShadowPlay, feed:rzFeedPlay, catch:rzCatchPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+
+/* ---------- a little more motion everywhere: screens fade in, win stars burst ---------- */
+{ const mo = new MutationObserver(ms=>{ for(const m of ms) for(const n of m.addedNodes){ if(n.nodeType===1 && n.classList && n.classList.contains('screen') && !n.classList.contains('scrin')){ n.classList.add('scrin'); } } });
+  mo.observe(app, {childList:true}); }
+{ const base = rzWin; rzWin = function(){ base.apply(this, arguments); const card = document.querySelector('.modal .rzwin'); if(!card) return;
+  const burst = document.createElement('div'); burst.className = 'rzburst'; burst.innerHTML = Array.from({length:12},(_,k)=>`<span style="--a:${k*30}deg;--d:${(k%3)*.06}s">${['⭐','✨','🌟'][k%3]}</span>`).join(''); card.appendChild(burst); setTimeout(()=>burst.remove(), 1600); }; }
+
+document.head.insertAdjacentHTML('beforeend', `<style>
+.scrin{animation:scrIn .35s ease-out}
+@keyframes scrIn{from{opacity:.25}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){.scrin{animation:none}}
+.rzburst{position:absolute;left:150px;top:150px;width:0;height:0;pointer-events:none;z-index:5}
+.rzburst span{position:absolute;font-size:34px;left:-17px;top:-17px;animation:rzbst 1.3s ease-out var(--d) forwards;opacity:0}
+@keyframes rzbst{0%{transform:rotate(var(--a)) translateY(0) scale(.4);opacity:1}100%{transform:rotate(var(--a)) translateY(-190px) scale(1.1);opacity:0}}
+.rzsong{top:150px;gap:16px}
+.rzsheet{display:flex;gap:7px;background:rgba(255,253,246,.94);padding:10px 16px;border-radius:999px;flex-wrap:wrap;max-width:860px;justify-content:center}
+.rznote{width:30px;height:30px;border-radius:50%;background:var(--kc);opacity:.35;transition:all .2s;border:3px solid #fff}
+.rznote.now{opacity:1;transform:scale(1.35);box-shadow:0 0 0 3px #1D1D2B}
+.rznote.done{opacity:1}
+.rzkey.glow{box-shadow:0 0 0 6px #FFD23F,0 0 24px #FFE16A;transform:translateY(-6px)}
+.rzkey.shake{animation:shake .35s}
+.rzsong .rzkey{height:200px}
+.rzmtab{position:absolute;left:50%;top:150px;transform:translateX(-50%);width:720px;min-height:180px;z-index:4;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:22px;background:rgba(255,253,246,.94);border-radius:28px;padding:22px;box-shadow:0 8px 0 rgba(0,0,0,.12)}
+.rzmi{font-size:76px;line-height:1;transition:opacity .2s, transform .3s}
+.rzmi.gone{opacity:0;transform:scale(.3)}
+.rzmi.back{animation:pop .5s}
+.rzcurt{position:absolute;left:50%;top:140px;transform:translateX(-50%);width:760px;height:244px;z-index:5;pointer-events:none;display:flex}
+.rzcurt div{flex:1;background:repeating-linear-gradient(90deg,#B3261E 0 22px,#C8362C 22px 44px);transition:transform .6s cubic-bezier(.5,0,.3,1);box-shadow:0 6px 0 rgba(0,0,0,.15)}
+.rzcurt div:first-child{transform:translateX(-102%);border-radius:24px 0 0 24px}
+.rzcurt div:last-child{transform:translateX(102%);border-radius:0 24px 24px 0}
+.rzcurt.shut div{transform:translateX(0)}
+.rzcurt{overflow:hidden;border-radius:24px}
+.rzmq{position:absolute;left:0;right:0;top:410px;z-index:4;display:flex;flex-direction:column;align-items:center;gap:12px}
+.rzmsay{background:rgba(255,253,246,.95);border-radius:999px;padding:6px 20px;font-weight:800;font-size:22px}
+.rzmopts{display:flex;gap:18px}
+.rzmo{width:110px;height:110px;border-radius:24px;background:#fff;font-size:64px;box-shadow:0 6px 0 rgba(0,0,0,.14);cursor:pointer}
+.rzmo.ok{box-shadow:0 0 0 6px #3FA34D,0 6px 0 rgba(0,0,0,.14)}
+.rzmo.shake{animation:shake .4s}
+.rzshw{position:absolute;left:0;right:0;top:140px;z-index:4;display:flex;justify-content:center;align-items:center;gap:30px}
+.rzshc{display:flex;flex-direction:column;gap:12px;background:rgba(255,253,246,.9);border-radius:24px;padding:14px}
+.rzsharr{font-size:50px;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.25)}
+.rzshp,.rzshs{height:84px;width:96px;border-radius:18px;background:#fff;font-size:56px;line-height:1;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center}
+.rzshs span{filter:brightness(0) opacity(.75)}
+.rzshs.got span{filter:none;animation:pop .45s}
+.rzshp.sel{box-shadow:0 0 0 6px #F4A300}
+.rzshp.got{opacity:.35}
+.rzshs.shake{animation:shake .4s}
+.rzfa{position:absolute;left:70px;top:140px;width:330px;z-index:4;display:flex;flex-direction:column;align-items:center;gap:8px;background:rgba(255,253,246,.94);border-radius:28px;padding:14px;box-shadow:0 8px 0 rgba(0,0,0,.12)}
+.rzfan{font-size:100px;line-height:1;animation:bob 2s ease-in-out infinite}
+.rzfan.yum{animation:pop .5s 2}
+.rzfnum{font:800 54px 'Baloo 2',Arial;color:#C0392B;line-height:1}
+.rzplate{width:290px;min-height:120px;border-radius:50%;background:radial-gradient(ellipse,#fff 55%,#E9E1D0 56%,#fff 66%);display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:2px;padding:14px 26px}
+.rzplate .rzft{width:46px;height:46px;font-size:34px;box-shadow:none;background:transparent}
+.rzfpile{position:absolute;left:450px;right:150px;top:150px;z-index:4;display:flex;flex-wrap:wrap;gap:14px;justify-content:center;background:rgba(255,253,246,.85);border-radius:28px;padding:18px}
+.rzft{width:84px;height:84px;border-radius:50%;background:#fff;font-size:54px;line-height:1;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.12)}
+.rzcz{position:absolute;left:100px;top:140px;width:820px;height:450px;z-index:4;overflow:hidden;touch-action:none;border-radius:24px;background:rgba(255,255,255,.12)}
+.rzbask{position:absolute;top:378px;font-size:84px;line-height:1;transform:translateX(-50%);transition:left .08s linear;pointer-events:none}
+.rzbask.bump{animation:pop .3s}
+.rzfall{position:absolute;font-size:52px;line-height:1;transform:translateX(-50%);pointer-events:none}
+.rzfall.caught{transition:transform .25s, opacity .25s;transform:translateX(-50%) scale(.3);opacity:0}
+.rzctip{position:absolute;left:50%;top:600px;transform:translateX(-50%);z-index:4;background:rgba(255,253,246,.94);border-radius:999px;padding:4px 16px;font-weight:800;font-size:17px;white-space:nowrap}
+.ppst{height:92px!important}
+.ppgrid{top:84px!important;gap:8px!important}
+</style>`);
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzcat{animation:fadeUp .45s both}
+.rzcat:nth-child(2){animation-delay:.06s}.rzcat:nth-child(3){animation-delay:.12s}.rzcat:nth-child(4){animation-delay:.18s}.rzcat:nth-child(5){animation-delay:.24s}.rzcat:nth-child(6){animation-delay:.3s}
+.ppst.on{animation:pop .45s both}
+.wtile{animation:fadeUp .45s both}.wtile:nth-child(2){animation-delay:.08s}.wtile:nth-child(3){animation-delay:.16s}.wtile:nth-child(4){animation-delay:.24s}
+@media (prefers-reduced-motion: reduce){.rzcat,.ppst.on,.wtile{animation:none}}
+</style>`);
+/* a sixth pavilion door: music and action games */
+RZ_CATS.push(['play','&#127926;','Music & action']); RZ_FAM.song.cat = 'play'; RZ_FAM.catch.cat = 'play'; if(RZ_FAM.tune) RZ_FAM.tune.cat = 'play';
 
 /* ===== nav.js (v23.10): a Home button (little house) on every screen with a top bar, so children can always get back to
    the start screen (and from there to Challenge Mode, friends, grown-ups). Runs after every screen change. ===== */
