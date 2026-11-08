@@ -211,7 +211,17 @@ h1,h2,h3{font-family:'Baloo 2',sans-serif;margin:0;line-height:1.05}
 .flame svg{width:100%;height:100%;animation:bob 1s ease-in-out infinite}
 .flame.out{pointer-events:none;animation:none;opacity:0;transition:opacity .4s}
 .guard{width:200px;height:300px;border-radius:30px;transition:transform .15s, filter .15s}
-.guard.lit{transform:scale(1.12) translateY(-10px);filter:drop-shadow(0 0 22px #FFE16A) brightness(1.15)}
+.guard.glit{transform:scale(1.14) translateY(-12px);filter:drop-shadow(0 0 26px #FFE16A) brightness(1.18);background:#FFF6C2!important;outline:6px solid #FFD23F}
+.guard{position:relative;transition:transform .2s, filter .2s}
+.gname{position:absolute;left:50%;bottom:-18px;transform:translateX(-50%);background:#fff;border-radius:999px;padding:2px 14px;font:800 20px 'Baloo 2',Arial;color:#1D1D2B;white-space:nowrap;box-shadow:0 3px 0 rgba(0,0,0,.12)}
+.gnum{position:absolute;right:-14px;top:-14px;width:54px;height:54px;border-radius:50%;background:#2B7BE4;color:#fff;font:800 32px 'Baloo 2',Arial;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.4);transition:all .2s;box-shadow:0 4px 0 rgba(0,0,0,.15)}
+.gnum.on{opacity:1;transform:scale(1)}
+.gstrip{position:absolute;left:50%;top:548px;transform:translateX(-50%);z-index:4;display:flex;align-items:center;gap:8px;background:rgba(255,253,246,.92);border-radius:999px;padding:6px 18px;min-height:40px}
+.gstrip:empty{display:none}
+.gstrip b{color:#B9A27A;font-size:22px}
+.gs{width:50px;height:50px;border-radius:50%;background:#EFE6D2;display:flex;align-items:center;justify-content:center;font-size:30px;color:#B9A27A;font-weight:800}
+.gs.on{background:#fff;box-shadow:0 0 0 3px #FFD23F}
+.gs.ok{box-shadow:0 0 0 4px #3FA34D}
 .dots{display:flex;gap:10px}
 .dot{width:30px;height:30px;border-radius:50%;background:#EADBC0;border:3px solid #D5C29E}
 .dot.on{background:var(--sun);border-color:#C9A52E;animation:pop .3s}
@@ -539,9 +549,9 @@ const sfx = {
   splash(){ if(!soundOn) return; const c=ctx(); if(!c) return; const len=c.sampleRate*.35, b=c.createBuffer(1,len,c.sampleRate), d=b.getChannelData(0); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len); const s=c.createBufferSource(); s.buffer=b; const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=1800; const g=c.createGain(); g.gain.value=.35; s.connect(f); f.connect(g); g.connect(c.destination); s.start(); },
   thud(){ tone(140,.18,'square',.15); },
   oops(){ tone(300,.15,'sine',.2); tone(220,.25,'sine',.2,.12); },
-  drum(){ tone(90,.25,'sine',.5); tone(180,.08,'square',.1); },
-  horn(){ tone(523,.35,'square',.12); tone(659,.35,'square',.08,.02); },
-  flag(){ tone(880,.15,'triangle',.2); tone(1175,.2,'triangle',.15,.08); },
+  drum(){ tone(110,.3,'sine',.9); tone(220,.1,'square',.18); tone(110,.3,'sine',.8,.26); tone(220,.1,'square',.15,.26); },
+  horn(){ tone(523,.22,'sawtooth',.13); tone(659,.22,'sawtooth',.13,.2); tone(784,.45,'sawtooth',.15,.4); tone(1046,.45,'triangle',.08,.4); },
+  flag(){ tone(1320,.12,'triangle',.3); tone(1568,.12,'triangle',.28,.12); tone(1760,.12,'triangle',.26,.24); tone(2093,.3,'triangle',.22,.36); },
   win(){ [523,659,784,659,784,1047].forEach((f,i)=>tone(f,.3,'triangle',.2,i*.12)); }
 };
 let voices = [];
@@ -1349,29 +1359,40 @@ function gameFire(i){
   if(!easy()) (function loop(){ setTimeout(()=>{ if(!G.live || out>=10 || !document.getElementById('fl')) return; spawn(); loop(); }, 1500); })();
 }
 function gameGuards(i){
-  const kinds = [['drum','#C8262A','Drum'],['horn','#C8262A','Trumpet'],['flag','#C8262A','Flag']];
+  const kinds = [['drum','#C8262A','Drum','🥁'],['horn','#C8262A','Trumpet','🎺'],['flag','#C8262A','Flag','🚩']];
   const snd = [sfx.drum, sfx.horn, sfx.flag];
-  const rounds = easy() ? [1,2,2] : [2,3,4], gap = easy() ? 1150 : 900; let oops = 0;
+  // v23.13: slower and easier to follow. Each guard has a name tag, the order builds up as a picture strip, a guard never plays twice in a row,
+  // and the background music goes quiet in this game so the drum, trumpet and flag can be heard.
+  const rounds = easy() ? [1,2,2] : [2,3,3], gap = easy() ? 1700 : 1350, litMs = easy() ? 1000 : 850; let oops = 0;
   gameShell(i, palaceScene(), `<div class="counter" id="cnt">Round 1 / 3</div>
-  <div style="position:absolute;left:0;right:0;top:250px;display:flex;justify-content:center;gap:60px;z-index:3">
-  ${kinds.map((g,k)=>`<button class="guard" data-k="${k}" aria-label="${g[2]} guard" style="background:rgba(255,255,255,.75)">${guardSVG(g[0], g[1])}</button>`).join('')}</div>
+  <div style="position:absolute;left:0;right:0;top:215px;display:flex;justify-content:center;gap:60px;z-index:3">
+  ${kinds.map((g,k)=>`<button class="guard" data-k="${k}" aria-label="${g[2]} guard" style="background:rgba(255,255,255,.75)">${guardSVG(g[0], g[1])}<span class="gname">${g[3]} ${g[2]}</span><span class="gnum"></span></button>`).join('')}</div>
+  <div class="gstrip" id="gstrip"></div>
   <div style="position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:4" class="bubble" id="gmsg">Watch the guards...</div>`);
-  const btns = [...app.querySelectorAll('.guard')];
+  const btns = [...app.querySelectorAll('.guard')], strip = document.getElementById('gstrip');
   let r = 0, seq = [], pos = 0, accepting = false;
   const msg = t=>{ const e = document.getElementById('gmsg'); if(e) e.textContent = t; };
-  function light(k){ btns[k].classList.add('lit'); snd[k](); setTimeout(()=>btns[k].classList.remove('lit'), 420); }
-  function yourTurn(){ if(!G.live) return; accepting = true; msg(seq.length===1 ? 'Your turn! Tap that guard.' : 'Your turn! Tap them in the same order.'); armHint(()=>accepting ? btns[seq[pos]] : null); if(oops && easy()){ clearTimeout(G.hintTimer); G.hintTimer = setTimeout(showHint, 500); } }
-  function show(delay){ clearHint(); seq.forEach((k,j)=>setTimeout(()=>{ if(G.live) light(k); }, delay + j*gap)); setTimeout(yourTurn, delay + seq.length*gap); }
+  function light(k, n, ms){ const b = btns[k]; b.classList.add('glit'); const g = b.querySelector('.gnum'); if(n){ g.textContent = n; g.classList.add('on'); } snd[k]();
+    setTimeout(()=>{ b.classList.remove('glit'); g.classList.remove('on'); }, ms||litMs); }
+  function stripShow(upto, done){ strip.innerHTML = seq.map((k,j)=>`<span class="gs ${j<upto?'on':''} ${j<done?'ok':''}">${j<upto?kinds[k][3]:'?'}</span>`).join('<b>&#10140;</b>'); }
+  function yourTurn(){ if(!G.live) return; accepting = true; if(!easy()) stripShow(0, 0); else stripShow(seq.length, 0);
+    msg(seq.length===1 ? 'Your turn! Tap that guard.' : 'Your turn! Tap them in the same order.');
+    armHint(()=>accepting ? btns[seq[pos]] : null); if(oops && easy()){ clearTimeout(G.hintTimer); G.hintTimer = setTimeout(showHint, 500); } }
+  function show(delay){ clearHint(); stripShow(0, 0); msg('Watch the guards...');
+    seq.forEach((k,j)=>setTimeout(()=>{ if(G.live){ light(k, j+1); stripShow(j+1, 0); } }, delay + j*gap));
+    setTimeout(()=>{ if(G.live) say('Your turn!', 'lisa'); }, delay + seq.length*gap - 200);
+    setTimeout(yourTurn, delay + seq.length*gap + 400); }
   function play(){
     if(!G.live) return;
-    accepting = false; pos = 0; oops = 0; seq = Array.from({length:rounds[r]},()=>Math.floor(Math.random()*3));
-    msg('Watch the guards...'); const c = document.getElementById('cnt'); if(c) c.textContent = `Round ${r+1} / 3`;
-    show(1400); setTimeout(()=>{ if(G.live) say('Your turn!', 'lisa'); }, 1400 + seq.length*gap);
+    accepting = false; pos = 0; oops = 0; seq = [];
+    for(let j=0;j<rounds[r];j++){ let k; do{ k = Math.floor(Math.random()*3); }while(j && k===seq[j-1]); seq.push(k); }
+    const c = document.getElementById('cnt'); if(c) c.textContent = `Round ${r+1} / 3`;
+    show(1400);
   }
   btns.forEach((b,k)=>b.onclick=()=>{
-    if(!accepting) return; light(k); poke();
-    if(k===seq[pos]){ pos++; if(pos===seq.length){ accepting=false; clearHint(); r++; if(r===rounds.length){ G.getT = null; setTimeout(()=>finishStop(i), 700); } else { msg('Yes! Next round...'); sfx.chime(); setTimeout(play, 1200); } } }
-    else { accepting=false; miss(); oops++; sfx.oops(); msg('Oops! Let’s watch again.'); say("Oops! Let's watch again.", 'lisa'); pos = 0; setTimeout(()=>show(900), 900); }
+    if(!accepting) return; light(k, 0, 450); poke();
+    if(k===seq[pos]){ pos++; stripShow(easy()?seq.length:pos, pos); if(pos===seq.length){ accepting=false; clearHint(); r++; if(r===rounds.length){ G.getT = null; setTimeout(()=>finishStop(i), 900); } else { msg('Yes! Next round...'); sfx.chime(); setTimeout(play, 1600); } } }
+    else { accepting=false; miss(); oops++; sfx.oops(); msg('Oops! Let’s watch again.'); say("Oops! Let's watch again.", 'lisa'); pos = 0; setTimeout(()=>show(1400), 900); }
   });
   setTimeout(play, 2600);
 }
@@ -4802,7 +4823,7 @@ html.calm .rzbob,html.calm .rzhop,html.calm .rzpop,html.calm .rztalk,html.calm .
   function load(){ if(buf) return Promise.resolve(buf); if(loading) return loading;
     loading = fetch(SRC).then(r=>r.arrayBuffer()).then(decode).then(b=>{ buf = b; return b; }).catch(()=>{ loading = null; return null; }); return loading; }
   function bus(){ const c = ctx(); if(!c) return null; if(!gain){ gain = c.createGain(); gain.gain.value = 0; gain.connect(c.destination); } return gain; }
-  function tick(){ const c = ctx(); if(!c || !gain) return; const want = !on || !soundOn ? 0 : ((talkWho || voSrc) ? DUCK : LEVEL);
+  function tick(){ const c = ctx(); if(!c || !gain) return; const want = !on || !soundOn ? 0 : ((talkWho || voSrc) ? DUCK : (document.querySelector('.guard') ? 0.04 : LEVEL));
     try{ gain.gain.setTargetAtTime(want, c.currentTime, want===0 ? 0.25 : 0.35); }catch(e){} }
   function start(){ on = true; if(!timer) timer = setInterval(tick, 120);
     if(src) return; load().then(b=>{ const c = ctx(); if(!b || !c || !on || src) return;
