@@ -6491,6 +6491,166 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzshagain{position:absolute;left:50%;top:520px;transform:translateX(-50%);z-index:4}
 </style>`);
 
+/* ===== rzfun8.js (v23.20): five more Challenge games
+   - icemaze:  "Slippery ice" the ladybug slides until it bumps something; reach the flower (Easy fewer moves, Challenge 5+ moves). (cat maze)
+   - numtrain: "Number train" which number is missing from the train? (Easy 1-10 counting up, Challenge also by 2s and counting down). (cat num)
+   - abctrain: "Letter train" which letter is missing? (Challenge: little letters, or 2 missing). (cat abc)
+   - whowhere: "Who lives where?" match each bug friend (Grok's portraits) to their home. (cat detect)
+   - shapepic: "Shape builder" put the shapes into the picture outline (house, rocket, boat, tree...). (cat slide)
+   Nothing is lost on a wrong tap. ===== */
+/* ---------- Slippery ice ---------- */
+RZ_MAKE.icemaze = function(){ const e = easy(), W = e ? 6 : 8, H = e ? 5 : 6, need = e ? 3 : 5;
+  for(let t=0; t<400; t++){ const rock = new Set(); const nR = e ? 6 : 12; while(rock.size < nR) rock.add(Math.floor(Math.random()*W*H));
+    const free = [...Array(W*H).keys()].filter(k=>!rock.has(k)), start = rzOne(free);
+    const slide = (k,d)=>{ const D = [[0,-1],[1,0],[0,1],[-1,0]][d]; let x = k%W, y = Math.floor(k/W); for(;;){ const nx = x+D[0], ny = y+D[1]; if(nx<0||ny<0||nx>=W||ny>=H||rock.has(ny*W+nx)) break; x = nx; y = ny; } return y*W+x; };
+    const dist = new Map([[start,0]]), q = [start]; while(q.length){ const c = q.shift(); for(let d=0;d<4;d++){ const n = slide(c,d); if(!dist.has(n)){ dist.set(n, dist.get(c)+1); q.push(n); } } }
+    const goals = [...dist.entries()].filter(([k,v])=>v>=need && v<=need+2); if(!goals.length) continue; const [goal, moves] = rzOne(goals);
+    return {type:'icemaze', title:'Slippery ice! Slide to the flower!', W, H, rock:[...rock], start, goal, moves, sig:W+'x'+H+':'+[...rock].sort((a,b)=>a-b).join(',')+':'+start+':'+goal}; }
+  return RZ_MAKE.maze(); };
+function rzIcePlay(g){
+  const {W, H} = g, cs = Math.min(Math.floor(700/W), Math.floor(340/H)), rock = new Set(g.rock), L = Math.round(512 - W*cs/2), T = 200; let pos = g.start, moves = 0, hist = [g.start];
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Moves: 0</div>
+    <div class="rzice" id="rzic" style="left:${L}px;top:${T}px;width:${W*cs}px;height:${H*cs}px">${[...Array(W*H).keys()].map(k=>`<i class="${rock.has(k)?'rk':''}" style="left:${(k%W)*cs}px;top:${Math.floor(k/W)*cs}px;width:${cs}px;height:${cs}px">${rock.has(k)?'🪨':k===g.goal?'🌸':''}</i>`).join('')}
+    <div class="rzicebug" id="rzib" style="width:${cs}px;height:${cs}px;font-size:${cs*.7}px">🐞</div>
+    ${[['up','⬆',0],['right','➡',1],['down','⬇',2],['left','⬅',3]].map(([n,a,d])=>`<button class="rziarr ${n}" data-d="${d}" aria-label="Slide ${n}">${a}</button>`).join('')}</div>`);
+  const bug = document.getElementById('rzib'), put = ()=>{ bug.style.left = ((pos%W)*cs)+'px'; bug.style.top = (Math.floor(pos/W)*cs)+'px'; }; put();
+  const slide = (k,d)=>{ const D = [[0,-1],[1,0],[0,1],[-1,0]][d]; let x = k%W, y = Math.floor(k/W); for(;;){ const nx = x+D[0], ny = y+D[1]; if(nx<0||ny<0||nx>=W||ny>=H||rock.has(ny*W+nx)) break; x = nx; y = ny; } return y*W+x; };
+  const go = d=>{ if(!G.live) return; const n = slide(pos, d); if(n===pos){ miss(); bug.classList.remove('shake'); void bug.offsetWidth; bug.classList.add('shake'); tone(200,.1,'sine',.08); return; }
+    poke(); pos = n; moves++; hist.push(n); put(); tone(780,.18,'sine',.07); tone(560,.12,'triangle',.06,.12); document.getElementById('cnt').textContent = `Moves: ${moves}`;
+    if(pos===g.goal){ clearHint(); G.getT = null; bug.classList.add('yay'); rzDoneLater(900); } };
+  document.querySelectorAll('.rziarr').forEach(b=>b.onclick=()=>go(+b.dataset.d));
+  const box = document.getElementById('rzic'); let sx = null, sy = null;
+  box.addEventListener('pointerdown', e=>{ sx = e.clientX; sy = e.clientY; });
+  box.addEventListener('pointerup', e=>{ if(sx==null) return; const dx = e.clientX-sx, dy = e.clientY-sy; sx = null; if(Math.max(Math.abs(dx),Math.abs(dy)) < 30) return; go(Math.abs(dx)>Math.abs(dy) ? (dx>0?1:3) : (dy>0?2:0)); });
+  rzUndo = ()=>{ if(hist.length<2) return; hist.pop(); pos = hist[hist.length-1]; moves = Math.max(0, moves-1); put(); document.getElementById('cnt').textContent = `Moves: ${moves}`; };
+  // hint: the next arrow on a shortest path
+  armHint(()=>{ const prev = new Map([[pos,-1]]), q = [pos]; let hit = null; while(q.length){ const c = q.shift(); if(c===g.goal){ hit = c; break; } for(let d=0;d<4;d++){ const n = slide(c,d); if(!prev.has(n)){ prev.set(n,[c,d]); q.push(n); } } }
+    if(hit==null) return null; let c = hit, d = null; while(prev.get(c)!==-1){ const [p,dd] = prev.get(c); d = dd; c = p; } return document.querySelector(`.rziarr[data-d="${d}"]`); });
+}
+
+/* ---------- Number train / Letter train ---------- */
+RZ_MAKE.numtrain = function(){ const e = easy(); let seq, kind;
+  if(e){ const s = 1 + Math.floor(Math.random()*5); seq = [0,1,2,3,4].map(i=>s+i); kind = 'up'; }
+  else { kind = rzOne(['up','twos','down']); if(kind==='up'){ const s = 3 + Math.floor(Math.random()*12); seq = [0,1,2,3,4,5].map(i=>s+i); } else if(kind==='twos'){ const s = 2*(1+Math.floor(Math.random()*4)); seq = [0,1,2,3,4].map(i=>s+2*i); } else { const s = 10 + Math.floor(Math.random()*6); seq = [0,1,2,3,4,5].map(i=>s-i); } }
+  const hole = 1 + Math.floor(Math.random()*(seq.length-2)), ans = seq[hole]; const opts = cshuf([ans, ans+1, ans-1, ans+2].filter((v,i,a)=>v>0 && a.indexOf(v)===i)).slice(0,3); if(!opts.includes(ans)) opts[0] = ans;
+  return {type:'numtrain', title: kind==='twos' ? 'Count by twos! Which number is missing?' : kind==='down' ? 'Counting down! Which number is missing?' : 'Which number is missing from the train?', seq, holes:[hole], opts:[cshuf(opts)], sig:kind+seq.join(',')+':'+hole}; };
+RZ_MAKE.abctrain = function(){ const e = easy(), A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', low = !e && Math.random()<.5, n = e ? 4 : 5, s = Math.floor(Math.random()*(26-n));
+  let seq = A.slice(s, s+n).split(''); if(low) seq = seq.map(x=>x.toLowerCase());
+  const holes = e ? [1 + Math.floor(Math.random()*(n-2))] : cshuf([1,2,3].filter(i=>i<n-1)).slice(0, 2).sort();
+  const opts = holes.map(h=>{ const a = seq[h]; const pool = (low ? A.toLowerCase() : A).split('').filter(x=>x!==a); return cshuf([a, ...cshuf(pool).slice(0, e ? 2 : 3)]); });
+  return {type:'abctrain', title: holes.length>1 ? 'Two letters fell off the train! Put them back.' : 'Which letter is missing from the train?', seq, holes, opts, sig:seq.join('')+':'+holes.join(',')}; };
+function rzTrainPlay(g){
+  const isN = g.type==='numtrain'; let h = 0;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">${isN ? '1, 2, 3...' : 'A, B, C...'}</div>
+    <div class="rztrain" id="rztr"><span class="rzloco">🚂</span>${g.seq.map((x,i)=>`<span class="rzcar ${g.holes.includes(i)?'hole':''}" data-i="${i}"><b>${g.holes.includes(i)?'?':x}</b><i></i><i></i></span>`).join('')}</div>
+    <div class="rztopts" id="rzto"></div>`);
+  const show = ()=>{ const o = document.getElementById('rzto'), hi = g.holes[h]; document.querySelectorAll('.rzcar').forEach(c=>c.classList.toggle('now', +c.dataset.i===hi));
+    o.innerHTML = g.opts[h].map(x=>`<button class="rzto" data-x="${x}" aria-label="${x}">${x}</button>`).join('');
+    o.querySelectorAll('.rzto').forEach(b=>b.onclick=()=>{ if(!G.live) return; const x = b.dataset.x;
+      if(isN ? +x===g.seq[hi] : x===g.seq[hi]){ poke(); const car = document.querySelector(`.rzcar[data-i="${hi}"]`); car.classList.remove('hole','now'); car.querySelector('b').textContent = x; car.classList.add('fixed'); tone(600+h*120,.12,'triangle',.15);
+        if(isN){ if(+x<=20) lsoft(x, ['N:'+x]); } else lsoft(x, ['L:'+x.toUpperCase()]);
+        h++; if(h>=g.holes.length){ clearHint(); G.getT = null; o.innerHTML = ''; document.getElementById('rztr').classList.add('go'); tone(330,.3,'square',.05); tone(440,.4,'square',.05,.3); rzDoneLater(1500); } else show(); }
+      else { miss(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); tone(220,.12,'sine',.1); } });
+    armHint(()=>o.querySelector(`.rzto[data-x="${g.seq[hi]}"]`)); };
+  show();
+}
+
+/* ---------- Who lives where? ---------- */
+const RZ_HOMES = {pip:['🎡','London'], priya:['🕌','India'], colette:['🗼','Paris'], lucia:['🏛️','Rome'], sami:['🐫','Egypt'], nikos:['🏺','Greece'], paco:['🌮','Mexico'], mateo:['🦙','Peru'],
+  kenta:['🗻','Japan'], skye:['🏔️','Alaska'], matilda:['🦘','Australia'], luna:['🌋','Costa Rica'], aoife:['☘️','Ireland'], ruby:['🗽','New York'], jabari:['🦒','Kenya']};
+RZ_MAKE.whowhere = function(){ const e = easy(), ids = cshuf(Object.keys(RZ_HOMES)).slice(0, e ? 3 : 5);
+  return {type:'whowhere', title:'Who lives where? Match each friend to their home!', ids, homes:cshuf(ids.slice()), sig:ids.join(',')}; };
+function rzWhoPlay(g){
+  const name = id=>(FRIENDS.find(f=>f.id===id)||{name:id}).name;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.ids.length}</div>
+    <div class="rzwho"><div class="rzwcol">${g.ids.map(id=>`<button class="rzwf" data-id="${id}" aria-label="${name(id)}"><img src="friends/img/${id}.webp" alt=""><b>${name(id)}</b></button>`).join('')}</div>
+    <div class="rzwcol">${g.homes.map(id=>`<button class="rzwh" data-id="${id}" aria-label="${RZ_HOMES[id][1]}"><span>${RZ_HOMES[id][0]}</span><b>${RZ_HOMES[id][1]}</b></button>`).join('')}</div></div>`);
+  let sel = null, n = 0;
+  const target = ()=> sel ? document.querySelector(`.rzwh[data-id="${sel.dataset.id}"]`) : document.querySelector('.rzwf:not(.got)');
+  document.querySelectorAll('.rzwf').forEach(b=>b.onclick=()=>{ if(!G.live || b.classList.contains('got')) return; poke(); document.querySelectorAll('.rzwf').forEach(x=>x.classList.remove('sel')); sel = b; b.classList.add('sel'); tone(640,.07,'triangle',.1); armHint(target); });
+  document.querySelectorAll('.rzwh').forEach(h=>h.onclick=()=>{ if(!G.live || !sel || h.classList.contains('got')) return;
+    if(h.dataset.id===sel.dataset.id){ poke(); h.classList.add('got'); sel.classList.add('got'); sel.classList.remove('sel'); h.insertAdjacentHTML('beforeend', `<img class="rzwmini" src="friends/img/${sel.dataset.id}.webp" alt="">`); sel = null; n++; tone(560+n*70,.12,'triangle',.15);
+      document.getElementById('cnt').textContent = `${n} / ${g.ids.length}`; if(n>=g.ids.length){ clearHint(); G.getT = null; rzDoneLater(1000); } else armHint(target); }
+    else { miss(); h.classList.remove('shake'); void h.offsetWidth; h.classList.add('shake'); tone(220,.12,'sine',.1); } });
+  armHint(target);
+}
+
+/* ---------- Shape builder ---------- */
+const RZ_SHAPEPICS = {
+  house:{n:'house', s:[['tri',150,40,200,110,'#E5383B'],['sq',170,150,160,140,'#FFD23F'],['rect',230,210,40,80,'#6A4CC7'],['circ',290,60,36,36,'#F4A300']]},
+  rocket:{n:'rocket', s:[['tri',200,20,100,90,'#E5383B'],['rect',200,110,100,170,'#2B7BE4'],['circ',225,150,50,50,'#FFD23F'],['tri',150,220,50,60,'#3FA34D'],['tri',300,220,50,60,'#3FA34D']]},
+  boat:{n:'boat', s:[['tri',230,30,110,140,'#FFD23F'],['rect',245,30,10,180,'#8D6A2E'],['trap',130,210,240,70,'#E5383B'],['circ',120,40,40,40,'#F4A300']]},
+  tree:{n:'tree', s:[['circ',150,30,200,180,'#3FA34D'],['rect',225,200,50,100,'#8D6A2E'],['circ',190,80,30,30,'#E5383B'],['circ',280,110,30,30,'#E5383B']]}};
+function rzShapeSVG(t, w, h, fill, stroke){ const st = stroke ? `stroke="${stroke}" stroke-width="5" stroke-dasharray="${fill==='none'?'10 8':''}"` : '';
+  if(t==='tri') return `<path d="M${w/2} 0 L${w} ${h} L0 ${h} Z" fill="${fill}" ${st}/>`; if(t==='circ') return `<ellipse cx="${w/2}" cy="${h/2}" rx="${w/2}" ry="${h/2}" fill="${fill}" ${st}/>`;
+  if(t==='trap') return `<path d="M0 0 L${w} 0 L${w*.82} ${h} L${w*.18} ${h} Z" fill="${fill}" ${st}/>`; return `<rect x="0" y="0" width="${w}" height="${h}" rx="6" fill="${fill}" ${st}/>`; }
+RZ_MAKE.shapepic = function(){ const k = rzOne(Object.keys(RZ_SHAPEPICS)); return {type:'shapepic', title:`Shape builder: build the ${RZ_SHAPEPICS[k].n}!`, k, order:cshuf(RZ_SHAPEPICS[k].s.map((x,i)=>i)), outline:!easy() ? 'faint' : 'clear', sig:k+(easy()?'e':'c')+Math.floor(Math.random()*10)}; };
+function rzShapePlay(g){
+  const P = RZ_SHAPEPICS[g.k];
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${P.s.length}</div>
+    <div class="rzshb"><div class="rzsboard ${g.outline}" id="rzsb">${P.s.map(([t,x,y,w,h,c],i)=>`<button class="rzsslot" data-i="${i}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px" aria-label="Shape space"><svg viewBox="-3 -3 ${w+6} ${h+6}" width="${w}" height="${h}">${rzShapeSVG(t,w,h,'none','#7A6640')}</svg></button>`).join('')}</div>
+    <div class="rzstray2">${g.order.map(i=>{ const [t,x,y,w,h,c] = P.s[i], sc = Math.min(1, 110/Math.max(w,h)); return `<button class="rzspc" data-i="${i}" aria-label="Shape"><svg viewBox="-3 -3 ${w+6} ${h+6}" width="${w*sc}" height="${h*sc}">${rzShapeSVG(t,w,h,c,'#1D1D2B')}</svg></button>`; }).join('')}</div></div>`);
+  let sel = null, n = 0;
+  document.querySelectorAll('.rzspc').forEach(b=>b.onclick=()=>{ if(!G.live || b.classList.contains('used')) return; poke(); document.querySelectorAll('.rzspc').forEach(x=>x.classList.remove('sel')); sel = b; b.classList.add('sel'); tone(640,.07,'triangle',.1); armHint(()=>{ if(!sel) return null; const A = P.s[+sel.dataset.i]; return [...document.querySelectorAll('.rzsslot:not(.got)')].find(x=>{ const B = P.s[+x.dataset.i]; return A[0]===B[0] && A[3]===B[3] && A[4]===B[4] && A[5]===B[5]; }); }); });
+  document.querySelectorAll('.rzsslot').forEach(s=>s.onclick=()=>{ if(!G.live || !sel || s.classList.contains('got')) return; const i = +s.dataset.i;
+    const same = (a,b)=>{ const A = P.s[a], B = P.s[b]; return A[0]===B[0] && A[3]===B[3] && A[4]===B[4] && A[5]===B[5]; };
+    if(same(+sel.dataset.i, i)){ poke(); const [t,x,y,w,h,c] = P.s[i]; s.innerHTML = `<svg viewBox="-3 -3 ${w+6} ${h+6}" width="${w}" height="${h}">${rzShapeSVG(t,w,h,c,'#1D1D2B')}</svg>`; s.classList.add('got'); sel.classList.add('used'); sel = null; n++; tone(560+n*70,.12,'triangle',.15);
+      document.getElementById('cnt').textContent = `${n} / ${P.s.length}`; if(n>=P.s.length){ clearHint(); G.getT = null; document.getElementById('rzsb').classList.add('done'); rzDoneLater(1100); } else armHint(()=>document.querySelector('.rzspc:not(.used)')); }
+    else { miss(); s.classList.remove('shake'); void s.offsetWidth; s.classList.add('shake'); tone(220,.12,'sine',.1); } });
+  armHint(()=> sel ? document.querySelector(`.rzsslot[data-i="${sel.dataset.i}"]`) : document.querySelector('.rzspc:not(.used)'));
+}
+
+Object.assign(RZ_FAM, {icemaze:{cat:'maze'}, numtrain:{cat:'num'}, abctrain:{cat:'abc'}, whowhere:{cat:'detect'}, shapepic:{cat:'slide'}});
+Object.assign(RZ_STAMP, {icemaze:['🧊','Slippery ice'], numtrain:['🚂','Number train'], abctrain:['🚃','Letter train'], whowhere:['🌍','Who lives where'], shapepic:['🔺','Shape builder']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {icemaze:rzIcePlay, numtrain:rzTrainPlay, abctrain:rzTrainPlay, whowhere:rzWhoPlay, shapepic:rzShapePlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    if(t==='icemaze' && !document.getElementById('rzundo')){ const bar = app.querySelector('.rzbar'); if(bar){ bar.insertAdjacentHTML('afterbegin', `<button class="rzb" id="rzundo" aria-label="Undo">&#8630;<small>Undo</small></button>`); document.getElementById('rzundo').onclick = ()=>{ sfx.pop(); rzUndo && rzUndo(); }; } }
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzice{position:absolute;z-index:4;background:linear-gradient(135deg,#DFF4FF,#B9E3FA);border-radius:18px;box-shadow:0 8px 0 rgba(0,0,0,.14),inset 0 0 0 4px #fff}
+.rzice > i{position:absolute;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:150%;border:1px solid rgba(255,255,255,.55)}
+.rzice > i.rk{font-size:180%}
+.rzicebug{position:absolute;display:flex;align-items:center;justify-content:center;transition:left .35s cubic-bezier(.2,.7,.4,1), top .35s cubic-bezier(.2,.7,.4,1);z-index:2;pointer-events:none}
+.rzicebug.shake{animation:shake .3s}.rzicebug.yay{animation:rzyay .5s 2}
+.rziarr{position:absolute;width:62px;height:62px;border-radius:50%;background:#fff;font-size:32px;box-shadow:0 4px 0 rgba(0,0,0,.15);cursor:pointer;z-index:3}
+.rziarr.up{left:50%;top:-74px;margin-left:-31px}.rziarr.down{left:50%;bottom:-74px;margin-left:-31px}
+.rziarr.left{left:-74px;top:50%;margin-top:-31px}.rziarr.right{right:-74px;top:50%;margin-top:-31px}
+.rztrain{position:absolute;left:50%;top:200px;transform:translateX(-50%);z-index:4;display:flex;align-items:flex-end;gap:6px;transition:transform 1.4s ease-in}
+.rztrain.go{transform:translateX(900px)}
+.rzloco{font-size:110px;line-height:1;transform:scaleX(-1)}
+.rzcar{position:relative;width:110px;height:100px;border-radius:14px;background:#E5383B;border:5px solid #8E1B1E;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.rzcar:nth-child(odd){background:#2B7BE4;border-color:#1A4E94}.rzcar:nth-child(3n){background:#3FA34D;border-color:#1F6A2C}
+.rzcar b{font:800 56px 'Baloo 2',Arial;color:#fff}
+.rzcar i{position:absolute;bottom:-20px;width:30px;height:30px;border-radius:50%;background:#1D1D2B;border:5px solid #888}
+.rzcar i:first-of-type{left:12px}.rzcar i:last-of-type{right:12px}
+.rzcar.hole{background:#fff;border-style:dashed}.rzcar.hole b{color:#B9A27A}
+.rzcar.now{box-shadow:0 0 0 6px #FFD23F}.rzcar.fixed b{animation:pop .4s}
+.rztopts{position:absolute;left:0;right:0;top:420px;z-index:4;display:flex;justify-content:center;gap:18px}
+.rzto{width:104px;height:104px;border-radius:24px;background:#fff;font:800 58px 'Baloo 2',Arial;color:#1D1D2B;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.12)}
+.rzto.shake{animation:shake .4s}
+.rzwho{position:absolute;left:0;right:0;top:130px;z-index:4;display:flex;justify-content:center;gap:60px}
+.rzwcol{display:flex;flex-direction:column;gap:8px}
+.rzwf,.rzwh{display:flex;align-items:center;gap:10px;height:78px;min-width:220px;padding:0 14px;border-radius:20px;background:#fff;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.12);font:800 22px 'Baloo 2',Arial;color:#1D1D2B}
+.rzwf img{width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:50% 20%;background:#FFF3D6}
+.rzwh span{font-size:46px;line-height:1}
+.rzwf.sel{box-shadow:0 0 0 6px #F4A300}.rzwf.got{opacity:.4}
+.rzwh.got{box-shadow:0 0 0 5px #3FA34D}.rzwh.shake{animation:shake .4s}
+.rzwmini{width:50px;height:50px;border-radius:50%;object-fit:cover;object-position:50% 20%;margin-left:auto;animation:pop .4s}
+.rzshb{position:absolute;left:0;right:0;top:130px;z-index:4;display:flex;justify-content:center;gap:30px;align-items:flex-start}
+.rzsboard{position:relative;width:500px;height:320px;background:rgba(255,253,246,.95);border-radius:24px;box-shadow:0 8px 0 rgba(0,0,0,.12)}
+.rzsboard.faint .rzsslot svg{opacity:.45}
+.rzsslot{position:absolute;padding:0;background:transparent;cursor:pointer}
+.rzsslot.got svg{animation:pop .4s;opacity:1}.rzsslot.shake{animation:shake .4s}
+.rzsboard.done{box-shadow:0 0 0 6px #3FA34D,0 8px 0 rgba(0,0,0,.12)}
+.rzstray2{display:flex;flex-wrap:wrap;gap:10px;width:300px;box-sizing:border-box;background:rgba(255,253,246,.9);border-radius:22px;padding:12px;justify-content:center}
+.rzspc{width:118px;height:118px;border-radius:18px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 rgba(0,0,0,.12)}
+.rzspc.sel{box-shadow:0 0 0 6px #F4A300}.rzspc.used{visibility:hidden}
+.ppgrid{grid-template-columns:repeat(10,1fr)!important;gap:6px!important;bottom:44px;overflow-y:auto;align-content:start}
+.ppst{height:78px!important}.ppst span{font-size:28px!important}.ppst small{font-size:10px!important;max-width:76px!important}
+</style>`);
+
 /* ===== mouth.js (v23.17): bigger, livelier talking mouths (Chester: "the mouth animations barely move")
    Lisa and Lucas: a real open mouth (dark with a tongue) now opens and closes with the voice, syllable by syllable,
    drawn over their painted mouth. The voice meter is also more sensitive, which helps the 15 friends' mouths too. ===== */
