@@ -204,9 +204,10 @@ h1,h2,h3{font-family:'Baloo 2',sans-serif;margin:0;line-height:1.05}
 /* minigames */
 .mg-title{position:absolute;top:78px;left:50%;transform:translateX(-50%);background:#fff;border-radius:999px;padding:8px 26px;font-family:'Baloo 2';font-weight:800;font-size:26px;z-index:4;white-space:nowrap;box-shadow:0 4px 0 rgba(0,0,0,.12)}
 .tapper{position:absolute;display:flex;align-items:center;justify-content:center;z-index:3}
-.raven{width:90px;height:90px;margin:-45px 0 0 -45px}
+.bbox #bell,.bbox #bdone{pointer-events:auto}
+.raven{width:118px;height:118px;margin:-59px 0 0 -59px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.85) 0 45%,rgba(255,255,255,0) 70%)}
 .raven.got{animation:flyaway .9s forwards;pointer-events:none}
-.flame{width:100px;height:120px;margin:-60px 0 0 -50px;animation:pop .35s}
+.flame{width:120px;height:144px;margin:-72px 0 0 -60px;animation:pop .35s}
 .flame svg{width:100%;height:100%;animation:bob 1s ease-in-out infinite}
 .flame.out{pointer-events:none;animation:none;opacity:0;transition:opacity .4s}
 .guard{width:200px;height:300px;border-radius:30px;transition:transform .15s, filter .15s}
@@ -1316,7 +1317,7 @@ function gameRavens(i){
     const free = spots.map((s,k)=>k).filter(k=>!busy.has(k)); const k = free[Math.floor(Math.random()*free.length)]; busy.add(k);
     const b = document.createElement('button'); b.className = 'tapper raven peek'; b.style.left = spots[k][0]+'px'; b.style.top = spots[k][1]+'px'; b.setAttribute('aria-label','Raven'); b.innerHTML = ravenSVG();
     let gone = false;
-    const hideT = setTimeout(()=>{ if(b.classList.contains('got')) return; gone = true; miss(); b.classList.add('hide'); setTimeout(()=>{ b.remove(); busy.delete(k); }, 400); }, 2300 + Math.random()*700);
+    const hideT = setTimeout(()=>{ if(b.classList.contains('got')) return; gone = true; miss(); b.classList.add('hide'); setTimeout(()=>{ b.remove(); busy.delete(k); }, 400); }, 4000 + Math.random()*1200);
     b.onclick = ()=>{ if(gone || b.classList.contains('got')) return; poke(); clearTimeout(hideT); b.classList.add('got'); n++; sfx.caw();
       document.getElementById('cnt').textContent = `Ravens: ${n} / 6`; setTimeout(()=>{ b.remove(); busy.delete(k); }, 900);
       if(n===6){ clearHint(); G.getT = null; setTimeout(()=>finishStop(i), 900); } };
@@ -1327,7 +1328,7 @@ function gameRavens(i){
 }
 function gameFire(i){
   const spots = [[110,240],[230,300],[300,200],[420,260],[480,330],[560,220],[640,300],[720,230],[760,330],[180,380],[380,380],[600,380]];
-  const maxLive = easy() ? 2 : 4;
+  const maxLive = easy() ? 2 : 3;
   gameShell(i, fireScene(false), `<div class="counter" id="cnt">Flames out: 0 / 10</div><div id="fl"></div>`);
   let out = 0, live = 0, spawned = 0; const used = new Set();
   armHint(()=>app.querySelector('.flame:not(.out)'));
@@ -1337,7 +1338,7 @@ function gameFire(i){
     const k = free[Math.floor(Math.random()*free.length)]; used.add(k); spawned++; live++;
     const b = document.createElement('button'); b.className='tapper flame'; b.style.left=spots[k][0]+'px'; b.style.top=spots[k][1]+'px'; b.setAttribute('aria-label','Flame'); b.innerHTML = flameSVG();
     // Big Detective: a flame left alone grows bigger (counts against stars)
-    const growT = easy() ? 0 : setTimeout(()=>{ if(!b.classList.contains('out')){ b.classList.add('grow'); miss(); } }, 3800);
+    const growT = easy() ? 0 : setTimeout(()=>{ if(!b.classList.contains('out')){ b.classList.add('grow'); miss(); } }, 6500);
     b.onclick = ()=>{ if(b.classList.contains('out')) return; poke(); clearTimeout(growT); b.classList.add('out'); sfx.splash(); out++; live--; used.delete(k);
       document.getElementById('cnt').textContent = `Flames out: ${out} / 10`;
       setTimeout(()=>b.remove(), 450);
@@ -1350,7 +1351,7 @@ function gameFire(i){
 function gameGuards(i){
   const kinds = [['drum','#C8262A','Drum'],['horn','#C8262A','Trumpet'],['flag','#C8262A','Flag']];
   const snd = [sfx.drum, sfx.horn, sfx.flag];
-  const rounds = easy() ? [2,2,3] : [3,4,5], gap = easy() ? 950 : 680;
+  const rounds = easy() ? [1,2,2] : [2,3,4], gap = easy() ? 1150 : 900; let oops = 0;
   gameShell(i, palaceScene(), `<div class="counter" id="cnt">Round 1 / 3</div>
   <div style="position:absolute;left:0;right:0;top:250px;display:flex;justify-content:center;gap:60px;z-index:3">
   ${kinds.map((g,k)=>`<button class="guard" data-k="${k}" aria-label="${g[2]} guard" style="background:rgba(255,255,255,.75)">${guardSVG(g[0], g[1])}</button>`).join('')}</div>
@@ -1359,29 +1360,29 @@ function gameGuards(i){
   let r = 0, seq = [], pos = 0, accepting = false;
   const msg = t=>{ const e = document.getElementById('gmsg'); if(e) e.textContent = t; };
   function light(k){ btns[k].classList.add('lit'); snd[k](); setTimeout(()=>btns[k].classList.remove('lit'), 420); }
-  function yourTurn(){ if(!G.live) return; accepting = true; msg('Your turn! Tap them in the same order.'); armHint(()=>accepting ? btns[seq[pos]] : null); }
+  function yourTurn(){ if(!G.live) return; accepting = true; msg(seq.length===1 ? 'Your turn! Tap that guard.' : 'Your turn! Tap them in the same order.'); armHint(()=>accepting ? btns[seq[pos]] : null); if(oops && easy()){ clearTimeout(G.hintTimer); G.hintTimer = setTimeout(showHint, 500); } }
   function show(delay){ clearHint(); seq.forEach((k,j)=>setTimeout(()=>{ if(G.live) light(k); }, delay + j*gap)); setTimeout(yourTurn, delay + seq.length*gap); }
   function play(){
     if(!G.live) return;
-    accepting = false; pos = 0; seq = Array.from({length:rounds[r]},()=>Math.floor(Math.random()*3));
+    accepting = false; pos = 0; oops = 0; seq = Array.from({length:rounds[r]},()=>Math.floor(Math.random()*3));
     msg('Watch the guards...'); const c = document.getElementById('cnt'); if(c) c.textContent = `Round ${r+1} / 3`;
     show(1400); setTimeout(()=>{ if(G.live) say('Your turn!', 'lisa'); }, 1400 + seq.length*gap);
   }
   btns.forEach((b,k)=>b.onclick=()=>{
     if(!accepting) return; light(k); poke();
     if(k===seq[pos]){ pos++; if(pos===seq.length){ accepting=false; clearHint(); r++; if(r===rounds.length){ G.getT = null; setTimeout(()=>finishStop(i), 700); } else { msg('Yes! Next round...'); sfx.chime(); setTimeout(play, 1200); } } }
-    else { accepting=false; miss(); sfx.oops(); msg('Oops! Let’s watch again.'); say("Oops! Let's watch again.", 'lisa'); pos = 0; setTimeout(()=>show(900), 900); }
+    else { accepting=false; miss(); oops++; sfx.oops(); msg('Oops! Let’s watch again.'); say("Oops! Let's watch again.", 'lisa'); pos = 0; setTimeout(()=>show(900), 900); }
   });
   setTimeout(play, 2600);
 }
 function gameBigBen(i){
-  const hours = [3, 7, 12]; let r = 0, taps = 0;
+  const hours = easy() ? [3, 7] : [3, 7, 12]; let r = 0, taps = 0;
   const bg = `<svg class="full" viewBox="0 0 1024 700">${sky('skC','#9ED3F2','#FFF0D9')}${cloud(150,140)}${cloud(860,110,.8)}<rect x="0" y="560" width="1024" height="140" fill="#4E95C9"/></svg>`;
   function draw(){
     const h = hours[r];
-    gameShell(i, bg, `<div class="counter" id="cnt">Time ${r+1} / 3</div>
+    gameShell(i, bg, `<div class="counter" id="cnt">Time ${r+1} / ${hours.length}</div>
     <svg viewBox="-160 -160 320 320" style="position:absolute;left:80px;top:150px;width:400px;height:400px;z-index:2">${clockFace(150, h, 0)}</svg>
-    <div style="position:absolute;left:560px;top:140px;width:400px;display:flex;flex-direction:column;align-items:center;gap:14px;z-index:3">
+    <div style="position:absolute;left:560px;top:140px;width:400px;display:flex;flex-direction:column;align-items:center;gap:14px;z-index:3;pointer-events:none" class="bbox">
       <div class="bubble" style="margin:0" id="bmsg">It's ${h} o'clock. Ring the bell ${h} times!</div>
       <button class="tapper pulse" id="bell" style="position:relative;width:200px;height:200px;background:#fff;border-radius:50%;box-shadow:0 8px 0 rgba(0,0,0,.15)" aria-label="Ring the bell">
         <svg viewBox="0 0 120 120" width="150" height="150"><rect x="54" y="6" width="12" height="16" rx="4" fill="#8D6A2E"/><path d="M60 18 C34 18 30 46 28 70 C26 84 16 88 14 96 H106 C104 88 94 84 92 70 C90 46 86 18 60 18 Z" fill="#C9962F" stroke="#8D6A2E" stroke-width="4"/><circle cx="60" cy="104" r="9" fill="#8D6A2E"/></svg></button>
@@ -1400,6 +1401,7 @@ function gameBigBen(i){
       const b = document.getElementById('bell'); b.style.animation='none'; b.style.transform='rotate(-12deg)'; setTimeout(()=>{ b.style.transform='rotate(12deg)'; }, 120); setTimeout(()=>{ b.style.transform=''; }, 240);
       if(easy() && taps===h) next();
     };
+    { const b2 = document.createElement('button'); b2.className = 'tapper'; b2.id = 'bell2'; b2.setAttribute('aria-label','Ring the big bell'); b2.style.cssText = 'left:560px;top:190px;width:210px;height:420px;background:transparent;border:0;z-index:2'; b2.onclick = ()=>document.getElementById('bell').onclick(); app.querySelector('.screen').appendChild(b2); }
     const done = document.getElementById('bdone');
     if(done) done.onclick = ()=>{
       poke();
