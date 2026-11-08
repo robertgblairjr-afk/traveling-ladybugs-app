@@ -5338,6 +5338,136 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .ppst em{position:absolute;right:2px;bottom:6px;font-style:normal;font-size:12px;font-weight:800;background:#C0392B;color:#fff;border-radius:999px;padding:0 6px}
 </style>`);
 
+/* ===== rzfun.js (v23.14): three more Challenge Mode puzzle types
+   - sounds:  "Sound bubbles"  pop the floating pictures that start with a letter (phonics, cat abc)
+   - numpop:  "Number bubbles" pop the numbers in order (1 to 5, 1 to 10, by twos, or down from 10; cat num)
+   - spot:    "Spot the difference" on two copies of a painting (cat detect)
+   Nothing is lost on a wrong tap: it just wobbles. ===== */
+const RZ_WORDS = {apple:'🍎',balloon:'🎈',bat:'🦇',bear:'🐻',bee:'🐝',bell:'🔔',bike:'🚲',boat:'⛵',box:'📦',bus:'🚌',cactus:'🌵',cake:'🎂',camel:'🐫',car:'🚗',cat:'🐱',crab:'🦀',
+  dish:'🍽️',dog:'🐶',drum:'🥁',eagle:'🦅',fish:'🐟',fox:'🦊',gift:'🎁',goat:'🐐',hat:'🎩',house:'🏠',kangaroo:'🦘',key:'🔑',king:'🤴',lion:'🦁',log:'🪵',monkey:'🐵',moon:'🌙',
+  mountain:'⛰️',mouse:'🐭',octopus:'🐙',paw:'🐾',pig:'🐷',pizza:'🍕',ring:'💍',snake:'🐍',snow:'❄️',spoon:'🥄',star:'⭐',statue:'🗽',sun:'☀️',sunflower:'🌻',taxi:'🚕',train:'🚂',
+  tree:'🌳',turtle:'🐢',watermelon:'🍉',wave:'🌊',whale:'🐳',zebra:'🦓'};
+const RZ_BYL = {}; Object.keys(RZ_WORDS).forEach(w=>{ const l = w[0].toUpperCase(); (RZ_BYL[l] = RZ_BYL[l] || []).push(w); });
+function rzPos(n, W, H, gap, tries){ const out = []; for(let t=0; out.length<n && t<(tries||3000); t++){ const p = {x:Math.random()*W, y:Math.random()*H}; if(out.every(q=>Math.hypot(q.x-p.x, q.y-p.y) >= gap)) out.push(p); } return out; }
+const rzR = v=>Math.round(v);
+
+/* ---------- Sound bubbles ---------- */
+RZ_MAKE.sounds = function(){ const e = easy(), need = e ? 3 : 4;
+  const letters = Object.keys(RZ_BYL).filter(l=>RZ_BYL[l].length >= (e ? 3 : 4)); const L = rzOne(letters);
+  const others = Object.keys(RZ_WORDS).filter(w=>w[0].toUpperCase()!==L);
+  return {type:'sounds', title:`Pop the pictures that start with ${L}!`, L, need, words:RZ_BYL[L].slice(), others, speed:e?11:8, sig:L+':'+need+':'+rzOne(['a','b','c','d','e','f'])}; };
+function rzSoundsPlay(g){
+  const e = easy();
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.need}</div>
+    <div class="rzbcard"><div class="rzbl">${g.L}<small>${g.L.toLowerCase()}</small></div><div>Pop the pictures that<br>start with <b>${g.L}</b>!</div></div>
+    <div class="rzbub" id="rzbub"></div>`);
+  const box = document.getElementById('rzbub'); let got = 0, lane = 0, n = 0; const lanes = [60,190,320,450,580];
+  function spawn(){ if(!G.live || !box.isConnected || got>=g.need) return;
+    const live = [...box.querySelectorAll('.rzbb:not(.pop)')], hasT = live.some(b=>b.dataset.t==='1');
+    if(live.length >= (e?6:8)) return;
+    const t = !hasT || Math.random() < .42, w = t ? rzOne(g.words) : rzOne(g.others);
+    const b = document.createElement('button'); b.className = 'rzbb'; b.dataset.t = t ? '1' : '0'; b.dataset.w = w; b.setAttribute('aria-label', w);
+    lane = (lane + 1 + Math.floor(Math.random()*3)) % lanes.length;
+    b.style.left = (lanes[lane] + Math.random()*30) + 'px'; const dur = g.speed + Math.random()*2; b.style.animationDuration = dur + 's'; b.style.animationDelay = n < 3 ? (-dur*(0.25+n*0.12)) + 's' : '0s';
+    b.innerHTML = `<span>${RZ_WORDS[w]}</span>`;
+    b.addEventListener('animationend', ev=>{ if(ev.animationName==='rzrise') b.remove(); });
+    b.onclick = ()=>{ if(!G.live || b.classList.contains('pop')) return;
+      if(b.dataset.t==='1'){ poke(); b.classList.add('pop'); got++; tone(700+got*80,.12,'triangle',.16); lsoft(w, ['W:'+w]);
+        document.getElementById('cnt').textContent = `${got} / ${g.need}`; setTimeout(()=>b.remove(), 400);
+        if(got>=g.need){ clearHint(); G.getT = null; setTimeout(()=>cityDone('rz',0), 900); } }
+      else { miss(); tone(200,.15,'sine',.1); lsoft(w, ['W:'+w]); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } };
+    box.appendChild(b); n++; }
+  spawn(); setTimeout(spawn, 700);
+  (function loop(){ setTimeout(()=>{ if(!G.live || !box.isConnected || got>=g.need) return; spawn(); loop(); }, e ? 1500 : 1100); })();
+  armHint(()=>[...box.querySelectorAll('.rzbb[data-t="1"]:not(.pop)')].find(b=>{ const r = b.getBoundingClientRect(); return r.top > 160 && r.bottom < window.innerHeight; }));
+  setTimeout(()=>lsoft(g.L, ['L:'+g.L]), 1300);
+}
+
+/* ---------- Number bubbles ---------- */
+RZ_MAKE.numpop = function(){ const e = easy(); let mode, seq;
+  if(e){ mode = rzOne(['up5','up5','up6']); seq = mode==='up6' ? [1,2,3,4,5,6] : [1,2,3,4,5]; }
+  else { mode = rzOne(['up10','down10','twos','up8from3']); seq = mode==='up10' ? [1,2,3,4,5,6,7,8,9,10] : mode==='down10' ? [10,9,8,7,6,5,4,3,2,1] : mode==='twos' ? [2,4,6,8,10] : [3,4,5,6,7,8,9,10,11]; }
+  const pos = rzPos(seq.length, 760, 360, e ? 150 : 118).map(p=>[rzR(p.x), rzR(p.y)]);
+  const title = mode==='down10' ? 'Count down! Pop 10 to 1!' : mode==='twos' ? 'Count by twos! Pop 2, 4, 6...' : `Pop the numbers in order: ${seq[0]}, ${seq[1]}, ${seq[2]}...`;
+  return {type:'numpop', title, seq, pos, sig:mode+':'+pos.map(p=>p.join(',')).join(';')}; };
+function rzNumpopPlay(g){
+  const e = easy(), C = ['#E5383B','#F4A300','#3FA34D','#2B7BE4','#6A4CC7','#C64FB2','#1E9E8F'];
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Next: ${g.seq[0]}</div>
+    <div class="rznp" id="rznp">${g.seq.map((v,k)=>`<button class="rznb" data-v="${v}" aria-label="Number ${v}" style="left:${g.pos[k][0]}px;top:${g.pos[k][1]}px;--bc:${C[k%C.length]};animation-delay:${(k%5)*.3}s">${v}</button>`).join('')}</div>`);
+  const box = document.getElementById('rznp'); let k = 0;
+  const cur = ()=>box.querySelector(`.rznb[data-v="${g.seq[k]}"]`);
+  box.querySelectorAll('.rznb').forEach(b=>b.onclick=()=>{ if(!G.live || b.classList.contains('pop')) return; const v = +b.dataset.v;
+    if(v===g.seq[k]){ poke(); b.classList.add('pop'); lsoft(String(v), ['N:'+v]); tone(520+k*40,.12,'triangle',.16); k++;
+      if(k>=g.seq.length){ document.getElementById('cnt').textContent = 'All popped!'; clearHint(); G.getT = null; setTimeout(()=>cityDone('rz',0), 900); }
+      else { document.getElementById('cnt').textContent = `Next: ${g.seq[k]}`; if(e){ box.querySelectorAll('.rznb').forEach(x=>x.classList.remove('next')); cur().classList.add('next'); } armHint(cur); } }
+    else { miss(); tone(200,.15,'sine',.1); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } });
+  if(e) cur().classList.add('next');
+  armHint(cur);
+}
+
+/* ---------- Spot the difference ---------- */
+const RZ_SPOTI = ['🌸','🐦','🎈','⭐','🍎','🦋','🐞','🌻','🎁','🐱','🌙','☁️','🍄','🐟','🪁','🍦','🚲','🎩','🐌','🍓'];
+RZ_MAKE.spot = function(){ const e = easy(), D = e ? 3 : 5, N = e ? 7 : 10, img = rzOne([...new Set(Object.values(BG))]);
+  const pos = rzPos(N + (e?2:3), 380, 230, 62).map(p=>[rzR(p.x)+20, rzR(p.y)+20]);
+  const pool = cshuf(RZ_SPOTI); const items = pos.slice(0, N).map((p,k)=>({x:p[0], y:p[1], a:pool[k]}));
+  const diffs = []; const kinds = cshuf(e ? ['gone','gone','swap','add'] : ['gone','gone','swap','swap','add','add','gone']).slice(0, D);
+  let extra = N, idx = cshuf([...Array(N).keys()]);
+  kinds.forEach(kd=>{ if(kd==='add'){ const p = pos[extra++]; if(p) diffs.push({kind:'add', x:p[0], y:p[1], a:pool[N + diffs.length + 2]}); else diffs.push({kind:'gone', i:idx.pop()}); }
+    else { const i = idx.pop(); diffs.push(kd==='swap' ? {kind:'swap', i, a:pool[pool.length-1-diffs.length]} : {kind:'gone', i}); } });
+  diffs.forEach(d=>{ if(d.i!=null){ d.x = items[d.i].x; d.y = items[d.i].y; } });
+  return {type:'spot', title:`Spot ${D} differences!`, img, items, diffs, D, sig:img+':'+items.map(t=>t.a+t.x+','+t.y).join('')}; };
+function rzSpotPlay(g){
+  const W = 440, H = 270, L1 = 50, L2 = 534, T = 170;
+  const right = g.items.map((t,i)=>{ const d = g.diffs.find(d=>d.i===i); return d && d.kind==='gone' ? null : {...t, a: d && d.kind==='swap' ? d.a : t.a}; }).filter(Boolean).concat(g.diffs.filter(d=>d.kind==='add'));
+  const draw = arr => arr.map(t=>`<span class="rzsi" style="left:${t.x}px;top:${t.y}px">${t.a}</span>`).join('');
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.D}</div>
+    <div class="rzsp" id="rzs1" style="left:${L1}px;top:${T}px;width:${W}px;height:${H}px;background-image:url(${g.img})">${draw(g.items)}</div>
+    <div class="rzsp" id="rzs2" style="left:${L2}px;top:${T}px;width:${W}px;height:${H}px;background-image:url(${g.img})">${draw(right)}</div>
+    <div class="rzstip">Tap the things that are different in the two pictures.</div>`);
+  const p1 = document.getElementById('rzs1'), p2 = document.getElementById('rzs2'); let got = 0;
+  g.diffs.forEach((d,k)=>[p1,p2].forEach(p=>{ const b = document.createElement('button'); b.className = 'rzsd'; b.dataset.k = k; b.setAttribute('aria-label','A difference');
+    b.style.left = (d.x-8) + 'px'; b.style.top = (d.y-8) + 'px'; p.appendChild(b);
+    b.onclick = ev=>{ ev.stopPropagation(); if(!G.live || d.found) return; d.found = true; poke(); got++; tone(660+got*60,.14,'triangle',.16);
+      document.querySelectorAll(`.rzsd[data-k="${k}"]`).forEach(x=>x.classList.add('got')); document.getElementById('cnt').textContent = `${got} / ${g.D}`;
+      if(got>=g.D){ clearHint(); G.getT = null; setTimeout(()=>cityDone('rz',0), 1000); } }; }));
+  [p1,p2].forEach(p=>p.onclick = ()=>{ if(!G.live) return; p.classList.remove('shake'); void p.offsetWidth; p.classList.add('shake'); tone(220,.1,'sine',.06); });
+  armHint(()=>p2.querySelector('.rzsd:not(.got)'));
+}
+
+Object.assign(RZ_FAM, {sounds:{cat:'abc'}, numpop:{cat:'num'}, spot:{cat:'detect'}});
+Object.assign(RZ_STAMP, {sounds:['🫧','Sound bubbles'], numpop:['🔵','Number bubbles'], spot:['👓','Spot the difference']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {sounds:rzSoundsPlay, numpop:rzNumpopPlay, spot:rzSpotPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzbcard{position:absolute;left:24px;top:150px;width:150px;z-index:5;background:rgba(255,253,246,.95);border-radius:22px;padding:10px;text-align:center;font-weight:800;font-size:17px;line-height:1.15;box-shadow:0 6px 0 rgba(0,0,0,.12)}
+.rzbl{font-size:72px;line-height:1;color:#C0392B}
+.rzbl small{font-size:40px;color:#E5383B;margin-left:4px}
+.rzbub{position:absolute;left:190px;right:150px;top:130px;bottom:0;z-index:4;overflow:hidden;pointer-events:none}
+.rzbb{position:absolute;top:100%;width:118px;height:118px;border-radius:50%;pointer-events:auto;cursor:pointer;padding:0;border:3px solid rgba(255,255,255,.95);
+  background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.95) 0 10%,rgba(200,235,255,.55) 30%,rgba(150,210,255,.35) 70%,rgba(255,255,255,.7) 100%);box-shadow:0 0 18px rgba(120,200,255,.5);
+  animation:rzrise 10s linear forwards}
+.rzbb span{font-size:62px;line-height:1;display:block}
+.rzbb.pop{animation:rzpopb .4s forwards;pointer-events:none}
+.rzbb.shake span{animation:shake .4s}
+@keyframes rzrise{from{transform:translateY(0)}to{transform:translateY(-720px)}}
+@keyframes rzpopb{to{transform:scale(1.6);opacity:0}}
+.rznp{position:absolute;left:120px;top:150px;width:860px;height:470px;z-index:4}
+.rznb{position:absolute;width:104px;height:104px;border-radius:50%;background:var(--bc);color:#fff;font:800 50px 'Baloo 2',Arial;border:5px solid #fff;box-shadow:0 6px 0 rgba(0,0,0,.18);cursor:pointer;animation:bob 2.4s ease-in-out infinite}
+.rznb.next{box-shadow:0 0 0 6px #FFD23F,0 6px 0 rgba(0,0,0,.18)}
+.rznb.pop{animation:rzpopb .4s forwards;pointer-events:none}
+.rznb.shake{animation:shake .4s}
+.rzsp{position:absolute;z-index:4;background-size:cover;background-position:center;border-radius:16px;border:5px solid #fff;box-shadow:0 8px 0 rgba(0,0,0,.14);overflow:hidden}
+.rzsp.shake{animation:shake .3s}
+.rzsi{position:absolute;font-size:48px;line-height:1;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
+.rzsd{position:absolute;width:76px;height:76px;margin:-30px 0 0 -30px;border-radius:50%;border:0;background:transparent;cursor:pointer;z-index:2;padding:0}
+.rzsd.got{border:6px solid #E5383B;box-shadow:0 0 0 3px #fff}
+.rzstip{position:absolute;left:50%;top:462px;transform:translateX(-50%);z-index:4;background:rgba(255,253,246,.94);border-radius:999px;padding:6px 18px;font-weight:800;font-size:18px;white-space:nowrap}
+.ppgrid{grid-template-columns:repeat(8,1fr)!important;gap:10px!important}
+.ppst{height:104px!important}
+</style>`);
+
 /* ===== nav.js (v23.10): a Home button (little house) on every screen with a top bar, so children can always get back to
    the start screen (and from there to Challenge Mode, friends, grown-ups). Runs after every screen change. ===== */
 const HOME_SVG = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h5v-6h3v6h5V10"/></svg>';
