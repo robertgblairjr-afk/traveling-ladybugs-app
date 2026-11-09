@@ -1601,9 +1601,9 @@ function frMount(el){
     st.rg = frBuild(id, img, small ? 9 : 16, small ? 10 : 18);
     const h = parseFloat(el.style.height) || el.clientHeight || 200; const k = h*0.86 / st.rg.H; const w = st.rg.W*k;
     const pad = h*0.07; st.k = k; st.ox = pad; st.oy = h*0.1;
-    st.dpr = Math.min(2, window.devicePixelRatio||1);
+    st.dpr = Math.min(3, (window.devicePixelRatio||1) * Math.max(1, ((document.getElementById('stage')||document.body).getBoundingClientRect().width||1024)/1024));
     cv.style.width = (w + pad*2) + 'px'; cv.style.height = h + 'px'; cv.width = Math.round((w+pad*2)*st.dpr); cv.height = Math.round(h*st.dpr);
-    st.cx = cv.getContext('2d'); el.style.width = (w + pad*2) + 'px'; img.style.display = 'none';
+    st.cx = cv.getContext('2d'); st.cx.imageSmoothingQuality = 'high'; el.style.width = (w + pad*2) + 'px'; img.style.display = 'none';
   };
   if(img.complete && img.naturalWidth) go(); else img.addEventListener('load', go, {once:true});
 }
@@ -7617,6 +7617,106 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzscw.shine .rzscbug{animation:rzscsh .6s ease 3}@keyframes rzscsh{50%{filter:brightness(1.2) drop-shadow(0 0 16px #fff)}}
 </style>`);
 
+/* ===== rzfun19.js (v23.32): two more Challenge games
+   - wordcatch: "Word catch" letters fall from the sky; slide the basket to catch the letters of the word in order (Easy 3-letter words, slow, few
+                decoys; Challenge 4-5 letters, faster, more decoys). A wrong letter just bounces off. (cat abc)
+   - pbn:  "Paint by numbers" pick a numbered paint pot, then tap the parts of the picture with that number (Challenge: the parts show sums like 2+1). (cat num)
+   Nothing is lost on a wrong tap. ===== */
+RZ_MAKE.wordcatch = function(){ const e = easy(), words = Object.keys(RZ_WORDS).filter(w=>e ? w.length===3 : (w.length===4 || w.length===5)), w = rzOne(words);
+  return {type:'wordcatch', title: e ? `Word catch! Catch the letters for ${w.toUpperCase()}.` : `Word catch! Spell ${w.toUpperCase()}, letter by letter.`, word: w, speed: e ? 70 : 115, decoy: e ? .35 : .6, sig:'wc:'+w}; };
+function rzWordCatchPlay(g){
+  const W = g.word.toUpperCase().split('');
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">${RZ_WORDS[g.word]||''}</div>
+    <div class="rzwkw"><span class="rzwkpic">${RZ_WORDS[g.word]||''}</span>${W.map((c,i)=>`<b class="rzwks" data-i="${i}">${c}</b>`).join('')}</div>
+    <div class="rzwkf" id="rzwkf"><div class="rzwkbk" id="rzwkbk"><i></i></div></div>`);
+  const f = document.getElementById('rzwkf'), bk = document.getElementById('rzwkbk'); let bx = 512, k = 0, drops = [], last = 0, spawnT = 0, done = false;
+  const S = window._rzwk = {get k(){ return k; }, get bx(){ return bx; }, set bx(v){ bx = v; }, get drops(){ return drops; }};
+  const at = ev=>{ const r = document.getElementById('stage').getBoundingClientRect(); return (ev.clientX - r.left)/(r.width/1024); };
+  let drag = false; f.addEventListener('pointerdown', ev=>{ drag = true; f.setPointerCapture(ev.pointerId); bx = Math.max(90, Math.min(934, at(ev))); });
+  f.addEventListener('pointermove', ev=>{ if(drag) bx = Math.max(90, Math.min(934, at(ev))); }); f.addEventListener('pointerup', ()=>{ drag = false; }); f.addEventListener('pointercancel', ()=>{ drag = false; });
+  const spawn = ()=>{ const need = W[k], ch = Math.random() < g.decoy ? rzOne(ABCL.filter(c=>c!==need)) : need, x = 120 + Math.random()*784;
+    const e = document.createElement('div'); e.className = 'rzwkl' + (ch===need ? '' : ' d'); e.textContent = ch; f.appendChild(e); drops.push({e, ch, x, y:150, vy: g.speed*(.85 + Math.random()*.3)}); };
+  const step = now=>{ if(!f.isConnected) return; const dt = Math.min(.05, last ? (now-last)/1000 : .016); last = now;
+    if(!done){ spawnT -= dt; if(spawnT <= 0 && drops.length < 4){ spawn(); spawnT = 1.6 - Math.min(.6, k*.1); } }
+    if(!done && !drops.some(d=>d.ch===W[k]) && spawnT > .4) spawnT = .4;
+    drops.forEach(d=>{ d.y += d.vy*dt; d.e.style.transform = `translate(${d.x - 30}px,${d.y}px)`;
+      if(!d.gone && d.y > 520 && d.y < 580 && Math.abs(d.x - bx) < 80){ d.gone = true;
+        if(d.ch===W[k] && !done){ const s = document.querySelector(`.rzwks[data-i="${k}"]`); s.classList.add('got'); k++; poke(); tone(600+k*80,.1,'triangle',.14); try{ lsoft(d.ch, ['L:'+d.ch]); }catch(_){}
+          d.e.classList.add('in'); if(k>=W.length){ done = true; clearHint(); G.getT = null; document.querySelector('.rzwkw').classList.add('yay'); setTimeout(()=>{ try{ lsoft(g.word, ['W:'+g.word]); }catch(_){} }, 400); rzDoneLater(1500); } }
+        else { miss(); tone(220,.1,'sine',.08); d.vy = -260; d.bounce = true; } } });
+    drops = drops.filter(d=>{ const off = d.y > 720 || (d.bounce && d.y < 120) || (d.gone && !d.bounce); if(off) setTimeout(()=>d.e.remove(), d.gone && !d.bounce ? 200 : 0); return !off; });
+    drops.forEach(d=>{ if(d.bounce) d.vy += 600*dt; });
+    bk.style.transform = `translateX(${bx - 80}px)`;
+    requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+  armHint(()=>bk);
+}
+
+/* paint by numbers: pictures drawn as numbered parts (viewBox 400x300) */
+const RZ_PBN = [
+  {name:'house', cols:['#E5383B','#F4C430','#8B5A2B','#7FD4FF','#3FA34D','#FFB703'], parts:[
+    ['M80 150 L200 60 L320 150 Z',0,[200,120]], ['M100 150 H300 V260 H100 Z',1,[140,200]], ['M180 190 H220 V260 H180 Z',2,[200,228]],
+    ['M120 170 H160 V205 H120 Z',3,[140,188]], ['M240 170 H280 V205 H240 Z',3,[260,188]], ['M0 260 H400 V300 H0 Z',4,[60,282]], ['M350 50 m-30 0 a30 30 0 1 0 60 0 a30 30 0 1 0 -60 0',5,[350,50]]]},
+  {name:'ladybug', cols:['#E5383B','#1D1D2B','#3FA34D','#7FD4FF','#F4C430'], parts:[
+    ['M0 0 H400 V300 H0 Z',3,[40,30]], ['M60 250 Q200 170 340 250 Q200 300 60 250 Z',2,[110,262]], ['M200 230 m-90 0 a90 75 0 1 0 180 0 a90 75 0 1 0 -180 0',0,[150,215]],
+    ['M200 140 m-45 0 a45 40 0 1 0 90 0 a45 40 0 1 0 -90 0',1,[200,128]], ['M160 200 m-14 0 a14 14 0 1 0 28 0 a14 14 0 1 0 -28 0',1,[160,200]], ['M245 215 m-14 0 a14 14 0 1 0 28 0 a14 14 0 1 0 -28 0',1,[245,215]],
+    ['M330 70 m-28 0 a28 28 0 1 0 56 0 a28 28 0 1 0 -56 0',4,[330,70]]]},
+  {name:'fish', cols:['#FF7F11','#2B7BE4','#F4C430','#3FA34D','#FFFFFF'], parts:[
+    ['M0 0 H400 V300 H0 Z',1,[40,40]], ['M120 150 Q200 70 290 150 Q200 230 120 150 Z',0,[205,150]], ['M120 150 L60 100 L70 150 L60 200 Z',2,[85,150]],
+    ['M0 270 Q60 240 120 270 T240 270 T400 270 V300 H0 Z',3,[60,285]], ['M255 140 m-10 0 a10 10 0 1 0 20 0 a10 10 0 1 0 -20 0',4,[255,140]], ['M190 95 Q205 70 225 98 Z',2,[208,90]]]},
+  {name:'flower', cols:['#FF6FA5','#F4C430','#3FA34D','#7FD4FF','#9B5DE5'], parts:[
+    ['M0 0 H400 V300 H0 Z',3,[40,40]], ['M196 160 H204 V290 H196 Z',2,[200,250]], ['M200 230 Q150 200 140 240 Q170 255 200 240 Z',2,[165,236]],
+    ...[0,1,2,3,4,5].map(i=>{ const a = i*Math.PI/3, cx = 200 + Math.cos(a)*66, cy = 120 + Math.sin(a)*66; return [`M${cx} ${cy} m-36 0 a36 36 0 1 0 72 0 a36 36 0 1 0 -72 0`, i%2 ? 4 : 0, [cx, cy]]; }),
+    ['M200 120 m-32 0 a32 32 0 1 0 64 0 a32 32 0 1 0 -64 0',1,[200,120]]]}];
+RZ_MAKE.pbn = function(){ const e = easy(), k = Math.floor(Math.random()*RZ_PBN.length); const P = RZ_PBN[k];
+  const labels = P.parts.map(([d,c])=>{ const n = c+1; if(e || n < 2) return String(n); const a = 1 + Math.floor(Math.random()*(n-1)); return a + '+' + (n-a); });
+  return {type:'pbn', title: e ? 'Paint by numbers! Pick a paint, then tap the parts with that number.' : 'Paint by numbers! Add up each part to find its paint.', k, labels, sig:'pbn'+k+':'+labels.join(',')}; };
+function rzPbnPlay(g){
+  const P = RZ_PBN[g.k], done = P.parts.map(()=>false); let pot = -1;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Pick a paint pot</div>
+    <div class="rzpbw"><svg viewBox="0 0 400 300" class="rzpbsv" id="rzpbsv">${P.parts.map(([d,c,[lx,ly]],i)=>`<path class="rzpbp" data-i="${i}" d="${d}"/><text class="rzpbt" data-i="${i}" x="${lx}" y="${ly}">${g.labels[i]}</text>`).join('')}</svg></div>
+    <div class="rzpbpots">${P.cols.map((c,i)=>`<button class="rzpbpot" data-c="${i}" style="--c:${c}" aria-label="Paint ${i+1}"><b>${i+1}</b></button>`).join('')}</div>`);
+  // text must sit above every shape: move labels to the end
+  const sv = document.getElementById('rzpbsv'); sv.querySelectorAll('.rzpbt').forEach(t=>sv.appendChild(t));
+  document.querySelectorAll('.rzpbpot').forEach(b=>b.onclick=()=>{ if(!G.live) return; pot = +b.dataset.c; poke(); document.querySelectorAll('.rzpbpot').forEach(x=>x.classList.toggle('on', x===b)); tone(520+pot*60,.07,'triangle',.1); document.getElementById('cnt').textContent = `Paint ${pot+1}`; });
+  sv.querySelectorAll('.rzpbp').forEach(p=>p.addEventListener('click', ev=>{ if(!G.live) return; ev.stopPropagation(); const i = +p.dataset.i; if(done[i]) return;
+    if(pot<0){ miss(); document.getElementById('cnt').textContent = 'Pick a paint!'; return; }
+    if(P.parts[i][1]===pot){ done[i] = true; poke(); p.style.fill = P.cols[pot]; p.classList.add('in'); sv.querySelector(`.rzpbt[data-i="${i}"]`).classList.add('hide'); tone(600+Math.random()*300,.08,'triangle',.12);
+      if(done.every(Boolean)){ clearHint(); G.getT = null; document.querySelector('.rzpbw').classList.add('yay'); document.getElementById('cnt').textContent = 'What a picture!'; rzDoneLater(1300); } }
+    else { miss(); tone(220,.1,'sine',.08); p.classList.remove('shake'); void p.getBBox(); p.classList.add('shake'); } }));
+  armHint(()=>{ const i = done.findIndex(d=>!d); if(i<0) return null; const want = P.parts[i][1]; return pot===want ? sv.querySelector(`.rzpbt[data-i="${i}"]`) : document.querySelector(`.rzpbpot[data-c="${want}"]`); });
+}
+
+Object.assign(RZ_FAM, {wordcatch:{cat:'abc'}, pbn:{cat:'num'}});
+Object.assign(RZ_STAMP, {wordcatch:['🧺','Word catch'], pbn:['🖌️','Paint by numbers']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {wordcatch:rzWordCatchPlay, pbn:rzPbnPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzwkw{position:absolute;left:50%;top:150px;transform:translateX(-50%);z-index:4;display:flex;gap:8px;align-items:center;background:rgba(255,248,230,.95);border:4px solid #1D1D2B;border-radius:20px;padding:8px 16px}
+.rzwkpic{font-size:44px;margin-right:6px}
+.rzwks{width:52px;height:60px;display:flex;align-items:center;justify-content:center;font-size:40px;border-bottom:5px solid #1D1D2B;color:transparent;-webkit-text-stroke:2px #C9C3B8}
+.rzwks.got{color:#C8262A;-webkit-text-stroke:0;animation:pldpop .3s ease}
+.rzwkw.yay{animation:rzwkyay .5s ease 3}@keyframes rzwkyay{50%{transform:translateX(-50%) scale(1.08)}}
+.rzwkf{position:absolute;inset:0;z-index:3;touch-action:none}
+.rzwkl{position:absolute;left:0;top:0;width:60px;height:60px;border-radius:50%;background:#FFF8E6;border:4px solid #1D1D2B;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:900;color:#2B7BE4;box-shadow:0 4px 0 #1D1D2B}
+.rzwkl.in{opacity:0;transition:opacity .2s}
+.rzwkbk{position:absolute;left:0;top:560px;width:160px;height:76px}
+.rzwkbk::before{content:'';position:absolute;left:0;right:0;bottom:0;height:56px;border-radius:0 0 50px 50px;background:repeating-linear-gradient(90deg,#C08A4E 0 12px,#A9743F 12px 18px);border:4px solid #1D1D2B}
+.rzwkbk i{position:absolute;left:30px;right:30px;top:0;height:40px;border:5px solid #1D1D2B;border-bottom:0;border-radius:40px 40px 0 0}
+.rzpbw{position:absolute;left:50%;top:140px;transform:translateX(-50%);z-index:3;background:#FFF8E6;border:5px solid #1D1D2B;border-radius:22px;padding:8px}
+.rzpbsv{display:block;width:560px;height:420px}
+.rzpbp{fill:#fff;stroke:#1D1D2B;stroke-width:3;cursor:pointer;transition:fill .3s}
+.rzpbp.shake{animation:shake .35s}
+.rzpbt{font:800 22px system-ui,sans-serif;text-anchor:middle;dominant-baseline:central;fill:#1D1D2B;pointer-events:none}.rzpbt.hide{opacity:0;transition:opacity .3s}
+.rzpbw.yay{animation:rzwkyay .5s ease 3}
+.rzpbpots{position:absolute;left:0;right:0;bottom:30px;display:flex;justify-content:center;gap:12px;z-index:4}
+.rzpbpot{width:66px;height:66px;border-radius:50%;border:4px solid #1D1D2B;background:var(--c);cursor:pointer;position:relative;box-shadow:0 4px 0 #1D1D2B}
+.rzpbpot b{position:absolute;right:-8px;top:-8px;width:28px;height:28px;border-radius:50%;background:#FFF8E6;border:3px solid #1D1D2B;font-size:16px;line-height:22px}
+.rzpbpot.on{transform:translateY(-10px);box-shadow:0 0 0 5px #FFD23F,0 4px 0 #1D1D2B}
+</style>`);
+
 /* ===== mouth.js (v23.17): bigger, livelier talking mouths (Chester: "the mouth animations barely move")
    Lisa and Lucas: a real open mouth (dark with a tongue) now opens and closes with the voice, syllable by syllable,
    drawn over their painted mouth. The voice meter is also more sensitive, which helps the 15 friends' mouths too. ===== */
@@ -8411,6 +8511,40 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .pl2bub{position:absolute;width:62px;height:62px;border-radius:50%;border:3px solid #1D1D2B;padding:0;cursor:pointer;touch-action:manipulation;background:radial-gradient(circle at 32% 28%,#fff 0 14%,transparent 16%),radial-gradient(circle,#ffffff55,var(--c));animation:pl2float 2.4s ease-in-out infinite alternate}
 @keyframes pl2float{to{transform:translateY(-10px)}}
 .pl2bub.pop{animation:rzszpop .3s ease forwards;pointer-events:none}
+</style>`);
+
+/* ===== anim3.js (v23.32): living paintings. Every screen that shows one of Grok's paintings (svg.full image.bgimg) gets a gentle life layer
+   on top of the picture but under everything you can tap: a slow band of sunlight that drifts across, floating pollen sparkles, and now and
+   then a little flock of birds. Night paintings get fireflies and twinkles instead. Off in calm mode; pointer-events none. ===== */
+function a3Life(scr){
+  if((typeof TLB_CALM!=='undefined' && TLB_CALM) || !scr || scr.querySelector(':scope > .a3life')) return;
+  const svg = scr.querySelector(':scope > svg.full'), img = svg && svg.querySelector('image.bgimg'); if(!img) return;
+  const night = /night|106/.test(img.getAttribute('href')||'');
+  const L = document.createElement('div'); L.className = 'a3life' + (night ? ' night' : ''); L.setAttribute('aria-hidden','true');
+  const r = (a,b)=>a + Math.random()*(b-a);
+  L.innerHTML = night
+    ? [...Array(14)].map((_,i)=>`<i class="a3tw" style="left:${r(20,1000).toFixed(0)}px;top:${r(80,260).toFixed(0)}px;animation-delay:${r(0,3).toFixed(1)}s"></i>`).join('') +
+      [...Array(9)].map((_,i)=>`<i class="a3ff" style="left:${r(60,960).toFixed(0)}px;top:${r(300,640).toFixed(0)}px;animation-duration:${r(5,9).toFixed(1)}s;animation-delay:-${r(0,6).toFixed(1)}s"></i>`).join('')
+    : `<i class="a3ray"></i>` + [...Array(12)].map((_,i)=>`<i class="a3mote" style="left:${r(0,1024).toFixed(0)}px;top:${r(200,700).toFixed(0)}px;animation-duration:${r(9,16).toFixed(1)}s;animation-delay:-${r(0,14).toFixed(1)}s"></i>`).join('') +
+      `<div class="a3birds" style="top:${r(110,190).toFixed(0)}px;animation-delay:${r(2,9).toFixed(1)}s">${[0,1,2,3].map(i=>`<svg viewBox="0 0 30 14" width="22" height="10" style="left:${[0,22,10,36][i]}px;top:${[10,0,24,16][i]}px;animation-delay:${(i*.12).toFixed(2)}s"><path d="M1 10 Q8 1 15 9 Q22 1 29 10" stroke="#3A3A4A" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>`).join('')}</div>`;
+  svg.after(L);
+}
+new MutationObserver(()=>{ const scr = document.querySelector('#app > .screen'); if(scr) a3Life(scr); }).observe(document.getElementById('app') || document.body, {childList:true});
+document.head.insertAdjacentHTML('beforeend', `<style>
+.a3life{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.a3ray{position:absolute;top:-200px;left:-600px;width:420px;height:1200px;background:linear-gradient(90deg,transparent,rgba(255,244,214,.22),rgba(255,255,255,.12),transparent);transform:rotate(18deg);animation:a3ray 22s ease-in-out infinite;mix-blend-mode:screen}
+@keyframes a3ray{0%{left:-600px}55%{left:1150px}100%{left:1150px}}
+.a3mote{position:absolute;width:5px;height:5px;border-radius:50%;background:rgba(255,255,240,.85);box-shadow:0 0 6px 2px rgba(255,250,210,.6);animation:a3mote linear infinite}
+@keyframes a3mote{0%{transform:translate(0,0);opacity:0}15%{opacity:.9}85%{opacity:.7}100%{transform:translate(70px,-260px);opacity:0}}
+.a3birds{position:absolute;left:-90px;width:70px;height:50px;animation:a3birds 34s linear infinite}
+.a3birds svg{position:absolute;animation:a2flap .45s ease-in-out infinite alternate}
+@keyframes a3birds{0%{transform:translate(0,0)}28%{transform:translate(1220px,-50px)}100%{transform:translate(1220px,-50px)}}
+@keyframes a2flap{to{transform:scaleY(.4)}}
+.a3tw{position:absolute;width:3px;height:3px;border-radius:50%;background:#fff;box-shadow:0 0 6px 2px #fff;animation:a3tw 2.2s ease-in-out infinite alternate}
+@keyframes a3tw{from{opacity:.15}to{opacity:1}}
+.a3ff{position:absolute;width:7px;height:7px;border-radius:50%;background:#FFE14D;box-shadow:0 0 12px 5px rgba(255,225,77,.6);animation:a3ff ease-in-out infinite alternate}
+@keyframes a3ff{0%{transform:translate(0,0);opacity:.25}50%{opacity:1}100%{transform:translate(50px,-40px);opacity:.35}}
+html.calm .a3life{display:none}
 </style>`);
 
 /* ---------- hook music + wipes into the screens ---------- */
