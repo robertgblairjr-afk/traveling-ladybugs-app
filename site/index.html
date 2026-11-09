@@ -7447,6 +7447,77 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzjrf.yay .rzjrsv{animation:rztwyay .5s ease 3}
 </style>`);
 
+/* ===== rzfun17.js (v23.29): two more Challenge games
+   - twins: "Twin stickers" a page of Grok's scrapbook stickers where exactly two are the same; find the twins (Easy 9 stickers, Challenge 20, and some are flipped as tricks). (cat detect)
+   - kites: "Whose kite?" tangled strings run from the friends at the bottom to the kites at the top; follow the string to find the kite of the friend who is glowing.
+            3 rounds; Easy 3 strings, Challenge 4 strings with more crossings. Tapping a string's kite traces it. (cat maze)
+   Nothing is lost on a wrong tap. ===== */
+RZ_MAKE.twins = function(){ const e = easy(), n = e ? 9 : 20, pool = cshuf(SB_ITEMS.map(x=>x[0])).slice(0, n-1), twin = pool[0], items = cshuf(pool.concat([twin]));
+  const flip = e ? items.map(()=>0) : items.map((id,i)=>id!==twin && Math.random()<.25 ? 1 : 0);
+  return {type:'twins', title: e ? 'Twin stickers! Find the two that are the same.' : 'Twin stickers! Two are exactly the same. Watch for tricks!', items, flip, twin, sig:items.join(',')}; };
+function rzTwinsPlay(g){
+  const n = g.items.length, cols = n<=9 ? 3 : 5, sz = n<=9 ? 112 : 92;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Tap the two twins</div>
+    <div class="rzpairg" style="grid-template-columns:repeat(${cols},${sz+12}px)">${g.items.map((id,i)=>`<button class="rzpairc" data-i="${i}" aria-label="${sbName(id)}"><span style="display:inline-block;transform:scaleX(${g.flip[i]?-1:1})">${sbSticker(id, sz)}</span></button>`).join('')}</div>`);
+  let sel = null, done = false;
+  document.querySelectorAll('.rzpairc').forEach(b=>b.onclick=()=>{ if(!G.live || done) return; const i = +b.dataset.i;
+    if(sel===i){ sel = null; b.classList.remove('sel'); return; }
+    if(sel===null){ poke(); sel = i; b.classList.add('sel'); tone(560,.06,'triangle',.1); return; }
+    const a = sel; sel = null; document.querySelectorAll('.rzpairc.sel').forEach(x=>x.classList.remove('sel'));
+    if(g.items[a]===g.twin && g.items[i]===g.twin){ done = true; poke(); [a,i].forEach(k=>document.querySelector(`.rzpairc[data-i="${k}"]`).classList.add('twin')); tone(523,.14,'triangle',.15); tone(784,.2,'triangle',.14,.12);
+      document.getElementById('cnt').textContent = 'You found the twins!'; clearHint(); G.getT = null; rzDoneLater(1100); }
+    else { miss(); [a,i].forEach(k=>{ const c = document.querySelector(`.rzpairc[data-i="${k}"]`); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); }); tone(220,.1,'sine',.08);
+      document.getElementById('cnt').textContent = 'Not twins!'; } });
+  armHint(()=>{ const k = g.items.findIndex((id,i)=>id===g.twin && i!==sel); return document.querySelector(`.rzpairc[data-i="${k}"]`); });
+}
+
+const RZ_KTF = ['priya','paco','skye','nikos','luna','kenta','ruby','sami','mateo','aoife','jabari','lucia','matilda','colette'];
+const RZ_KTC = ['#E5383B','#2B7BE4','#F4C430','#3FA34D','#9B5DE5'];
+RZ_MAKE.kites = function(){ const e = easy(), n = e ? 3 : 4, rounds = [];
+  for(let r=0;r<3;r++){ let perm; do{ perm = cshuf([...Array(n).keys()]); } while(perm.every((p,i)=>p===i)); rounds.push({perm, who: Math.floor(Math.random()*n), friends: cshuf(RZ_KTF).slice(0, n)}); }
+  return {type:'kites', title: e ? 'Whose kite? Follow the string from the glowing friend.' : 'Whose kite? Follow the tangled string!', n, rounds, wig: e ? 1 : 2, sig: rounds.map(r=>r.perm.join('')+r.who).join('|')}; };
+function rzKitesPlay(g){
+  const n = g.n, X = i=>150 + i*(724/(n-1)); let ri = 0;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Kite 1 of 3</div><svg class="rzktsv" id="rzktsv" viewBox="0 0 1024 700"></svg>`);
+  const draw = ()=>{ const R = g.rounds[ri], sv = document.getElementById('rzktsv');
+    const path = i=>{ const k = R.perm[i], x0 = X(i), x1 = X(k), y0 = 480, y1 = 230; let d = `M${x0} ${y0}`; const steps = 2 + g.wig;
+      for(let s=1;s<=steps;s++){ const t = s/steps, y = y0 + (y1-y0)*t, xm = x0 + (x1-x0)*t + (s<steps ? Math.sin((i+1)*1.7 + s*2.3)*(g.wig*70) : 0), yc = y0 + (y1-y0)*(t - .5/steps);
+        const pxPrev = s===1 ? x0 : x0 + (x1-x0)*((s-1)/steps) + Math.sin((i+1)*1.7 + (s-1)*2.3)*(g.wig*70); d += ` Q${(pxPrev + xm)/2 + ((i%2)?60:-60)} ${yc} ${xm} ${y}`; } return d; };
+    sv.innerHTML = `${[...Array(n).keys()].map(i=>`<path class="rzktstr" data-i="${i}" d="${path(i)}" stroke="${RZ_KTC[i]}" />`).join('')}
+      ${[...Array(n).keys()].map(k=>`<g class="rzktk" data-k="${k}" transform="translate(${X(k)} 170)"><g class="rzktsway" style="animation-delay:${k*.3}s"><path d="M0 -62 L46 0 L0 62 L-46 0 Z" fill="${['#FFD23F','#FF6FA5','#7FD4FF','#7CF29C','#FF7F11'][k]}" stroke="#1D1D2B" stroke-width="5"/><path d="M0 -62 V62 M-46 0 H46" stroke="#1D1D2B" stroke-width="3"/><path d="M0 62 q-12 20 0 34 q12 14 0 30" stroke="#1D1D2B" stroke-width="3" fill="none"/></g><rect x="-60" y="-80" width="120" height="170" fill="transparent"/></g>`).join('')}
+      ${R.friends.map((f,i)=>`<g class="rzktf${i===R.who?' who':''}" transform="translate(${X(i)} 520)"><circle r="44" fill="#FFF8E6" stroke="${i===R.who?'#FFD23F':'#1D1D2B'}" stroke-width="${i===R.who?9:4}"/><image href="friends/img/${f}.webp" x="-40" y="-40" width="80" height="80"/></g>`).join('')}`;
+    document.getElementById('cnt').textContent = `Kite ${ri+1} of 3`;
+    sv.querySelectorAll('.rzktk').forEach(k=>k.addEventListener('click', ()=>{ if(!G.live) return; const kk = +k.dataset.k, from = R.perm.indexOf(kk), str = sv.querySelector(`.rzktstr[data-i="${from}"]`);
+      str.classList.remove('trace'); void str.getBBox(); str.classList.add('trace');
+      if(kk===R.perm[R.who]){ poke(); clearHint(); G.getT = null; k.classList.add('fly'); tone(523,.12,'triangle',.15); tone(659,.12,'triangle',.14,.1); tone(784,.2,'triangle',.14,.2);
+        if(ri < 2) setTimeout(()=>{ if(!document.getElementById('rzktsv')) return; ri++; draw(); armHint(hint); }, 1500); else rzDoneLater(1500); }
+      else { miss(); tone(220,.1,'sine',.08); const kg = k.querySelector('.rzktsway'); kg.classList.remove('shake'); void kg.getBBox(); kg.classList.add('shake'); } })); };
+  const hint = ()=>{ const R = g.rounds[ri]; return R ? document.querySelector(`.rzktk[data-k="${R.perm[R.who]}"]`) : null; };
+  draw(); armHint(hint);
+}
+
+Object.assign(RZ_FAM, {twins:{cat:'detect'}, kites:{cat:'maze'}});
+Object.assign(RZ_STAMP, {twins:['👯','Twin stickers'], kites:['🪁','Whose kite?']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {twins:rzTwinsPlay, kites:rzKitesPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzpairg{position:absolute;left:50%;top:160px;transform:translateX(-50%);display:grid;gap:8px;z-index:3;background:rgba(255,248,230,.94);border:4px solid #1D1D2B;border-radius:22px;padding:12px}
+.rzpairc{border:3px solid #C9C3B8;border-radius:16px;background:#fff;padding:4px;cursor:pointer;transition:transform .15s}
+.rzpairc.sel{border-color:#F4A300;box-shadow:0 0 0 4px #FFD23F;transform:translateY(-4px)}
+.rzpairc.twin{border-color:#3FA34D;box-shadow:0 0 0 5px #7CF29C;animation:rzpairyay .5s ease 2}@keyframes rzpairyay{50%{transform:scale(1.12) rotate(4deg)}}
+.rzpairc.shake{animation:shake .35s}
+.rzktsv{position:absolute;inset:0;width:1024px;height:700px;z-index:3}
+.rzktstr{fill:none;stroke-width:7;stroke-linecap:round;opacity:.9}
+.rzktstr.trace{stroke-dasharray:14 10;animation:rzkttr 1s linear;stroke-width:10}@keyframes rzkttr{from{stroke-dashoffset:240}to{stroke-dashoffset:0}}
+.rzktk{cursor:pointer}.rzktsway{animation:rzktsw 2.6s ease-in-out infinite alternate;transform-origin:0 60px}
+@keyframes rzktsw{from{transform:rotate(-7deg)}to{transform:rotate(7deg)}}
+.rzktsway.shake{animation:shake .35s}
+.rzktk.fly .rzktsway{animation:rzktfly 1.2s ease-in forwards}@keyframes rzktfly{to{transform:translateY(-120px) rotate(20deg) scale(1.2)}}
+.rzktf.who circle{animation:rzktwho 1s ease-in-out infinite alternate}@keyframes rzktwho{to{stroke-width:14}}
+</style>`);
+
 /* ===== mouth.js (v23.17): bigger, livelier talking mouths (Chester: "the mouth animations barely move")
    Lisa and Lucas: a real open mouth (dark with a tongue) now opens and closes with the voice, syllable by syllable,
    drawn over their painted mouth. The voice meter is also more sensitive, which helps the 15 friends' mouths too. ===== */
@@ -7972,7 +8043,7 @@ function plCalm(){ return typeof TLB_CALM!=='undefined' && TLB_CALM; }
 /* ---------- the Play Room ---------- */
 function showPlayRoom(){
   hush(); G.live = false; document.querySelectorAll('.modal').forEach(m=>m.remove());
-  const doors = [['scene','&#127912;','Sticker scenes','Make your own picture'],['dress','&#127913;','Dress up','Hats and more for Lisa & Lucas'],['band','&#127927;','Ladybug band','Play music together'],['race','&#127937;','Two-player race','Race a friend through a maze']];
+  const doors = [['scene','&#127912;','Sticker scenes','Make your own picture'],['dress','&#127913;','Dress up','Hats and more for Lisa & Lucas'],['band','&#127927;','Ladybug band','Play music together'],['race','&#127937;','Two-player games','Play with a friend']];
   app.innerHTML = `<div class="screen plroom"><img class="plbg" src="bg/105.webp" alt="">${plHdr('Make, play and pretend','The Play Room')}
     <div class="pldoors">${doors.map(([k,ic,t,s],i)=>`<button class="pldoor" data-k="${k}" style="animation-delay:${i*.08}s"><span>${ic}</span><b>${t}</b><small>${s}</small></button>`).join('')}</div></div>`;
   plBind(showTitle);
@@ -8076,7 +8147,7 @@ function plRace(){
     if(wall[c][d]){ tone(180,.06,'sine',.06); return; } const x = c%W + D[d][0], y = Math.floor(c/W) + D[d][1]; pos[s] = y*W + x; put(s); tone(s ? 600 : 500,.05,'triangle',.08);
     if(pos[s]===goal){ over = true; sfx.win(); const m = document.createElement('div'); m.className = 'plrwin';
       m.innerHTML = `<div class="plrcard"><h2>${s ? 'Blue' : 'Red'} ladybug wins!</h2><p>Great racing, both of you!</p><div class="row"><button class="big green" id="plragain">Race again</button><button class="big ghost" id="plrout">Play Room</button></div></div>`;
-      app.querySelector('.plrace').appendChild(m); document.getElementById('plragain').onclick = ()=>{ sfx.pop(); plRace(); }; document.getElementById('plrout').onclick = ()=>{ sfx.pop(); showPlayRoom(); }; } }));
+      app.querySelector('.plrace').appendChild(m); document.getElementById('plragain').onclick = ()=>{ sfx.pop(); (window.plMazeRace||plRace)(); }; document.getElementById('plrout').onclick = ()=>{ sfx.pop(); (typeof pl2Pick==='function' ? pl2Pick : showPlayRoom)(); }; } }));
 }
 
 /* ---------- start screen: Play Room pill, bug garden, evening ---------- */
@@ -8173,6 +8244,74 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .pldailybtn{position:absolute;left:30px;top:96px;z-index:4;background:#FFF3C4!important;border:3px solid #1D1D2B!important;display:flex;flex-direction:column;align-items:flex-start}
 .pldwin{background:#FFD23F;border:3px solid #1D1D2B;border-radius:14px;padding:6px 12px;font-weight:800;margin-bottom:8px;text-align:center}
 html.calm .plfl,html.calm .plstar,html.calm .plff{animation:none}
+</style>`);
+
+/* ===== play2.js (v23.29): more Play Room
+   - Lisa & Lucas wear their dress-up outfit on the start screen too (over Grok's painting; positions from HS.eyes).
+   - Two-player games door: Maze race (from play.js), Three in a row for two, Bubble pop race (each side pops its own 15 bubbles; first done wins).
+   - Ladybug band: 4 more play-along songs (all public domain). ===== */
+const PL_HOME_SPOT = {lisa:{hat:[132,346,62], eyes:[137,410,46], neck:[140,472,40]}, lucas:{hat:[340,342,62], eyes:[336,418,46], neck:[345,482,40]}};
+function pl2Outfit(scr){
+  if(!scr.querySelector('.hsimg') || scr.querySelector('.pl2wear')) return; const P = plGet(); if(!P.dr) return;
+  ['lisa','lucas'].forEach(w=>{ const o = P.dr[w] || {}; ['hat','eyes','neck'].forEach(sl=>{ if(o[sl]==null || !PL_WEAR[o[sl]]) return; const [x,y,s] = PL_HOME_SPOT[w][sl];
+    const e = document.createElement('i'); e.className = 'hsfx pl2wear'; e.textContent = PL_WEAR[o[sl]][0]; e.style.cssText = `left:${x}px;top:${y}px;font-size:${s}px`; scr.appendChild(e); }); });
+}
+{ const base = showTitle; showTitle = function(){ const r = base.apply(this, arguments); const scr = app.querySelector('.screen'); if(scr) pl2Outfit(scr); return r; }; }
+
+/* the Play Room's race door becomes "Two-player games" */
+{ const base = plRace; plRace = pl2Pick; window.plMazeRace = base; }
+function pl2Pick(){
+  app.innerHTML = `<div class="screen plroom"><img class="plbg" src="bg/001.webp" alt="">${plHdr('Two players, one tablet','Two-player games')}
+    <div class="pldoors"><button class="pldoor" data-k="maze"><span>&#127937;</span><b>Maze race</b><small>First to the trophy</small></button>
+    <button class="pldoor" data-k="ttt"><span>&#10060;&#11093;</span><b>Three in a row</b><small>Ladybug vs bee</small></button>
+    <button class="pldoor" data-k="pop"><span>&#129767;</span><b>Bubble pop race</b><small>Pop all your bubbles first</small></button></div></div>`;
+  plBind(showPlayRoom);
+  app.querySelectorAll('.pldoor').forEach(b=>b.onclick=()=>{ sfx.chime(); ({maze:plMazeRace, ttt:pl2Ttt, pop:pl2Pop})[b.dataset.k](); });
+}
+function pl2Win(scr, text, again){
+  sfx.win(); const m = document.createElement('div'); m.className = 'plrwin';
+  m.innerHTML = `<div class="plrcard"><h2>${text}</h2><p>Great playing, both of you!</p><div class="row"><button class="big green" id="pl2again">Play again</button><button class="big ghost" id="pl2out">Two-player games</button></div></div>`;
+  scr.appendChild(m); document.getElementById('pl2again').onclick = ()=>{ sfx.pop(); again(); }; document.getElementById('pl2out').onclick = ()=>{ sfx.pop(); pl2Pick(); };
+}
+function pl2Ttt(){
+  const L = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]], b = Array(9).fill(null), P = ['🐞','🐝']; let turn = 0, over = false;
+  app.innerHTML = `<div class="screen plroom pl2ttt"><img class="plbg" src="bg/094.webp" alt="">${plHdr('Two-player games','Three in a row')}
+    <div class="pl2turn" id="pl2turn"></div><div class="pl2grid">${b.map((_,i)=>`<button class="pl2c" data-i="${i}" aria-label="Square ${i+1}"></button>`).join('')}</div></div>`;
+  plBind(pl2Pick);
+  const sayTurn = ()=>{ document.getElementById('pl2turn').innerHTML = `${P[turn]} ${turn ? 'Bee' : 'Ladybug'}'s turn`; };
+  sayTurn();
+  app.querySelectorAll('.pl2c').forEach(c=>c.onclick=()=>{ const i = +c.dataset.i; if(over || b[i]!==null) return; b[i] = turn; c.textContent = P[turn]; c.classList.add('on'); tone(turn ? 660 : 523,.1,'triangle',.12);
+    const w = L.find(l=>l.every(k=>b[k]===turn));
+    if(w){ over = true; w.forEach(k=>app.querySelector(`.pl2c[data-i="${k}"]`).classList.add('win')); setTimeout(()=>pl2Win(app.querySelector('.pl2ttt'), `${P[turn]} ${turn ? 'Bee' : 'Ladybug'} wins!`, pl2Ttt), 700); return; }
+    if(b.every(x=>x!==null)){ over = true; setTimeout(()=>pl2Win(app.querySelector('.pl2ttt'), "It's a tie!", pl2Ttt), 500); return; }
+    turn = 1 - turn; sayTurn(); });
+}
+function pl2Pop(){
+  const N = 15, left = [N, N]; let over = false;
+  const field = s=>`<div class="pl2side ${s?'r':'l'}"><b class="plrname">${s?'Blue':'Red'} side: <span id="pl2n${s}">${N}</span> left</b><div class="pl2bf" id="pl2bf${s}">${[...Array(N)].map((_,i)=>`<button class="pl2bub" data-s="${s}" style="left:${20 + (i*67)%380}px;top:${20 + ((i*131)%7)*52 + (i%2)*14}px;--c:${s?'#7FD4FF':'#FF8FA3'};animation-delay:${(i*.17)%2}s" aria-label="Bubble"></button>`).join('')}</div></div>`;
+  app.innerHTML = `<div class="screen plroom pl2pop"><img class="plbg" src="bg/092.webp" alt="">${plHdr('Two-player games','Bubble pop race')}${field(0)}${field(1)}</div>`;
+  plBind(pl2Pick);
+  app.querySelectorAll('.pl2bub').forEach(bb=>bb.addEventListener('pointerdown', ev=>{ ev.preventDefault(); if(over || bb.classList.contains('pop')) return; const s = +bb.dataset.s; bb.classList.add('pop'); left[s]--;
+    tone(500 + (N-left[s])*30 + s*40,.06,'triangle',.1); document.getElementById('pl2n'+s).textContent = left[s];
+    if(!left[s]){ over = true; setTimeout(()=>pl2Win(app.querySelector('.pl2pop'), `${s ? 'Blue' : 'Red'} side wins!`, pl2Pop), 400); } }));
+}
+
+/* more band songs (public domain) */
+PL_SONGS.push(['Row, row, row your boat',[0,0,0,1,2,2,1,2,3,4]], ['Are you sleeping',[0,1,2,0,0,1,2,0,2,3,4,2,3,4]], ['Old MacDonald',[4,4,4,1,2,2,1,6,6,5,5,4]], ['London Bridge',[4,5,4,3,2,3,4,1,2,3,2,3,4]]);
+
+document.head.insertAdjacentHTML('beforeend', `<style>
+.pl2wear{position:absolute;z-index:3;font-style:normal;line-height:1;transform:translate(-50%,-50%);pointer-events:none;animation:pl2bob 3s ease-in-out infinite alternate}
+@keyframes pl2bob{to{transform:translate(-50%,-54%)}}
+.pl2ttt .pl2turn{position:absolute;left:0;right:0;top:100px;text-align:center;z-index:3;font-size:28px;font-weight:800}
+.pl2grid{position:absolute;left:50%;top:150px;transform:translateX(-50%);display:grid;grid-template-columns:repeat(3,140px);gap:10px;z-index:3;background:#1D1D2B;padding:10px;border-radius:24px}
+.pl2c{width:140px;height:140px;border:0;border-radius:16px;background:#FFF8E6;font-size:84px;cursor:pointer;padding:0}
+.pl2c.on{animation:pldpop .3s ease}.pl2c.win{background:#FFD23F}
+.pl2side{position:absolute;top:96px;width:490px;height:580px;z-index:2}.pl2side.l{left:10px}.pl2side.r{right:10px}
+.pl2side .plrname{display:block;text-align:center;margin:0 auto 6px;width:220px}
+.pl2bf{position:relative;height:520px;background:rgba(255,255,255,.35);border:4px dashed #1D1D2B55;border-radius:24px}
+.pl2bub{position:absolute;width:62px;height:62px;border-radius:50%;border:3px solid #1D1D2B;padding:0;cursor:pointer;touch-action:manipulation;background:radial-gradient(circle at 32% 28%,#fff 0 14%,transparent 16%),radial-gradient(circle,#ffffff55,var(--c));animation:pl2float 2.4s ease-in-out infinite alternate}
+@keyframes pl2float{to{transform:translateY(-10px)}}
+.pl2bub.pop{animation:rzszpop .3s ease forwards;pointer-events:none}
 </style>`);
 
 /* ---------- hook music + wipes into the screens ---------- */
