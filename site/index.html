@@ -7345,6 +7345,108 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rznstbk b{font-size:16px;background:#FFF8E6;border-radius:8px;padding:0 8px}
 </style>`);
 
+/* ===== rzfun16.js (v23.27): two timing games, both fully animated
+   - tower: "Tower of blocks" a block swings on a crane; tap to drop it onto the tower. Stack 5 (Easy) / 8 (Challenge, narrower blocks, faster swing).
+            A block that misses just tumbles away and a new one comes. (cat play)
+   - rope:  "Jump rope" the rope swings round; tap to make the ladybug jump over it. Easy 8 jumps (slow rope, "Jump!" light), Challenge 15 (it speeds up).
+            A trip only pauses the rope; the count is kept. (cat play)
+   Animation loops stop when their screen goes away. ===== */
+const RZ_TWC = ['#E5383B','#2B7BE4','#F4C430','#3FA34D','#9B5DE5','#FF7F11','#2EC4B6','#FF6FA5'];
+RZ_MAKE.tower = function(){ const e = easy(); return {type:'tower', title: e ? 'Tower of blocks! Tap to drop each block on the tower.' : 'Tower of blocks! Build 8 high. Drop carefully!', n: e ? 5 : 8, w: e ? 150 : 120, sp: e ? 1.5 : 2.1, sig:'tw'+(e?'e':'c')+Math.floor(Math.random()*1e6)}; };
+function rzTowerPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.n}</div><div class="rztwf" id="rztwf"><div class="rztwcr"><i></i></div><div class="rztwst" id="rztwst"><div class="rztwgr"></div></div><div class="rztwb" id="rztwb"></div><button class="rztwtap" id="rztwtap" aria-label="Drop the block">Tap to drop!</button></div>`);
+  const f = document.getElementById('rztwf'), st = document.getElementById('rztwst'), blk = document.getElementById('rztwb'), BH = 54, base = 600;
+  const S = window._rztw = {x:512, mode:'swing', y:150, vy:0, tops:[{x:512, w:g.w+40}], t:0, n:0, cam:0};
+  let last = 0; const col = ()=>RZ_TWC[S.n % RZ_TWC.length];
+  const paint = ()=>{ blk.style.width = g.w+'px'; blk.style.background = col(); };
+  paint();
+  const drop = ()=>{ if(!G.live || S.mode!=='swing') return; S.mode = 'drop'; S.vy = 0; tone(500,.06,'triangle',.1); };
+  document.getElementById('rztwtap').onclick = drop; f.addEventListener('pointerdown', ev=>{ if(ev.target.closest('button') && ev.target.id!=='rztwtap') return; drop(); });
+  const step = now=>{ if(!f.isConnected) return; const dt = Math.min(.05, last ? (now-last)/1000 : .016); last = now; S.t += dt;
+    const topY = base - (S.tops.length-1)*BH + S.cam;
+    if(S.mode==='swing'){ S.x = 512 + Math.sin(S.t*g.sp*(1 + S.n*.06))*260; S.y = 150; }
+    else if(S.mode==='drop'){ S.vy += 1600*dt; S.y += S.vy*dt;
+      if(S.y + BH >= topY){ const top = S.tops[S.tops.length-1], dx = S.x - top.x, tol = (g.w + top.w)/2 - 24;
+        if(Math.abs(dx) <= tol){ S.y = topY - BH; S.mode = 'land'; S.n++; S.tops.push({x:S.x, w:g.w});
+          const b = document.createElement('div'); b.className = 'rztwbl'; b.style.cssText = `left:${S.x - g.w/2}px;top:${base - (S.tops.length-1)*BH}px;width:${g.w}px;background:${RZ_TWC[(S.n-1) % RZ_TWC.length]}`; st.appendChild(b);
+          b.innerHTML = '<i></i><i></i>'; poke(); tone(330+S.n*60,.12,'triangle',.15); if(S.n<=20) lsoft(String(S.n), ['N:'+S.n]);
+          document.getElementById('cnt').textContent = `${S.n} / ${g.n}`;
+          if(S.n >= g.n){ S.mode = 'done'; clearHint(); G.getT = null; f.classList.add('yay'); rzDoneLater(1300); }
+          else setTimeout(()=>{ if(!f.isConnected || S.mode==='done') return; if(S.tops.length > 5) S.cam = (S.tops.length - 5)*BH; S.mode = 'swing'; S.t = Math.random()*6; paint(); }, 450); }
+        else { S.mode = 'fall'; S.spin = dx > 0 ? 1 : -1; miss(); sfx.oops(); } } }
+    else if(S.mode==='fall'){ S.vy += 1600*dt; S.y += S.vy*dt; S.x += S.spin*120*dt; if(S.y > 760){ S.mode = 'swing'; S.t = Math.random()*6; S.vy = 0; } }
+    st.style.transform = `translateY(${S.cam}px)`;
+    blk.style.display = (S.mode==='land' || S.mode==='done') ? 'none' : 'block';
+    blk.style.transform = `translate(${S.x - g.w/2}px,${S.y}px) rotate(${S.mode==='fall' ? (S.y-150)*.4*S.spin : Math.sin(S.t*g.sp)*-4}deg)`;
+    f.querySelector('.rztwcr').style.transform = `translateX(${S.mode==='swing' ? S.x - 512 : 0}px)`;
+    requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+  armHint(()=>document.getElementById('rztwtap'));
+}
+
+RZ_MAKE.rope = function(){ const e = easy(); return {type:'rope', title: e ? 'Jump rope! Tap to jump when the rope comes round.' : 'Jump rope! 15 jumps. It gets faster!', n: e ? 8 : 15, per: e ? 1.9 : 1.45, fast: !e, sig:'jr'+(e?'e':'c')+Math.floor(Math.random()*1e6)}; };
+function rzRopePlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.n}</div>
+    <div class="rzjrf" id="rzjrf"><svg viewBox="0 0 1024 700" class="rzjrsv"><path id="rzjrback" fill="none" stroke="#7A4E2D" stroke-width="7" stroke-linecap="round"/>
+      <g id="rzjrbug">${typeof RZ_LBUG!=='undefined' ? `<g transform="translate(-32 -26)">${RZ_LBUG.replace('<svg','<svg x="0" y="0"')}</g>` : '<circle r="24" fill="#E5383B"/>'}</g>
+      <path id="rzjrfront" fill="none" stroke="#A0522D" stroke-width="8" stroke-linecap="round"/>
+      <g transform="translate(250 470)"><rect x="-14" y="-90" width="28" height="90" rx="12" fill="#3FA34D" stroke="#1D1D2B" stroke-width="4"/><circle cy="-110" r="24" fill="#F4C430" stroke="#1D1D2B" stroke-width="4"/><circle cx="-8" cy="-114" r="3.5"/><circle cx="8" cy="-114" r="3.5"/><path d="M-9 -102 q9 8 18 0" stroke="#1D1D2B" stroke-width="3" fill="none"/></g>
+      <g transform="translate(774 470)"><rect x="-14" y="-90" width="28" height="90" rx="12" fill="#2B7BE4" stroke="#1D1D2B" stroke-width="4"/><circle cy="-110" r="24" fill="#FF7F11" stroke="#1D1D2B" stroke-width="4"/><circle cx="-8" cy="-114" r="3.5"/><circle cx="8" cy="-114" r="3.5"/><path d="M-9 -102 q9 8 18 0" stroke="#1D1D2B" stroke-width="3" fill="none"/></g>
+      <ellipse cx="512" cy="562" rx="60" ry="10" fill="#0003" id="rzjrsh"/></svg>
+    <div class="rzjrgo" id="rzjrgo">Jump!</div><button class="rzjrtap" id="rzjrtap" aria-label="Jump">Tap to jump!</button></div>`);
+  const f = document.getElementById('rzjrf'), bug = document.getElementById('rzjrbug'), go = document.getElementById('rzjrgo');
+  f.classList.toggle('hard', !!g.fast); const S = window._rzjr = {ph:.25, jt:-1, n:0, per:g.per, pause:0, done:false};
+  S.toBottom = ()=>{ const p = S.ph % 1; return ((0.5 - p + 1) % 1) * S.per; };
+  const jump = ()=>{ if(!G.live || S.done || S.jt >= 0 || S.pause > 0) return; S.jt = 0; tone(660,.07,'triangle',.1); };
+  document.getElementById('rzjrtap').onclick = jump; f.addEventListener('pointerdown', ev=>{ if(ev.target.closest('button') && ev.target.id!=='rzjrtap') return; jump(); });
+  const AIR = .6; let last = 0, prevP = S.ph % 1;
+  const step = now=>{ if(!f.isConnected) return; const dt = Math.min(.05, last ? (now-last)/1000 : .016); last = now;
+    if(S.pause > 0){ S.pause -= dt; } else if(!S.done) S.ph += dt / S.per;
+    if(S.jt >= 0){ S.jt += dt; if(S.jt > AIR) S.jt = -1; }
+    const p = S.ph % 1, a = p * Math.PI * 2, h = Math.cos(a);   // p .5 = rope at the bottom (under the feet), 0 = over the head
+    const yMid = 380 - h * 190, front = Math.sin(a) < 0;
+    const d = `M262 384 Q512 ${yMid*2 - 384} 762 384`; document.getElementById(front ? 'rzjrfront' : 'rzjrback').setAttribute('d', d); document.getElementById(front ? 'rzjrback' : 'rzjrfront').setAttribute('d', '');
+    const jy = S.jt >= 0 ? Math.sin(S.jt/AIR*Math.PI)*120 : 0; bug.setAttribute('transform', `translate(512 ${536 - jy})`);
+    document.getElementById('rzjrsh').setAttribute('rx', 60 - jy*.25);
+    if(!S.done && prevP < .5 && p >= .5 && S.pause <= 0){ // the rope passes under the feet now
+      if(S.jt >= 0){ S.n++; poke(); tone(440+S.n*25,.08,'triangle',.13); if(S.n<=20) lsoft(String(S.n), ['N:'+S.n]); document.getElementById('cnt').textContent = `${S.n} / ${g.n}`;
+        if(g.fast) S.per = Math.max(.95, S.per - .03);
+        if(S.n >= g.n){ S.done = true; clearHint(); G.getT = null; f.classList.add('yay'); rzDoneLater(1100); } }
+      else { miss(); tone(200,.15,'sine',.1); S.pause = 1.1; f.classList.remove('trip'); void f.offsetWidth; f.classList.add('trip'); } }
+    prevP = p;
+    const tb = S.toBottom(); go.classList.toggle('on', !S.done && S.pause <= 0 && tb < .5 && tb > .05 && S.jt < 0);
+    requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+  armHint(()=>document.getElementById('rzjrtap'));
+}
+
+Object.assign(RZ_FAM, {tower:{cat:'play'}, rope:{cat:'play'}});
+Object.assign(RZ_STAMP, {tower:['🧱','Tower of blocks'], rope:['🪢','Jump rope']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {tower:rzTowerPlay, rope:rzRopePlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rztwf{position:absolute;inset:0;z-index:3;overflow:hidden;touch-action:manipulation}
+.rztwcr{position:absolute;left:487px;top:90px;width:50px;height:60px}
+.rztwcr::before{content:'';position:absolute;left:-30px;right:-30px;top:0;height:14px;background:#F4A300;border:3px solid #1D1D2B;border-radius:6px}
+.rztwcr i{position:absolute;left:23px;top:14px;width:4px;height:46px;background:#1D1D2B}
+.rztwgr{position:absolute;left:330px;width:364px;top:600px;height:24px;background:#8B5A2B;border:4px solid #1D1D2B;border-radius:10px}
+.rztwst{position:absolute;inset:0;transition:transform .5s ease}
+.rztwb,.rztwbl{position:absolute;left:0;top:0;height:54px;border:4px solid #1D1D2B;border-radius:10px;box-sizing:border-box;box-shadow:inset 0 -8px 0 #0003,inset 0 6px 0 #fff5}
+.rztwbl{animation:rztwland .3s ease}@keyframes rztwland{30%{transform:scaleY(.8) translateY(6px)}}
+.rztwbl i{position:absolute;top:14px;width:14px;height:14px;border-radius:50%;background:#1D1D2B55}.rztwbl i:first-child{left:22%}.rztwbl i:last-child{right:22%}
+.rztwtap,.rzjrtap{position:absolute;right:40px;bottom:120px;padding:12px 22px;font-size:22px;font-weight:800;border:4px solid #1D1D2B;border-radius:22px;background:#FFF8E6;cursor:pointer;box-shadow:0 4px 0 #1D1D2B}
+.rztwf.yay .rztwst{animation:rztwyay .5s ease 3}@keyframes rztwyay{50%{filter:brightness(1.25)}}
+.rzjrf{position:absolute;inset:0;z-index:3;touch-action:manipulation}
+.rzjrsv{position:absolute;inset:0;width:1024px;height:700px}
+.rzjrgo{position:absolute;left:452px;top:150px;width:120px;text-align:center;font-size:34px;font-weight:900;color:#3FA34D;-webkit-text-stroke:2px #1D1D2B;opacity:0;transition:opacity .1s}
+.rzjrgo.on{opacity:1}
+.rzjrf.hard .rzjrgo{display:none}
+.rzjrf.trip{animation:shake .4s}
+.rzjrf.yay .rzjrsv{animation:rztwyay .5s ease 3}
+</style>`);
+
 /* ===== mouth.js (v23.17): bigger, livelier talking mouths (Chester: "the mouth animations barely move")
    Lisa and Lucas: a real open mouth (dark with a tongue) now opens and closes with the voice, syllable by syllable,
    drawn over their painted mouth. The voice meter is also more sensitive, which helps the 15 friends' mouths too. ===== */
@@ -7804,6 +7906,54 @@ html.calm .a2wf{display:none}
 @keyframes a2birds{0%{transform:translate(0,0)}30%{transform:translate(1250px,-40px)}100%{transform:translate(1250px,-40px)}}
 @keyframes a2flap{to{transform:scaleY(.4)}}
 html.calm .a2bug,html.calm .a2bee,html.calm .a2map{display:none}
+</style>`);
+
+/* ===== fun2.js (v23.27): everything answers a tap
+   - Every tap anywhere in the game makes a little burst of sparkles (smaller in calm mode, never blocks a tap).
+   - Start screen: tap Lisa or Lucas (painted in Grok's picture) and hearts / stars float up with a happy chirp;
+     tap the suitcase and a paper plane flies out; tap the compass and its needle spins; tap the book and its pages sparkle. ===== */
+(function(){
+  const COLS = ['#FFD23F','#FF6FA5','#7FD4FF','#7CF29C','#FF7F11','#B794F6'];
+  document.addEventListener('pointerdown', ev=>{
+    const st = document.getElementById('stage'); if(!st || !st.contains(ev.target)) return;
+    const r = st.getBoundingClientRect(), sc = r.width / 1024, x = (ev.clientX - r.left)/sc, y = (ev.clientY - r.top)/sc;
+    const calm = typeof TLB_CALM!=='undefined' && TLB_CALM, n = calm ? 3 : 7;
+    const box = document.createElement('div'); box.className = 'f2burst'; box.style.left = x+'px'; box.style.top = y+'px';
+    box.innerHTML = [...Array(n)].map((_,i)=>{ const a = i/n*Math.PI*2 + Math.random()*.5, d = (calm ? 18 : 30) + Math.random()*22;
+      return `<i style="--x:${(Math.cos(a)*d).toFixed(0)}px;--y:${(Math.sin(a)*d).toFixed(0)}px;background:${COLS[(i+Math.floor(Math.random()*6))%6]};animation-delay:${(Math.random()*.05).toFixed(2)}s"></i>`; }).join('') + '<b></b>';
+    st.appendChild(box); setTimeout(()=>box.remove(), 700);
+  }, true);
+})();
+
+function f2Float(scr, x, y, ch, n){ for(let i=0;i<n;i++){ const e = document.createElement('i'); e.className = 'hsfx f2fl'; e.textContent = ch;
+  e.style.left = (x + (Math.random()-.5)*70)+'px'; e.style.top = y+'px'; e.style.animationDelay = (i*.09)+'s'; e.style.setProperty('--dx', ((Math.random()-.5)*80).toFixed(0)+'px'); scr.appendChild(e); setTimeout(()=>e.remove(), 1900 + i*90); } }
+function f2Home(scr){
+  if(!scr.querySelector('.hsimg') || scr.querySelector('.f2hot')) return;
+  const hot = (cls, x, y, w, h, label, fn)=>{ const b = document.createElement('button'); b.className = 'hsfx f2hot '+cls; b.setAttribute('aria-label', label);
+    b.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px`; b.onclick = e=>{ e.stopPropagation(); fn(b); }; scr.appendChild(b); return b; };
+  const chirp = notes=>notes.forEach((f,i)=>{ try{ tone(f,.12,'triangle',.12,i*.09); }catch(_){} });
+  hot('f2lisa', 70, 300, 120, 330, 'Lisa', ()=>{ f2Float(scr, 125, 300, '❤️', 5); chirp([784,988,1175]); });
+  hot('f2lucas', 300, 320, 120, 310, 'Lucas', ()=>{ f2Float(scr, 355, 320, '⭐', 5); chirp([659,880,1047]); });
+  hot('f2case', 18, 560, 70, 90, 'Suitcase', b=>{ chirp([523,659]); const p = document.createElement('i'); p.className = 'hsfx f2plane'; p.textContent = '✈️'; scr.appendChild(p); setTimeout(()=>p.remove(), 2600); b.classList.remove('f2wig'); void b.offsetWidth; b.classList.add('f2wig'); });
+  hot('f2comp', 400, 608, 64, 56, 'Compass', b=>{ chirp([440,554,659,880]); const n = document.createElement('i'); n.className = 'hsfx f2needle'; n.style.left = '432px'; n.style.top = '636px'; scr.appendChild(n); setTimeout(()=>n.remove(), 1700); });
+  hot('f2book', 180, 610, 120, 60, 'Book', ()=>{ chirp([698,880]); f2Float(scr, 240, 610, '✨', 4); });
+}
+{ const base = showTitle; showTitle = function(){ const r = base.apply(this, arguments); const scr = app.querySelector('.screen'); if(scr) f2Home(scr); return r; }; }
+
+document.head.insertAdjacentHTML('beforeend', `<style>
+.f2burst{position:absolute;width:0;height:0;z-index:99;pointer-events:none}
+.f2burst i{position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:2px;transform:rotate(45deg);animation:f2b .6s ease-out forwards}
+.f2burst b{position:absolute;left:-14px;top:-14px;width:28px;height:28px;border-radius:50%;border:3px solid #fff;opacity:.8;animation:f2ring .45s ease-out forwards}
+@keyframes f2b{to{transform:translate(var(--x),var(--y)) rotate(225deg) scale(.3);opacity:0}}
+@keyframes f2ring{to{transform:scale(2.2);opacity:0}}
+.f2hot{position:absolute;z-index:3;border:0;background:none;padding:0;cursor:pointer;border-radius:40%}
+.f2hot.f2wig{animation:shake .4s}
+.f2fl{position:absolute;z-index:4;font-style:normal;font-size:30px;pointer-events:none;animation:f2fl 1.8s ease-out forwards}
+@keyframes f2fl{0%{transform:translate(0,0) scale(.4);opacity:0}15%{opacity:1;transform:translate(0,-20px) scale(1.1)}100%{transform:translate(var(--dx),-170px) scale(.9);opacity:0}}
+.f2plane{position:absolute;left:50px;top:560px;z-index:4;font-style:normal;font-size:40px;pointer-events:none;animation:f2plane 2.5s ease-in forwards}
+@keyframes f2plane{0%{transform:translate(0,0) rotate(-10deg) scale(.4)}40%{transform:translate(260px,-260px) rotate(-25deg) scale(1)}100%{transform:translate(1100px,-480px) rotate(-15deg) scale(.8);opacity:.6}}
+.f2needle{position:absolute;z-index:4;width:6px;height:40px;margin:-20px 0 0 -3px;background:linear-gradient(#E5383B 50%,#1D1D2B 50%);border-radius:3px;pointer-events:none;animation:f2spin 1.6s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes f2spin{to{transform:rotate(1080deg)}}
 </style>`);
 
 /* ---------- hook music + wipes into the screens ---------- */
