@@ -6651,6 +6651,244 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .ppst{height:78px!important}.ppst span{font-size:28px!important}.ppst small{font-size:10px!important;max-width:76px!important}
 </style>`);
 
+/* ===== rzfun9.js (v23.21): four more Challenge games + drifting life on every puzzle screen
+   - keymaze:   "Key and gate maze" grab the key first, the gate opens, then reach the treasure (Easy 8x5, Challenge 12x7 with 2 keys/gates). (cat maze)
+   - opposite:  "Opposites" find the opposite picture: hot / cold, day / night, big / small... (cat abc)
+   - pixel:     "Pixel art" Easy: copy the little picture square by square; Challenge: finish the other half of a butterfly (mirror). (cat play)
+   - domino:    "Domino dots" count the dots and tap the matching number (Challenge: add both halves). (cat num)
+   Nothing is lost on a wrong tap. ===== */
+/* ---------- Key and gate maze ---------- */
+RZ_MAKE.keymaze = function(){ const e = easy(), W = e ? 8 : 12, H = e ? 5 : 7, nk = e ? 1 : 2;
+  for(let t=0; t<60; t++){ const wall = rzMazeGen(W, H, 0), start = 0, dist = rzBfs(wall, W, H, start), goal = dist.indexOf(Math.max(...dist));
+    const path = rzPath(wall, W, H, start, goal); if(path.length < 8) continue;
+    // gates sit on the solution path; each key sits in a dead end off the path before its gate
+    const onPath = new Set(path), gates = [], keys = [];
+    for(let i=0;i<nk;i++){ const gi = Math.floor(path.length*(i+1)/(nk+1)); gates.push(path[gi]); }
+    let okk = true;
+    for(let i=0;i<nk;i++){ const before = new Set(path.slice(0, path.indexOf(gates[i]))); const blocked = new Set(gates.slice(i));
+      // cells reachable from start without crossing gates i..: pick a far one off the path
+      const seen = new Map([[start,0]]), q = [start]; const D = [[0,-1],[1,0],[0,1],[-1,0]];
+      while(q.length){ const c = q.shift(), x = c%W, y = (c/W)|0; for(let d=0;d<4;d++) if(!wall[c][d]){ const n = (y+D[d][1])*W + x+D[d][0]; if(!seen.has(n) && !blocked.has(n)){ seen.set(n, seen.get(c)+1); q.push(n); } } }
+      const cand = [...seen.entries()].filter(([c,v])=>!onPath.has(c) && !keys.includes(c) && v>=3).sort((a,b)=>b[1]-a[1]); if(!cand.length){ okk = false; break; } keys.push(cand[Math.floor(Math.random()*Math.min(4,cand.length))][0]); }
+    if(!okk) continue;
+    return {type:'keymaze', title: nk>1 ? 'Find the keys to open the gates, then reach the treasure!' : 'Find the key to open the gate, then reach the treasure!', W, H, wall, start, goal, gems:[], gates, keys, sig:'k'+W+'x'+H+':'+wall.map(w=>w[1]+''+w[2]).join('')+':'+gates.join(',')+':'+keys.join(',')}; }
+  return RZ_MAKE.bigmaze(); };
+function rzKeyMazePlay(g){
+  // gates are sealed cells (walls on every side) until their key is picked up; then their original openings come back
+  const W = g.W, D = [[0,-1],[1,0],[0,1],[-1,0]]; if(!g.saved) g.saved = g.gates.map(k=>g.wall[k].slice()); const saved = g.saved;
+  const seal = (k, on, orig)=>{ const x = k%W, y = (k/W)|0; for(let d=0; d<4; d++){ const nx = x+D[d][0], ny = y+D[d][1]; if(nx<0||ny<0||nx>=W||ny>=g.H) continue; const n = ny*W+nx;
+    const v = on ? 1 : orig[d]; g.wall[k][d] = v; g.wall[n][(d+2)%4] = v; } };
+  g.gates.forEach(k=>seal(k, true));
+  rzMazePlay(g, CITIES.rz); const box = document.getElementById('rzm'); if(!box) return;
+  const cs = box.offsetWidth / W, held = new Set();
+  const lay = document.createElement('div'); lay.className = 'rzkl'; box.appendChild(lay);
+  const draw = ()=>{ lay.innerHTML = g.keys.map((k,i)=>held.has(i) ? '' : `<i style="left:${(k%W)*cs}px;top:${((k/W)|0)*cs}px;width:${cs}px;height:${cs}px;font-size:${cs*.62}px">${['🔑','🗝️'][i]}</i>`).join('')
+    + g.gates.map((k,i)=>held.has(i) ? '' : `<i class="gate" style="left:${(k%W)*cs}px;top:${((k/W)|0)*cs}px;width:${cs}px;height:${cs}px;font-size:${cs*.62}px">🔒</i>`).join(''); };
+  draw();
+  const bugCell = ()=>{ const b = box.querySelector('.rzbug'); const m = (b.getAttribute('transform')||'').match(/translate\(([\d.]+)[ ,]+([\d.]+)/); return Math.floor(+m[2]/cs)*W + Math.floor(+m[1]/cs); };
+  let last = g.start;
+  const mo = new MutationObserver(()=>{ const c = bugCell(); if(c===last) return;
+    // a tap can slide along a corridor: check every cell passed on the way
+    const cells = []; const ax = last%W, ay = (last/W)|0, bx = c%W, by = (c/W)|0;
+    if(ax===bx){ const s = by>ay ? 1 : -1; for(let y=ay+s; y!==by+s; y+=s) cells.push(y*W+ax); } else if(ay===by){ const s = bx>ax ? 1 : -1; for(let x=ax+s; x!==bx+s; x+=s) cells.push(ay*W+x); } else cells.push(c);
+    cells.forEach(k=>{ const ki = g.keys.indexOf(k); if(ki>=0 && !held.has(ki)){ held.add(ki); seal(g.gates[ki], false, saved[ki]); tone(990,.12,'triangle',.15); tone(1320,.18,'triangle',.12,.1);
+      document.getElementById('cnt').textContent = held.size<g.keys.length ? `A key! The ${['first','second'][ki]} gate is open. Find the next key!` : 'All gates open! Now the treasure!'; draw(); } });
+    last = c; });
+  mo.observe(document.getElementById('rzmsvg'), {childList:true});
+  document.getElementById('cnt').textContent = g.keys.length>1 ? 'Find the 2 keys!' : 'Find the key!';
+  armHint(()=>{ const pos = bugCell(); const tgt = g.keys.map((k,i)=>held.has(i)?null:k).filter(x=>x!=null)[0] ?? g.goal; const p = rzPath(g.wall, W, g.H, pos, tgt); const nx = p[1]; if(nx==null) return null;
+    const hc = document.getElementById('rzhc'); hc.style.left = ((nx%W)*cs)+'px'; hc.style.top = (((nx/W)|0)*cs)+'px'; return hc; });
+}
+/* ---------- Opposites ---------- */
+const RZ_OPP = [['🔥','❄️','hot','cold'],['☀️','🌙','day','night'],['🐘','🐭','big','small'],['😀','😢','happy','sad'],['🐇','🐢','fast','slow'],['⬆️','⬇️','up','down'],['🌊','🏜️','wet','dry'],['🔊','🔇','loud','quiet'],['🦒','🐁','tall','short'],['👶','👴','young','old']];
+RZ_MAKE.opposite = function(){ const e = easy(), rounds = e ? 3 : 4, R = cshuf(RZ_OPP).slice(0, rounds).map(p=>{ const flip = Math.random()<.5, a = flip ? [p[1],p[3]] : [p[0],p[2]], b = flip ? [p[0],p[2]] : [p[1],p[3]];
+  const CL = {'🔥':['☀️'],'☀️':['🔥'],'🐘':['🦒'],'🦒':['🐘'],'🐭':['🐁'],'🐁':['🐭'],'🐢':['👴'],'👴':['🐢'],'🌙':['🌑'],'❄️':['🌊']};
+  const others = cshuf(RZ_OPP.filter(q=>q!==p).flatMap(q=>[q[0],q[1]]).filter(x=>!(CL[b[0]]||[]).includes(x))).slice(0, e ? 2 : 3); return {a, b, opts:cshuf([b[0], ...others])}; });
+  return {type:'opposite', title:'Find the opposite!', R, sig:R.map(r=>r.a[0]+r.b[0]).join('')}; };
+function rzOppPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">1 / ${g.R.length}</div>
+    <div class="rzopp"><div class="rzopq"><span id="rzoa"></span><b id="rzon"></b></div><div class="rzopv">&#8596;</div><div class="rzopq q"><span id="rzob">?</span><b id="rzobn">opposite</b></div></div><div class="rzopts" id="rzoo"></div>`);
+  let r = 0;
+  function round(){ const R = g.R[r]; document.getElementById('cnt').textContent = `${r+1} / ${g.R.length}`; document.getElementById('rzoa').textContent = R.a[0]; document.getElementById('rzon').textContent = R.a[1]; document.getElementById('rzob').textContent = '?'; document.getElementById('rzobn').textContent = 'opposite';
+    const o = document.getElementById('rzoo'); o.innerHTML = R.opts.map(x=>`<button class="rzoo" data-x="${x}" aria-label="Picture">${x}</button>`).join('');
+    o.querySelectorAll('.rzoo').forEach(b=>b.onclick=()=>{ if(!G.live) return;
+      if(b.dataset.x===R.b[0]){ poke(); document.getElementById('rzob').textContent = R.b[0]; document.getElementById('rzobn').textContent = R.b[1]; b.classList.add('ok'); sfx.chime(); o.querySelectorAll('.rzoo').forEach(x=>x.onclick=null); r++; clearHint();
+        if(r>=g.R.length){ G.getT = null; rzDoneLater(1200); } else setTimeout(round, 1400); }
+      else { miss(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); tone(220,.12,'sine',.1); } });
+    armHint(()=>o.querySelector(`.rzoo[data-x="${R.b[0]}"]`)); }
+  round();
+}
+
+/* ---------- Pixel art ---------- */
+const RZ_PIXPAL = ['#FFFFFF','#E5383B','#FFD23F','#3FA34D','#2B7BE4','#1D1D2B','#F4A300','#C64FB2'];
+const RZ_PIXPICS = [ // 0 white, 1 red, 2 yellow, 3 green, 4 blue, 5 black, 6 orange, 7 pink
+  {n:'ladybug', N:5, p:'0050011511151511111501110'}, {n:'flower', N:5, p:'0727007270002000303000300'}, {n:'heart', N:5, p:'0101011111111110111000100'},
+  {n:'sun', N:5, p:'2020200200202222020020202'}, {n:'house', N:5, p:'0010001110111114414414414'}, {n:'tree', N:5, p:'0333033333333330060000600'}];
+const RZ_BFLY = [ // 6x6, left half given, right half mirrored
+  '700007','770077','757757','055550','757757','700007'];
+RZ_MAKE.pixel = function(){ const e = easy();
+  if(e){ const P = rzOne(RZ_PIXPICS); return {type:'pixel', title:`Pixel art: copy the ${P.n}!`, mode:'copy', N:P.N, want:P.p.split('').map(Number), given:Array(P.N*P.N).fill(-1), sig:'c'+P.n}; }
+  const rows = RZ_BFLY.map(r=>r.split('').map(Number)), N = 6, want = rows.flat(), given = want.map((v,k)=> (k%N) < N/2 ? v : -1);
+  return {type:'pixel', title:'Pixel art: finish the butterfly! Make the right side match the left.', mode:'mirror', N, want, given, sig:'m'+want.join('')}; };
+function rzPixelPlay(g){
+  const N = g.N, sz = N===5 ? 64 : 56; let cur = 1; const cells = g.given.slice();
+  const todo = ()=>g.want.map((v,k)=>k).filter(k=>g.given[k]<0);
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${todo().length}</div>
+    <div class="rzpix">${g.mode==='copy' ? `<div class="rzpex"><small>Copy me!</small><div class="rzpg" style="grid-template-columns:repeat(${N},22px)">${g.want.map(v=>`<i style="background:${RZ_PIXPAL[v]};width:22px;height:22px"></i>`).join('')}</div></div>` : ''}
+    <div class="rzpg big" id="rzpg" style="grid-template-columns:repeat(${N},${sz}px)">${cells.map((v,k)=>`<button class="rzpc2 ${v>=0?'fixed':''} ${g.mode==='mirror' && k%N===N/2?'mid':''}" data-k="${k}" style="width:${sz}px;height:${sz}px;background:${v>=0?RZ_PIXPAL[v]:'#FFFDF6'}" aria-label="Square"></button>`).join('')}</div>
+    <div class="rzppal">${[...new Set(g.want)].sort().map(i=>`<button class="rzppc ${i===1?'on':''}" data-i="${i}" style="background:${RZ_PIXPAL[i]}" aria-label="Colour"></button>`).join('')}</div></div>`);
+  if(!document.querySelector(`.rzppc[data-i="${cur}"]`)){ cur = +document.querySelector('.rzppc').dataset.i; document.querySelector('.rzppc').classList.add('on'); }
+  let n = 0; const total = todo().length;
+  document.querySelectorAll('.rzppc').forEach(b=>b.onclick=()=>{ poke(); cur = +b.dataset.i; document.querySelectorAll('.rzppc').forEach(x=>x.classList.toggle('on', x===b)); tone(700,.05,'triangle',.08); });
+  document.querySelectorAll('.rzpc2:not(.fixed)').forEach(c=>c.onclick=()=>{ if(!G.live || c.classList.contains('done')) return; const k = +c.dataset.k;
+    if(g.want[k]===cur){ poke(); c.style.background = RZ_PIXPAL[cur]; c.classList.add('done'); n++; tone(500+n*12,.06,'square',.05); document.getElementById('cnt').textContent = `${n} / ${total}`;
+      if(n>=total){ clearHint(); G.getT = null; document.getElementById('rzpg').classList.add('glow'); rzDoneLater(1100); } }
+    else { miss(); c.style.background = RZ_PIXPAL[cur]; setTimeout(()=>{ if(!c.classList.contains('done')) c.style.background = '#FFFDF6'; }, 400); tone(200,.08,'sine',.08); } });
+  armHint(()=>{ const k = todo().find(k=>!document.querySelector(`.rzpc2[data-k="${k}"]`).classList.contains('done')); if(k==null) return null; return g.want[k]===cur ? document.querySelector(`.rzpc2[data-k="${k}"]`) : document.querySelector(`.rzppc[data-i="${g.want[k]}"]`); });
+}
+
+/* ---------- Domino dots ---------- */
+RZ_MAKE.domino = function(){ const e = easy(), rounds = e ? 3 : 4, R = [];
+  for(let r=0;r<rounds;r++){ const a = e ? 1 + Math.floor(Math.random()*6) : 1 + Math.floor(Math.random()*6), b = e ? 0 : 1 + Math.floor(Math.random()*6), t = a + b;
+    const opts = cshuf([t, t+1, Math.max(1, t-1), t+2].filter((v,i,arr)=>arr.indexOf(v)===i)).slice(0,3); if(!opts.includes(t)) opts[0] = t; R.push({a, b, t, opts:cshuf(opts)}); }
+  return {type:'domino', title: e ? 'Count the dots! Tap the number.' : 'Add both sides of the domino!', R, sig:R.map(r=>r.a+'-'+r.b).join(',')}; };
+function rzDominoPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">1 / ${g.R.length}</div><div class="rzdom" id="rzdm"></div><div class="rzopts" id="rzdo"></div>`);
+  let r = 0;
+  function round(){ const R = g.R[r]; document.getElementById('cnt').textContent = `${r+1} / ${g.R.length}`;
+    document.getElementById('rzdm').innerHTML = `<div class="rzdomt">${rzDie(R.a)}${R.b ? `<b></b>${rzDie(R.b)}` : ''}</div>`;
+    const o = document.getElementById('rzdo'); o.innerHTML = R.opts.map(v=>`<button class="rzoo num" data-v="${v}" aria-label="${v}">${v}</button>`).join('');
+    o.querySelectorAll('.rzoo').forEach(b=>b.onclick=()=>{ if(!G.live) return; const v = +b.dataset.v; if(v<=20) lsoft(String(v), ['N:'+v]);
+      if(v===R.t){ poke(); b.classList.add('ok'); sfx.chime(); o.querySelectorAll('.rzoo').forEach(x=>x.onclick=null); r++; clearHint(); if(r>=g.R.length){ G.getT = null; rzDoneLater(1100); } else setTimeout(round, 1200); }
+      else { miss(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } });
+    armHint(()=>o.querySelector(`.rzoo[data-v="${R.t}"]`)); }
+  round();
+}
+
+Object.assign(RZ_FAM, {keymaze:{cat:'maze'}, opposite:{cat:'abc'}, pixel:{cat:'play'}, domino:{cat:'num'}});
+Object.assign(RZ_STAMP, {keymaze:['🔑','Key and gate maze'], opposite:['↔️','Opposites'], pixel:['👾','Pixel art'], domino:['🁫','Domino dots']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {keymaze:rzKeyMazePlay, opposite:rzOppPlay, pixel:rzPixelPlay, domino:rzDominoPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    if(t==='keymaze' && !document.getElementById('rzundo')){ const bar = app.querySelector('.rzbar'); if(bar){ bar.insertAdjacentHTML('afterbegin', `<button class="rzb" id="rzundo" aria-label="Undo">&#8630;<small>Undo</small></button>`); document.getElementById('rzundo').onclick = ()=>{ sfx.pop(); rzUndo && rzUndo(); }; } }
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+
+/* ---------- drifting life on every Challenge puzzle screen (butterflies + sparkles over Grok's paintings) ---------- */
+{ const base = cgameShell; cgameShell = function(id){ const r = base.apply(this, arguments);
+  if(id==='rz' && !document.documentElement.classList.contains('calm')){ const scr = app.querySelector('.screen'); if(scr && !scr.querySelector('.rzdrift')){
+    scr.insertAdjacentHTML('beforeend', `<div class="rzdrift" aria-hidden="true">${['🦋','🦋','✨','✨','🐝'].map((x,k)=>`<i style="--y:${90 + k*110}px;--d:${18 + k*5}s;animation-delay:-${k*4}s">${x}</i>`).join('')}</div>`); } }
+  return r; }; }
+
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzkl{position:absolute;inset:0;pointer-events:none}
+.rzkl i{position:absolute;display:flex;align-items:center;justify-content:center;font-style:normal;animation:bob 1.8s ease-in-out infinite}
+.rzkl i.gate{background:rgba(141,90,43,.85);border-radius:8px;animation:none}
+.rzkl.shake{animation:shake .35s}
+.rzopp{position:absolute;left:0;right:0;top:150px;z-index:4;display:flex;justify-content:center;align-items:center;gap:30px}
+.rzopq{width:190px;height:200px;border-radius:28px;background:rgba(255,253,246,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 8px 0 rgba(0,0,0,.12)}
+.rzopq span{font-size:100px;line-height:1.1}.rzopq b{font:800 24px 'Baloo 2',Arial;color:#7A6640}
+.rzopq.q span{color:#D9BF8C;font:800 90px 'Baloo 2',Arial}
+.rzopv{font-size:60px;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.25)}
+.rzopts{position:absolute;left:0;right:0;top:400px;z-index:4;display:flex;justify-content:center;gap:18px}
+.rzoo{width:112px;height:112px;border-radius:24px;background:#fff;font-size:66px;line-height:1;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.12)}
+.rzoo.num{font:800 56px 'Baloo 2',Arial;color:#1D1D2B}
+.rzoo.ok{box-shadow:0 0 0 6px #3FA34D}.rzoo.shake{animation:shake .4s}
+.rzpix{position:absolute;left:0;right:0;top:140px;z-index:4;display:flex;justify-content:center;align-items:center;gap:26px}
+.rzpex{display:flex;flex-direction:column;align-items:center;gap:4px;background:rgba(255,253,246,.95);border-radius:18px;padding:8px 12px;font-weight:800}
+.rzpg{display:grid;gap:2px;background:#D9BF8C;padding:3px;border-radius:8px}
+.rzpg.big{gap:3px;padding:5px;border-radius:14px;box-shadow:0 8px 0 rgba(0,0,0,.12)}
+.rzpg.glow{box-shadow:0 0 0 6px #3FA34D,0 8px 0 rgba(0,0,0,.12)}
+.rzpg i{display:block}
+.rzpc2{border-radius:6px;cursor:pointer;padding:0;transition:background .15s}
+.rzpc2.fixed{cursor:default}.rzpc2.mid{box-shadow:inset 3px 0 0 #8D6A2E}
+.rzpc2.done{animation:pop .25s}
+.rzppal{display:grid;grid-template-columns:repeat(2,60px);gap:10px;background:rgba(255,253,246,.94);border-radius:20px;padding:12px}
+.rzppc{width:60px;height:60px;border-radius:50%;border:5px solid #fff;box-shadow:0 3px 0 rgba(0,0,0,.2);cursor:pointer}
+.rzppc[data-i="0"]{box-shadow:0 0 0 2px #D9BF8C,0 3px 0 rgba(0,0,0,.2)}
+.rzppc.on{transform:scale(1.15);box-shadow:0 0 0 4px #1D1D2B}
+.rzdom{position:absolute;left:0;right:0;top:170px;z-index:4;display:flex;justify-content:center}
+.rzdomt{display:flex;align-items:center;gap:0;background:#FFFDF6;border:6px solid #1D1D2B;border-radius:22px;padding:10px;box-shadow:0 8px 0 rgba(0,0,0,.15)}
+.rzdomt b{width:6px;height:110px;background:#1D1D2B;margin:0 10px;border-radius:3px}
+.rzdomt .rzdie{width:120px;height:120px;border:none;box-shadow:none;padding:12px;gap:6px}
+.rzdrift{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
+.rzdrift i{position:absolute;left:-60px;top:var(--y);font-size:30px;font-style:normal;opacity:.85;animation:rzdrift var(--d) linear infinite}
+@keyframes rzdrift{0%{transform:translate(0,0)}25%{transform:translate(300px,-30px)}50%{transform:translate(600px,10px)}75%{transform:translate(900px,-25px)}100%{transform:translate(1150px,0)}}
+@media (prefers-reduced-motion: reduce){.rzdrift{display:none}}
+</style>`);
+
+/* ===== rzfun10.js (v23.21): two more Challenge games
+   - spots:   "Ladybug spots" tap the shell to give the ladybug exactly N spots (Challenge: the same number on both wings). (cat num)
+   - numpath: "Number path" follow the numbers 1, 2, 3... square by square, next door each time (Challenge: longer path and extra numbers to trick you). (cat maze)
+   Nothing is lost on a wrong tap. ===== */
+RZ_MAKE.spots = function(){ const e = easy(); if(e){ const n = 2 + Math.floor(Math.random()*5); return {type:'spots', title:`Give the ladybug ${n} spots!`, mode:'total', n, sig:'t'+n}; }
+  const n = 2 + Math.floor(Math.random()*4); return {type:'spots', title:`Give each wing ${n} spots! Both wings the same.`, mode:'both', n, sig:'b'+n}; };
+function rzSpotsPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">${g.mode==='total' ? `0 / ${g.n}` : `Left 0 · Right 0`}</div>
+    <div class="rzlb"><svg viewBox="0 0 400 380" id="rzlbs"><ellipse cx="200" cy="230" rx="170" ry="140" fill="#1D1D2B"/>
+      <path id="rzwl" d="M200 100 C90 100 40 190 52 260 C70 340 150 368 198 368 Z" fill="#E5383B" stroke="#1D1D2B" stroke-width="6"/>
+      <path id="rzwr" d="M200 100 C310 100 360 190 348 260 C330 340 250 368 202 368 Z" fill="#E5383B" stroke="#1D1D2B" stroke-width="6"/>
+      <circle cx="200" cy="90" r="60" fill="#1D1D2B"/><circle cx="178" cy="78" r="14" fill="#fff"/><circle cx="222" cy="78" r="14" fill="#fff"/><circle cx="180" cy="80" r="6" fill="#1D1D2B"/><circle cx="224" cy="80" r="6" fill="#1D1D2B"/>
+      <path d="M180 36 Q160 0 140 6 M220 36 Q240 0 260 6" stroke="#1D1D2B" stroke-width="7" fill="none" stroke-linecap="round"/><g id="rzsg"></g></svg></div>
+    <div class="rzlbb"><button class="big ghost" id="rzsundo">&#8630; Take one off</button><button class="big green" id="rzsdone">Done!</button></div>`);
+  const svg = document.getElementById('rzlbs'), grp = document.getElementById('rzsg'); const spots = [];
+  const count = ()=>({L:spots.filter(s=>s.side==='L').length, R:spots.filter(s=>s.side==='R').length});
+  const upd = ()=>{ const c = count(); document.getElementById('cnt').textContent = g.mode==='total' ? `${c.L+c.R} / ${g.n}` : `Left ${c.L} · Right ${c.R}`; };
+  ['rzwl','rzwr'].forEach(id=>document.getElementById(id).addEventListener('click', ev=>{ if(!G.live) return; poke(); const r = svg.getBoundingClientRect(); const x = (ev.clientX - r.left)/r.width*400, y = (ev.clientY - r.top)/r.height*380;
+    if(spots.length>=20) return; if(spots.some(s=>Math.hypot(s.x-x, s.y-y) < 34)) return;
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle'); c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 20); c.setAttribute('fill', '#1D1D2B'); c.setAttribute('class','rzspot'); grp.appendChild(c);
+    spots.push({x, y, side: id==='rzwl' ? 'L' : 'R', el:c}); const t = spots.length; tone(420+t*30,.08,'triangle',.13); if(t<=20) lsoft(String(t), ['N:'+t]); upd(); }));
+  document.getElementById('rzsundo').onclick = ()=>{ if(!G.live || !spots.length) return; poke(); spots.pop().el.remove(); tone(300,.08,'sine',.1); upd(); };
+  document.getElementById('rzsdone').onclick = ()=>{ if(!G.live) return; const c = count(); const okk = g.mode==='total' ? c.L+c.R===g.n : (c.L===g.n && c.R===g.n);
+    if(okk){ poke(); clearHint(); G.getT = null; document.getElementById('rzlbs').classList.add('yay'); tone(523,.15,'triangle',.15); tone(784,.25,'triangle',.15,.15); rzDoneLater(1100); }
+    else { miss(); sfx.oops(); document.getElementById('cnt').textContent = g.mode==='total' ? `That's ${c.L+c.R}. We need ${g.n}!` : `Left ${c.L} · Right ${c.R}. Make both ${g.n}!`; } };
+  armHint(()=>{ const c = count(); if(g.mode==='total'){ const t = c.L+c.R; return t===g.n ? document.getElementById('rzsdone') : t>g.n ? document.getElementById('rzsundo') : document.getElementById('rzwl'); }
+    if(c.L===g.n && c.R===g.n) return document.getElementById('rzsdone'); if(c.L>g.n || c.R>g.n) return document.getElementById('rzsundo'); return document.getElementById(c.L<g.n ? 'rzwl' : 'rzwr'); });
+}
+
+/* ---------- Number path ---------- */
+RZ_MAKE.numpath = function(){ const e = easy(), W = e ? 4 : 6, H = e ? 3 : 5, len = e ? 6 : 14;
+  for(let t=0;t<300;t++){ const start = Math.floor(Math.random()*W*H), path = [start], seen = new Set([start]);
+    while(path.length < len){ const c = path[path.length-1], x = c%W, y = Math.floor(c/W); const nb = cshuf([[1,0],[-1,0],[0,1],[0,-1]]).map(([dx,dy])=>[x+dx,y+dy]).filter(([a,b])=>a>=0&&b>=0&&a<W&&b<H&&!seen.has(b*W+a));
+      if(!nb.length) break; const [a,b] = nb[0]; path.push(b*W+a); seen.add(b*W+a); }
+    if(path.length < len) continue;
+    const cell = Array(W*H).fill(null); path.forEach((k,i)=>cell[k] = i+1);
+    // other squares: blank on Easy; on Challenge, decoy numbers that are NOT next door to the right place
+    if(!e) for(let k=0;k<W*H;k++) if(cell[k]==null){ const x = k%W, y = Math.floor(k/W); const near = path.map((p,i)=>[p,i+1]).filter(([p])=>Math.abs(p%W - x) + Math.abs(Math.floor(p/W) - y)===1).map(([p,v])=>v);
+      const cand = [...Array(len).keys()].map(i=>i+1).filter(v=>v>1 && !near.some(n=>Math.abs(n-v)===1)); cell[k] = cand.length && Math.random()<.8 ? rzOne(cand) : null; }
+    return {type:'numpath', title: e ? 'Number path! Tap 1, 2, 3... each one next door.' : 'Number path! Follow 1 to 14, always next door. Watch for tricks!', W, H, cell, path, len, sig:W+'x'+H+':'+path.join(',')}; }
+  return RZ_MAKE.numtrain(); };
+function rzNumPathPlay(g){
+  const {W, H} = g, cs = Math.min(Math.floor(640/W), Math.floor(400/H)), L = Math.round(512 - W*cs/2);
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Start at 1!</div>
+    <div class="rznpg" style="left:${L}px;width:${W*cs}px;grid-template-columns:repeat(${W},${cs}px)">${g.cell.map((v,k)=>`<button class="rznpc ${v==null?'blank':''}" data-k="${k}" style="height:${cs}px;font-size:${cs*.45}px" aria-label="${v==null?'Empty':v}">${v==null?'':v}</button>`).join('')}</div>`);
+  let k = 0; const step = ()=>document.querySelector(`.rznpc[data-k="${g.path[k]}"]`);
+  document.querySelectorAll('.rznpc').forEach(b=>b.onclick=()=>{ if(!G.live) return; const kk = +b.dataset.k;
+    if(kk===g.path[k]){ poke(); b.classList.add('on'); if(k>0) document.querySelector(`.rznpc[data-k="${g.path[k-1]}"]`).classList.add('trail'); k++; tone(440+k*30,.08,'triangle',.13); if(k<=20) lsoft(String(k), ['N:'+k]);
+      document.getElementById('cnt').textContent = k>=g.len ? 'You followed the whole path!' : `Next: ${k+1}`; if(k>=g.len){ clearHint(); G.getT = null; rzDoneLater(1000); } }
+    else { miss(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); tone(220,.1,'sine',.08); } });
+  armHint(step);
+}
+
+Object.assign(RZ_FAM, {spots:{cat:'num'}, numpath:{cat:'maze'}});
+Object.assign(RZ_STAMP, {spots:['🐞','Ladybug spots'], numpath:['🔢','Number path']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {spots:rzSpotsPlay, numpath:rzNumPathPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzlb{position:absolute;left:50%;top:130px;transform:translateX(-50%);z-index:4;width:400px;height:380px}
+.rzlb svg{width:100%;height:100%;filter:drop-shadow(0 8px 0 rgba(0,0,0,.15))}
+.rzlb svg path{cursor:pointer}
+.rzlb .rzspot{pointer-events:none;animation:pop .3s}
+.rzlb svg.yay{animation:rzyay .5s 2}
+.rzlbb{position:absolute;left:0;right:0;top:530px;z-index:4;display:flex;justify-content:center;gap:16px}
+.rznpg{position:absolute;top:150px;z-index:4;display:grid;gap:6px;background:rgba(255,253,246,.9);padding:10px;border-radius:20px;box-shadow:0 8px 0 rgba(0,0,0,.12)}
+.rznpc{border-radius:14px;background:#fff;border:3px solid #E9DCC0;font-family:'Baloo 2',Arial;font-weight:800;color:#1D1D2B;cursor:pointer}
+.rznpc.blank{background:#F3EBD8;border-color:#F3EBD8}
+.rznpc.on{background:#FFD23F;border-color:#F4A300;animation:pop .25s}.rznpc.trail{background:#FFF0B8}
+.rznpc.shake{animation:shake .35s}
+</style>`);
+
 /* ===== mouth.js (v23.17): bigger, livelier talking mouths (Chester: "the mouth animations barely move")
    Lisa and Lucas: a real open mouth (dark with a tongue) now opens and closes with the voice, syllable by syllable,
    drawn over their painted mouth. The voice meter is also more sensitive, which helps the 15 friends' mouths too. ===== */
