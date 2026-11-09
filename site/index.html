@@ -7239,6 +7239,112 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 @keyframes rzrdnx{to{r:13}}
 </style>`);
 
+/* ===== rzfun15.js (v23.26): two more Challenge games
+   - pots: "Paint pots" pour paint from pot to pot until every pot holds one colour (water-sort logic; Easy 3 colours x 3, Challenge 4 colours x 4).
+           Every board is checked solvable by a search before it is given; Undo; the hint shows the next good pour. (cat maze)
+   - nest: "Eggs in the nests" put the right number of eggs in each nest; when all are right the eggs hatch (Easy 3 nests 1-3 with dots, Challenge 4 nests 2-5). (cat num)
+   Nothing is lost on a wrong tap. ===== */
+const RZ_POTC = ['#E5383B','#2B7BE4','#F4C430','#3FA34D','#9B5DE5'];
+function rzPotMoves(T, K){ const out = []; for(let i=0;i<T.length;i++){ const a = T[i]; if(!a.length) continue; const top = a[a.length-1];
+    let run = 1; while(run < a.length && a[a.length-1-run]===top) run++;
+    for(let j=0;j<T.length;j++){ if(i===j) continue; const b = T[j]; if(b.length>=K) continue; if(b.length && b[b.length-1]!==top) continue;
+      if(!b.length && run===a.length) continue; out.push([i,j,Math.min(run, K-b.length)]); } } return out; }
+function rzPotApply(T, [i,j,n]){ const U = T.map(t=>t.slice()); for(let k=0;k<n;k++) U[j].push(U[i].pop()); return U; }
+function rzPotDone(T, K){ return T.every(t=>!t.length || (t.length===K && t.every(c=>c===t[0]))); }
+function rzPotSolve(T, K, cap){ const seen = new Set(); let nodes = 0; const key = S=>S.map(t=>t.join('')).sort().join('|');
+  const dfs = (S, path)=>{ if(rzPotDone(S, K)) return path; if(++nodes > (cap||40000)) return null; const k = key(S); if(seen.has(k)) return null; seen.add(k);
+    const ms = rzPotMoves(S, K).sort((a,b)=>{ const fa = S[a[1]].length ? 0 : 1, fb = S[b[1]].length ? 0 : 1; return fa - fb || b[2] - a[2]; });
+    for(const m of ms){ const r = dfs(rzPotApply(S, m), path.concat([m])); if(r) return r; } return null; };
+  return dfs(T, []); }
+RZ_MAKE.pots = function(){ const e = easy(), C = e ? 3 : 4, K = e ? 3 : 4, E = 2;
+  for(let t=0;t<200;t++){ const units = cshuf([].concat(...[...Array(C).keys()].map(c=>Array(K).fill(c)))); const T = [...Array(C)].map((_,i)=>units.slice(i*K, (i+1)*K)).concat([...Array(E)].map(()=>[]));
+    if(rzPotDone(T, K) || T.some(t=>t.length && t.every(c=>c===t[0]))) continue; const sol = rzPotSolve(T, K, 20000); if(!sol || sol.length < (e ? 3 : 6)) continue;
+    return {type:'pots', title: e ? 'Paint pots! Pour until each pot is one colour.' : 'Paint pots! Sort every colour into its own pot.', K, T, sig:T.map(t=>t.join('')).join('|')}; }
+  return RZ_MAKE.numtrain(); };
+function rzPotsPlay(g){
+  const K = g.K; let T = g.T.map(t=>t.slice()), sel = -1, hist = [], busy = false; const H = 44;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Tap a pot, then where to pour</div><div class="rzpotw" id="rzpotw"></div><button class="big ghost rzpotu" id="rzpotu">&#8630; Undo</button>`);
+  const draw = ()=>{ document.getElementById('rzpotw').innerHTML = T.map((t,i)=>`<button class="rzpot${i===sel?' sel':''}${t.length===K && t.every(c=>c===t[0])?' full':''}" data-i="${i}" style="height:${K*H+26}px" aria-label="Paint pot ${i+1}">
+      <span class="rzpotlip"></span>${t.map((c,k)=>`<i style="bottom:${8+k*H}px;height:${H}px;background:${RZ_POTC[c]}"></i>`).join('')}</button>`).join('');
+    document.querySelectorAll('.rzpot').forEach(b=>b.onclick=()=>tap(+b.dataset.i)); };
+  const tap = i=>{ if(!G.live || busy) return;
+    if(sel<0){ if(!T[i].length){ miss(); return; } poke(); sel = i; tone(520,.06,'triangle',.1); draw(); return; }
+    if(sel===i){ sel = -1; draw(); return; }
+    const m = rzPotMoves(T, K).find(([a,b])=>a===sel && b===i);
+    if(!m){ miss(); const b = document.querySelector(`.rzpot[data-i="${i}"]`); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); tone(220,.1,'sine',.08); sel = -1; setTimeout(draw, 350); return; }
+    poke(); hist.push(T); busy = true; const src = document.querySelector(`.rzpot[data-i="${sel}"]`), dst = document.querySelector(`.rzpot[data-i="${i}"]`);
+    src.classList.add('tilt'); src.style.setProperty('--dx', (dst.offsetLeft - src.offsetLeft)*.55 + 'px');
+    for(let k=0;k<m[2];k++) tone(300+k*90,.12,'sine',.12, k*.12);
+    setTimeout(()=>{ T = rzPotApply(T, m); sel = -1; busy = false; draw();
+      const done = rzPotDone(T, K); document.getElementById('cnt').textContent = done ? 'Every pot is one colour!' : 'Keep pouring!';
+      if(done){ clearHint(); G.getT = null; document.getElementById('rzpotw').classList.add('yay'); rzDoneLater(1100); } }, 420); };
+  document.getElementById('rzpotu').onclick = ()=>{ if(!G.live || busy || !hist.length) return; poke(); T = hist.pop(); sel = -1; draw(); };
+  draw();
+  armHint(()=>{ const sol = rzPotSolve(T, K, 20000); if(!sol || !sol.length) return document.getElementById('rzpotu'); const [a,b] = sol[0];
+    return document.querySelector(`.rzpot[data-i="${sel===a ? b : a}"]`); });
+}
+
+RZ_MAKE.nest = function(){ const e = easy(), n = e ? 3 : 4; const want = [...Array(n)].map(()=>e ? 1 + Math.floor(Math.random()*3) : 2 + Math.floor(Math.random()*4));
+  return {type:'nest', title: e ? 'Eggs in the nests! Put in the right number of eggs.' : 'Eggs in the nests! Match every number.', want, dots: e, sig:want.join('')}; };
+function rzNestPlay(g){
+  const tot = g.want.reduce((a,b)=>a+b, 0), have = g.want.map(()=>0);
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Tap a nest to put an egg in</div>
+    <div class="rznstrow">${g.want.map((w,k)=>`<div class="rznstc"><div class="rznstsign">${w}${g.dots ? `<small>${'&#9679;'.repeat(w)}</small>` : ''}</div><button class="rznst" data-k="${k}" aria-label="Nest for ${w} eggs"><span class="rznsteggs" id="rznste${k}"></span></button></div>`).join('')}</div>
+    <div class="rznstbk"><div class="rznstbkeggs" id="rznstbk"></div><b>Egg basket</b></div>`);
+  const bk = ()=>tot - have.reduce((a,b)=>a+b, 0);
+  const draw = ()=>{ document.getElementById('rznstbk').innerHTML = '<i></i>'.repeat(bk());
+    g.want.forEach((w,k)=>{ const el = document.getElementById('rznste'+k); el.innerHTML = [...Array(have[k])].map((_,j)=>`<i class="rznstegg" data-k="${k}" style="--r:${(j*37)%20-10}deg"></i>`).join('');
+      el.parentElement.classList.toggle('ok', have[k]===w); el.parentElement.classList.toggle('over', have[k]>w); });
+    document.querySelectorAll('.rznstegg').forEach(e=>e.onclick=ev=>{ ev.stopPropagation(); if(!G.live) return; const k = +e.dataset.k; have[k]--; tone(330,.07,'sine',.1); poke(); draw(); hintSay(); }); };
+  const hintSay = ()=>{ const c = document.getElementById('cnt'); const o = have.findIndex((h,k)=>h>g.want[k]); c.textContent = o>=0 ? `Too many in nest ${o+1}!` : bk() ? `${bk()} ${bk()===1?'egg':'eggs'} left` : ''; };
+  document.querySelectorAll('.rznst').forEach(b=>b.onclick=()=>{ if(!G.live) return; const k = +b.dataset.k;
+    if(!bk()){ miss(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); tone(220,.1,'sine',.08); return; }
+    poke(); have[k]++; tone(440 + have[k]*60,.08,'triangle',.13); if(have[k]<=20) lsoft(String(have[k]), ['N:'+have[k]]); draw(); hintSay();
+    if(have.every((h,k)=>h===g.want[k])){ clearHint(); G.getT = null; document.getElementById('cnt').textContent = 'Crack! They hatched!';
+      setTimeout(()=>{ document.querySelectorAll('.rznstegg').forEach((e,j)=>setTimeout(()=>{ e.classList.add('hatch'); tone(880+j*40,.06,'triangle',.08); }, j*90)); }, 300); rzDoneLater(1800); } });
+  draw();
+  armHint(()=>{ const o = have.findIndex((h,k)=>h>g.want[k]); if(o>=0) return document.querySelector(`.rznstegg[data-k="${o}"]`); const u = have.findIndex((h,k)=>h<g.want[k]); return u>=0 ? document.querySelector(`.rznst[data-k="${u}"]`) : null; });
+}
+
+Object.assign(RZ_FAM, {pots:{cat:'maze'}, nest:{cat:'num'}});
+Object.assign(RZ_STAMP, {pots:['🎨','Paint pots'], nest:['🪺','Eggs in the nests']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {pots:rzPotsPlay, nest:rzNestPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzpotw{position:absolute;left:50%;top:200px;transform:translateX(-50%);display:flex;gap:26px;align-items:flex-end;z-index:3;background:rgba(255,248,230,.9);border:4px solid #1D1D2B;border-radius:24px;padding:26px 30px 18px}
+.rzpot{position:relative;width:74px;border:4px solid #1D1D2B;border-top:0;border-radius:0 0 26px 26px;background:linear-gradient(90deg,#ffffff55,#ffffffcc 30%,#ffffff55);padding:0;cursor:pointer;overflow:visible;transition:transform .25s}
+.rzpot i{position:absolute;left:4px;right:4px;border-radius:6px;box-shadow:inset 0 -6px 0 #0002}
+.rzpot i:first-of-type{border-radius:6px 6px 20px 20px}
+.rzpotlip{position:absolute;left:-10px;right:-10px;top:-8px;height:12px;border:4px solid #1D1D2B;border-radius:10px;background:#fff}
+.rzpot.sel{transform:translateY(-22px)}
+.rzpot.tilt{transform:translate(var(--dx),-40px) rotate(28deg);z-index:2}
+.rzpot.full{box-shadow:0 0 0 5px #FFD23F}
+.rzpot.shake{animation:shake .35s}
+.rzpotw.yay{animation:rzpotyay .6s ease 2}@keyframes rzpotyay{50%{transform:translateX(-50%) scale(1.04)}}
+.rzpotu{position:absolute;left:40px;bottom:110px;z-index:4}
+.rznstrow{position:absolute;left:0;right:0;top:190px;display:flex;justify-content:center;gap:34px;z-index:3}
+.rznstc{display:flex;flex-direction:column;align-items:center;gap:8px}
+.rznstsign{background:#FFF8E6;border:3px solid #1D1D2B;border-radius:14px;padding:2px 16px;font-size:34px;font-weight:800;text-align:center;line-height:1.1}
+.rznstsign small{display:block;font-size:13px;letter-spacing:2px;color:#C8262A}
+.rznst{position:relative;width:170px;height:110px;border:0;padding:0;background:none;cursor:pointer}
+.rznst::before{content:'';position:absolute;left:0;right:0;bottom:0;height:62px;border-radius:0 0 90px 90px / 0 0 60px 60px;background:repeating-linear-gradient(170deg,#8B5A2B 0 6px,#A9743F 6px 11px,#6E4420 11px 14px);border:4px solid #1D1D2B;border-top:0}
+.rznst::after{content:'';position:absolute;left:-6px;right:-6px;bottom:52px;height:16px;border-radius:12px;background:repeating-linear-gradient(80deg,#8B5A2B 0 5px,#C08A4E 5px 9px);border:3px solid #1D1D2B}
+.rznstegg{pointer-events:none}.rznst.over .rznstegg{pointer-events:auto}
+.rznst.ok::after{box-shadow:0 0 0 5px #3FA34D}.rznst.over::after{box-shadow:0 0 0 5px #E5383B}
+.rznst.shake{animation:shake .35s}
+.rznsteggs{position:absolute;left:10px;right:10px;bottom:46px;display:flex;flex-wrap:wrap-reverse;justify-content:center;gap:2px;z-index:1}
+.rznstegg{display:block;width:34px;height:42px;border-radius:50% 50% 46% 46% / 60% 60% 40% 40%;background:radial-gradient(circle at 35% 30%,#FFF6E0,#EBC995 60%,#C99C62);border:3px solid #1D1D2B;transform:rotate(var(--r));cursor:pointer;animation:rznstin .25s ease}
+@keyframes rznstin{from{transform:translateY(-40px) rotate(var(--r));opacity:0}}
+.rznstegg.hatch{background:radial-gradient(circle at 50% 45%,#FFD23F 0 45%,#F4A300 46% 60%,#FFE680);animation:rznsthatch .5s ease forwards}
+@keyframes rznsthatch{0%{transform:rotate(0)}30%{transform:rotate(-14deg)}60%{transform:rotate(14deg) scale(1.15)}100%{transform:translateY(-8px) scale(1.1);border-radius:50%}}
+.rznstbk{position:absolute;left:50%;bottom:110px;transform:translateX(-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:4px}
+.rznstbkeggs{min-width:220px;min-height:46px;display:flex;flex-wrap:wrap;justify-content:center;gap:3px;padding:8px 14px;background:repeating-linear-gradient(90deg,#C08A4E 0 10px,#A9743F 10px 14px);border:4px solid #1D1D2B;border-radius:12px 12px 40px 40px}
+.rznstbkeggs i{width:22px;height:28px;border-radius:50% 50% 46% 46% / 60% 60% 40% 40%;background:#F3E6CF;border:2px solid #1D1D2B}
+.rznstbk b{font-size:16px;background:#FFF8E6;border-radius:8px;padding:0 8px}
+</style>`);
+
 /* ===== mouth.js (v23.17): bigger, livelier talking mouths (Chester: "the mouth animations barely move")
    Lisa and Lucas: a real open mouth (dark with a tongue) now opens and closes with the voice, syllable by syllable,
    drawn over their painted mouth. The voice meter is also more sensitive, which helps the 15 friends' mouths too. ===== */
@@ -7648,7 +7754,35 @@ function a2Map(){
 }
 { const base = cityMap; cityMap = function(){ const r = base.apply(this, arguments); a2Map(); return r; }; }
 
+/* World map: a little ladybug flies from place to place on a dotted arc */
+function a2World(){
+  if(a2Calm() || typeof WPINS==='undefined') return; const lay = document.querySelector('.wmap'); if(!lay || lay.querySelector('.a2wf')) return;
+  const sv = document.createElementNS('http://www.w3.org/2000/svg','svg'); sv.setAttribute('class','a2wf'); sv.setAttribute('viewBox','0 0 1024 700'); sv.setAttribute('aria-hidden','true');
+  sv.innerHTML = `<path class="a2wtr" d=""/><g class="a2wb"><g class="a2wbw"><ellipse cx="-3" cy="-9" rx="11" ry="6" fill="#fffb" stroke="#1D1D2B" stroke-width="1.2"/><ellipse cx="-3" cy="9" rx="11" ry="6" fill="#fffb" stroke="#1D1D2B" stroke-width="1.2"/></g><circle cx="13" cy="0" r="6" fill="#1D1D2B"/><circle r="12" fill="#E5383B" stroke="#1D1D2B" stroke-width="2.5"/><line x1="-12" y1="0" x2="12" y2="0" stroke="#1D1D2B" stroke-width="2"/><circle cx="-4" cy="-5" r="2.6" fill="#1D1D2B"/><circle cx="4" cy="5" r="2.6" fill="#1D1D2B"/></g>`;
+  lay.appendChild(sv); const tr = sv.querySelector('.a2wtr'), bug = sv.querySelector('.a2wb');
+  let A = WPINS[Math.floor(Math.random()*WPINS.length)], B, t = 0, wait = 0, last = 0, pts = [];
+  const pick = ()=>{ do{ B = WPINS[Math.floor(Math.random()*WPINS.length)]; } while(B===A); t = 0; pts = []; };
+  pick();
+  const step = now=>{ if(!sv.isConnected) return; const dt = Math.min(.05, last ? (now-last)/1000 : .016); last = now;
+    if(wait > 0){ wait -= dt; if(wait <= 0){ A = B; pick(); } } else {
+      const d = Math.hypot(B[1]-A[1], B[2]-A[2]); t = Math.min(1, t + dt*140/Math.max(120, d));
+      const mx = (A[1]+B[1])/2, my = Math.max(150, Math.min(A[2], B[2]) - 40 - d*.25), u = 1-t;
+      const x = u*u*A[1] + 2*u*t*mx + t*t*B[1], y = u*u*A[2] + 2*u*t*my + t*t*B[2] - 30;
+      const dx = 2*u*(mx-A[1]) + 2*t*(B[1]-mx), dy = 2*u*(my-A[2]) + 2*t*(B[2]-my);
+      bug.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(Math.atan2(dy,dx)*180/Math.PI).toFixed(0)})`);
+      pts.push([x,y]); if(pts.length > 160) pts.shift(); tr.setAttribute('d', 'M' + pts.map(p=>p[0].toFixed(0)+' '+p[1].toFixed(0)).join(' L'));
+      if(t >= 1) wait = 2.5; }
+    requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+{ const base = showCities; showCities = function(){ const r = base.apply(this, arguments); a2World(); return r; }; }
+
 document.head.insertAdjacentHTML('beforeend', `<style>
+.a2wf{position:absolute;inset:0;width:1024px;height:700px;pointer-events:none;z-index:5}
+.a2wtr{fill:none;stroke:#C8262A;stroke-width:3;stroke-dasharray:2 9;stroke-linecap:round;opacity:.7}
+.a2wbw{animation:a2fl2 .08s ease-in-out infinite alternate;transform-origin:-3px 0}
+@keyframes a2fl2{to{transform:scaleY(.35)}}
+html.calm .a2wf{display:none}
 .a2bug,.a2bee{position:absolute;left:0;top:0;z-index:4;margin:-23px 0 0 -29px;will-change:transform}
 .a2bug{border:0;background:none;padding:0;cursor:pointer}
 .a2bee{pointer-events:none;margin:-16px 0 0 -20px}
