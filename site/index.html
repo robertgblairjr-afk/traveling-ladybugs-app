@@ -7717,6 +7717,79 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzpbpot.on{transform:translateY(-10px);box-shadow:0 0 0 5px #FFD23F,0 4px 0 #1D1D2B}
 </style>`);
 
+/* ===== rzfun20.js (v23.35): three more Challenge games (CSS prefix q20)
+   - frog:    "Frog hop": the frog sits on a lily pad; tap the pad that is exactly N hops ahead. (cat num)
+   - rainbow: "Rainbow order": tap the colour bands in rainbow order (Easy 4 colours, Challenge 6). (cat play)
+   - share:   "Fair share": give every bug the same number of berries; tap a bug to add one, tap its berries to take one back. (cat num)
+   A wrong tap only wobbles. ===== */
+const Q20_RAIN = [['#E5383B','red'],['#FF9F1C','orange'],['#FFD23F','yellow'],['#3FA34D','green'],['#4CC9F0','blue'],['#9B5DE5','purple']];
+RZ_MAKE.frog = function(){ const e = easy(), pads = e ? 7 : 9, n = e ? 1 + Math.floor(Math.random()*3) : 2 + Math.floor(Math.random()*4), start = Math.floor(Math.random()*(pads - n)) ;
+  return {type:'frog', title: `Frog hop! Hop ${n} ${n===1?'pad':'pads'} ahead.`, pads, n, start, sig:`fg:${pads}:${n}:${start}`}; };
+function q20FrogPlay(g){
+  const pads = Array.from({length:g.pads}, (_,i)=>`<button class="q20pad" data-i="${i}" style="left:${40 + i*(944/g.pads)}px" aria-label="Lily pad ${i+1}"><i></i>${i===g.start?'<span class="q20frog" id="q20frog">&#128056;</span>':''}</button>`).join('');
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Hop ${g.n}!</div><div class="q20pond">${pads}</div><div class="q20dots">${Array.from({length:g.n},()=>'<b>&#128056;</b>').join('')}</div>`);
+  let at = g.start, done = false; const ok = g.start + g.n;
+  const frog = document.getElementById('q20frog');
+  document.querySelectorAll('.q20pad').forEach(p=>p.onclick=()=>{ if(done) return; const i = +p.dataset.i;
+    if(i===ok){ done = true; poke(); clearHint(); G.getT = null; p.appendChild(frog); frog.classList.add('hop'); tone(660,.12,'triangle',.15); tone(880,.12,'triangle',.12); p.classList.add('yay'); rzDoneLater(1100); }
+    else if(i<=at){ miss(); p.classList.remove('shake'); void p.offsetWidth; p.classList.add('shake'); tone(220,.1,'sine',.08); }
+    else { miss(); p.classList.remove('shake'); void p.offsetWidth; p.classList.add('shake'); tone(220,.1,'sine',.08); } });
+  armHint(()=>document.querySelector(`.q20pad[data-i="${ok}"]`));
+}
+RZ_MAKE.rainbow = function(){ const e = easy(), n = e ? 4 : 6; return {type:'rainbow', title: e ? 'Rainbow order! Tap the colours from the top.' : 'Rainbow order! Build the whole rainbow.', n, order: Array.from({length:n},(_,i)=>i).sort(()=>Math.random()-.5), sig:'rb:'+n+':'+Math.random().toString(36).slice(2,6)}; };
+function q20RainPlay(g){
+  const arcs = Array.from({length:g.n}, (_,i)=>{ const r = 330 - i*(210/g.n); return `<path class="q20arc" id="q20a${i}" d="M${512-r} 520 A${r} ${r} 0 0 1 ${512+r} 520" stroke="${Q20_RAIN[i][0]}"/>`; }).join('');
+  const bands = g.order.map(i=>`<button class="q20band" data-i="${i}" style="background:${Q20_RAIN[i][0]}" aria-label="${Q20_RAIN[i][1]}"></button>`).join('');
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.n}</div><svg class="q20svg" viewBox="0 0 1024 560">${arcs}</svg><div class="q20bands">${bands}</div>`);
+  let k = 0;
+  document.querySelectorAll('.q20band').forEach(b=>b.onclick=()=>{ if(b.classList.contains('used')) return; const i = +b.dataset.i;
+    if(i===k){ poke(); b.classList.add('used'); document.getElementById('q20a'+i).classList.add('on'); k++; tone(420+k*90,.12,'triangle',.15); document.getElementById('cnt').textContent = `${k} / ${g.n}`;
+      if(k>=g.n){ clearHint(); G.getT = null; document.querySelector('.q20svg').classList.add('yay'); rzDoneLater(1300); } }
+    else { miss(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); tone(220,.1,'sine',.08); } });
+  armHint(()=>document.querySelector(`.q20band[data-i="${k}"]`));
+}
+RZ_MAKE.share = function(){ const e = easy(), bugs = e ? 2 + Math.floor(Math.random()*2) : 3 + Math.floor(Math.random()*2), each = e ? 1 + Math.floor(Math.random()*2) : 2 + Math.floor(Math.random()*2);
+  return {type:'share', title: `Fair share! Give every bug ${each} ${each===1?'berry':'berries'}.`, bugs, each, sig:`sh:${bugs}:${each}:`+Math.random().toString(36).slice(2,5)}; };
+function q20SharePlay(g){
+  const cols = ['#E5383B','#FF9F1C','#3FA34D','#9B5DE5'];
+  const bugs = Array.from({length:g.bugs}, (_,i)=>`<div class="q20bug" data-i="${i}" role="button" tabindex="0"><span class="q20bb" style="filter:hue-rotate(${i*70}deg)">&#128030;</span><div class="q20ber"></div></div>`).join('');
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">${g.each} each</div><div class="q20bugs">${bugs}</div><div class="q20want">${Array.from({length:g.each},()=>'&#127827;').join('')}</div>`);
+  const cnt = Array(g.bugs).fill(0); let done = false;
+  const paint = i=>{ document.querySelector(`.q20bug[data-i="${i}"] .q20ber`).innerHTML = Array.from({length:cnt[i]},()=>'<u>&#127827;</u>').join(''); };
+  const check = ()=>{ if(!done && cnt.every(c=>c===g.each)){ done = true; clearHint(); G.getT = null; document.querySelector('.q20bugs').classList.add('yay'); rzDoneLater(1300); } };
+  document.querySelectorAll('.q20bug').forEach(b=>{ const i = +b.dataset.i;
+    b.onclick = ev=>{ if(done) return; if(ev.target.closest('.q20ber u')){ if(cnt[i]>0){ cnt[i]--; sfx.pop(); paint(i); } return; }
+      if(cnt[i] >= g.each + 1){ miss(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); return; }
+      cnt[i]++; if(cnt[i]<=g.each) poke(); else miss(); tone(500+cnt[i]*70,.08,'triangle',.12); paint(i); check(); }; });
+  armHint(()=>{ const i = cnt.findIndex(c=>c<g.each); return document.querySelector(`.q20bug[data-i="${i<0?0:i}"]`); });
+}
+Object.assign(RZ_FAM, {frog:{cat:'num'}, rainbow:{cat:'play'}, share:{cat:'num'}});
+Object.assign(RZ_STAMP, {frog:['🐸','Frog hop'], rainbow:['🌈','Rainbow order'], share:['🍓','Fair share']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {frog:q20FrogPlay, rainbow:q20RainPlay, share:q20SharePlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.q20pond{position:absolute;left:0;right:0;top:300px;height:180px;background:linear-gradient(#7FD4FF,#4CA9D6);border-top:5px solid #1D1D2B;border-bottom:5px solid #1D1D2B}
+.q20pad{position:absolute;top:60px;width:100px;height:56px;border:0;background:none;cursor:pointer;padding:0}
+.q20pad i{position:absolute;inset:0;border-radius:50%;background:#3FA34D;border:4px solid #1D1D2B;box-shadow:inset 0 -8px 0 #2E8B3E}
+.q20pad.yay i{background:#FFD23F}.q20pad.shake{animation:shake .35s}
+.q20frog{position:absolute;left:24px;top:-40px;font-size:56px;line-height:1}.q20frog.hop{animation:q20hop .5s}
+@keyframes q20hop{0%{transform:translateY(0)}50%{transform:translateY(-70px) scale(1.15)}100%{transform:translateY(0)}}
+.q20dots{position:absolute;left:0;right:0;top:500px;text-align:center;font-size:44px}
+.q20svg{position:absolute;left:0;top:120px;width:1024px;height:560px;pointer-events:none}
+.q20arc{fill:none;stroke-width:30;opacity:.18;transition:opacity .3s}.q20arc.on{opacity:1}.q20svg.yay{animation:q20pulse .5s ease 3}
+@keyframes q20pulse{50%{transform:scale(1.04)}}
+.q20bands{position:absolute;left:0;right:0;bottom:30px;display:flex;justify-content:center;gap:14px;z-index:4}
+.q20band{width:96px;height:96px;border-radius:50%;border:5px solid #1D1D2B;cursor:pointer;box-shadow:0 5px 0 #1D1D2B}.q20band.used{opacity:.25;pointer-events:none}.q20band.shake{animation:shake .35s}
+.q20bugs{position:absolute;left:0;right:0;top:230px;display:flex;justify-content:center;gap:34px}
+.q20bug{width:170px;min-height:260px;background:#FFF8E6;border:5px solid #1D1D2B;border-radius:26px;text-align:center;padding:10px;cursor:pointer}
+.q20bb{display:block;font-size:84px;line-height:1.2}.q20ber{min-height:90px;font-size:34px;line-height:1.1}.q20ber u{text-decoration:none;display:inline-block}
+.q20bug.shake{animation:shake .35s}.q20bugs.yay{animation:q20pulse .5s ease 3}
+.q20want{position:absolute;left:0;right:0;top:150px;text-align:center;font-size:44px;opacity:.9}
+html.calm .q20frog.hop,html.calm .q20svg.yay,html.calm .q20bugs.yay{animation:none}
+</style>`);
+
 /* ===== mouth.js (v23.17): bigger, livelier talking mouths (Chester: "the mouth animations barely move")
    Lisa and Lucas: a real open mouth (dark with a tongue) now opens and closes with the voice, syllable by syllable,
    drawn over their painted mouth. The voice meter is also more sensitive, which helps the 15 friends' mouths too. ===== */
