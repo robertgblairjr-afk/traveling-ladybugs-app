@@ -7796,15 +7796,15 @@ html.calm .q20frog.hop,html.calm .q20svg.yay,html.calm .q20bugs.yay{animation:no
 (function(){
   function addJaw(p){ const who = p.dataset.who, r = RIG[who]; if(!r || p.querySelector('.jaw')) return;
     const o = (r.overlays||[]).find(o=>o.kind==='mouth'); if(!o) return; const ov = p.querySelector('.ov-mouth'); if(!ov) return;
-    const j = document.createElement('div'); j.className = 'jaw'; j.style.cssText = `left:${o.x - o.w*0.1}px;top:${o.y + o.h*0.18}px;width:${o.w*1.2}px;height:${o.h*1.5}px`;
+    const j = document.createElement('div'); j.className = 'jaw'; j.style.cssText = `left:${o.x - o.w*0.02}px;top:${o.y + o.h*0.22}px;width:${o.w*1.04}px;height:${o.h*1.0}px`;
     j.innerHTML = '<i><b></b></i>'; ov.parentNode.appendChild(j); }
   const mo = new MutationObserver(()=>document.querySelectorAll('.pup[data-who]').forEach(addJaw)); mo.observe(document.body, {childList:true, subtree:true});
   let open = 0, last = 0;
   (function loop(now){
     const dt = Math.min(0.05, ((now||0) - last)/1000); last = now||0;
     // syllable flutter on top of loudness, so the mouth clearly opens and shuts while speaking
-    const talking = !!talkWho, lv = talking ? talkLevel : 0, flutter = talking ? (0.55 + 0.45*Math.abs(Math.sin((now||0)/1000*13.5))) : 0;
-    const want = talking ? Math.min(1, lv*2.1) * flutter : 0; open += (want - open) * Math.min(1, dt*22);
+    const talking = !!talkWho, lv = talking ? talkLevel : 0, flutter = talking ? (0.7 + 0.3*Math.abs(Math.sin((now||0)/1000*13.5))) : 0;
+    const want = talking ? Math.min(0.75, lv*1.5) * flutter : 0; open += (want - open) * Math.min(1, dt*22);
     document.querySelectorAll('.pup[data-who]').forEach(p=>{ const j = p.querySelector('.jaw > i'); if(!j) return;
       const on = p.dataset.who===talkWho && open > 0.08; j.parentNode.style.display = on ? 'block' : 'none';
       if(on){ j.style.transform = `scale(${(0.7+0.3*open).toFixed(3)},${open.toFixed(3)})`; p.classList.toggle('mclosed', false); } });
@@ -7812,7 +7812,7 @@ html.calm .q20frog.hop,html.calm .q20svg.yay,html.calm .q20bugs.yay{animation:no
   // a more sensitive voice meter (recorded voices are quite soft): wrap startTalk's analyser loop by boosting talkLevel
   const base = startTalk; startTalk = function(who, an){ base.apply(this, arguments);
     const data = new Uint8Array(an.fftSize); const boost = ()=>{ if(analyser!==an) return; an.getByteTimeDomainData(data); let s = 0; for(let i=0;i<data.length;i++){ const v = (data[i]-128)/128; s += v*v; }
-      const rms = Math.sqrt(s/data.length); talkLevel = Math.max(talkLevel, Math.min(1, rms*11)); requestAnimationFrame(boost); }; requestAnimationFrame(boost); };
+      const rms = Math.sqrt(s/data.length); talkLevel = Math.max(talkLevel, Math.min(1, rms*7)); requestAnimationFrame(boost); }; requestAnimationFrame(boost); };
 })();
 document.head.insertAdjacentHTML('beforeend', `<style>
 .pup .jaw{position:absolute;display:none;pointer-events:none}
