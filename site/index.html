@@ -6889,6 +6889,65 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rznpc.shake{animation:shake .35s}
 </style>`);
 
+/* ===== rzfun11.js (v23.22): two more Challenge games
+   - mirror: "Mirror picture" colour the right side so it matches the left like a mirror (Challenge: bigger grid, more squares). (cat detect)
+   - sizes:  "Small to big" tap the balloons from smallest to biggest (Challenge: more balloons, sometimes biggest first). (cat num)
+   Nothing is lost on a wrong tap. ===== */
+RZ_MAKE.mirror = function(){ const e = easy(), R = e ? 3 : 5, C = e ? 2 : 3, n = e ? 2 + Math.floor(Math.random()*2) : 5 + Math.floor(Math.random()*3);
+  const all = [...Array(R*C).keys()], on = cshuf(all).slice(0, n).sort((a,b)=>a-b), col = rzOne(RZCOL);
+  return {type:'mirror', title: e ? 'Mirror picture! Colour the right side to match.' : 'Mirror picture! Make the right side a mirror of the left.', R, C, on, col, sig:R+'x'+C+':'+on.join(',')}; };
+function rzMirrorPlay(g){
+  const {R, C} = g, cs = Math.min(Math.floor(380/R), 90), want = new Set(g.on.map(k=>{ const r = Math.floor(k/C), c = k%C; return r*C + (C-1-c); }));
+  const side = (id, fill)=>`<div class="rzmrs" id="${id}" style="grid-template-columns:repeat(${C},${cs}px)">${[...Array(R*C).keys()].map(k=>`<button class="rzmrc${fill && g.on.includes(k)?' on':''}" data-k="${k}" style="width:${cs}px;height:${cs}px;--c:${g.col}" ${fill?'disabled':''} aria-label="Square"></button>`).join('')}</div>`;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${want.size}</div>
+    <div class="rzmrw">${side('rzmrl', 1)}<div class="rzmrline"></div>${side('rzmrr', 0)}</div>`);
+  let got = 0; const next = ()=>document.querySelector(`#rzmrr .rzmrc:not(.on)[data-k="${[...want].find(k=>!document.querySelector(`#rzmrr .rzmrc.on[data-k="${k}"]`))}"]`);
+  document.querySelectorAll('#rzmrr .rzmrc').forEach(b=>b.onclick=()=>{ if(!G.live || b.classList.contains('on')) return; const k = +b.dataset.k;
+    if(want.has(k)){ poke(); b.classList.add('on'); got++; tone(440+got*40,.09,'triangle',.13); document.getElementById('cnt').textContent = `${got} / ${want.size}`;
+      if(got>=want.size){ clearHint(); G.getT = null; document.querySelector('.rzmrw').classList.add('yay'); rzDoneLater(1100); } }
+    else { miss(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); tone(220,.1,'sine',.08);
+      const r = Math.floor(k/C), c = k%C, src = document.querySelector(`#rzmrl .rzmrc[data-k="${r*C + (C-1-c)}"]`); if(src){ src.classList.remove('peek'); void src.offsetWidth; src.classList.add('peek'); } } });
+  armHint(next);
+}
+
+RZ_MAKE.sizes = function(){ const e = easy(), n = e ? 4 : 6, up = e || Math.random() < .5;
+  const sz = cshuf([...Array(n).keys()]).map(i=>i); const cols = cshuf(RZCOL).slice(0, n);
+  return {type:'sizes', title: up ? 'Pop the balloons from smallest to biggest!' : 'Pop the balloons from biggest to smallest!', n, up, order: sz, cols, sig:(up?'u':'d')+n+':'+sz.join('')}; };
+function rzSizesPlay(g){
+  const n = g.n, base = 60, stepPx = n===4 ? 34 : 22, slot = Math.floor(860/n);
+  const balls = g.order.map((r,i)=>{ const s = base + r*stepPx; return `<button class="rzszb" data-r="${r}" style="left:${82 + i*slot + (slot - s)/2}px;bottom:${150 + (i%2)*40}px;width:${s}px;height:${s*1.18}px;--c:${g.cols[i]};animation-delay:${(i*.27).toFixed(2)}s" aria-label="Balloon"><i></i></button>`; }).join('');
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">${g.up ? 'Smallest first!' : 'Biggest first!'}</div><div class="rzszf">${balls}</div>`);
+  let k = 0; const want = ()=>g.up ? k : n-1-k; const next = ()=>document.querySelector(`.rzszb[data-r="${want()}"]`);
+  document.querySelectorAll('.rzszb').forEach(b=>b.onclick=()=>{ if(!G.live || b.classList.contains('pop')) return;
+    if(+b.dataset.r===want()){ poke(); b.classList.add('pop'); k++; tone(g.up ? 380+k*70 : 900-k*70,.1,'triangle',.15); try{ sfx.pop(); }catch(e){}
+      document.getElementById('cnt').textContent = k>=n ? 'All popped!' : `${k} / ${n}`; if(k>=n){ clearHint(); G.getT = null; rzDoneLater(900); } }
+    else { miss(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); tone(220,.1,'sine',.08); } });
+  armHint(next);
+}
+
+Object.assign(RZ_FAM, {mirror:{cat:'detect'}, sizes:{cat:'num'}});
+Object.assign(RZ_STAMP, {mirror:['🪞','Mirror picture'], sizes:['🎈','Small to big']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {mirror:rzMirrorPlay, sizes:rzSizesPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzmrw{position:absolute;left:50%;top:205px;transform:translateX(-50%);display:flex;gap:10px;align-items:stretch;background:rgba(255,248,230,.95);border:4px solid #1D1D2B;border-radius:22px;padding:14px;z-index:3}
+.rzmrs{display:grid;gap:5px}
+.rzmrc{border:3px solid #1D1D2B;border-radius:10px;background:#fff;padding:0;cursor:pointer}
+.rzmrc.on{background:var(--c)}.rzmrc:disabled{cursor:default}
+.rzmrc.peek{animation:rzmrpk .8s ease 2}@keyframes rzmrpk{50%{box-shadow:0 0 0 6px #FFD23F}}
+.rzmrline{width:8px;border-radius:4px;background:repeating-linear-gradient(#9B5DE5 0 12px,#fff 12px 20px)}
+.rzmrw.yay{animation:rzmryay .6s ease 2}@keyframes rzmryay{50%{transform:translateX(-50%) scale(1.05)}}
+.rzszf{position:absolute;inset:0;z-index:3;pointer-events:none}
+.rzszb{position:absolute;pointer-events:auto;border:4px solid #1D1D2B;border-radius:50% 50% 48% 48%;background:radial-gradient(circle at 32% 28%,#fff8 0 12%,transparent 14%),var(--c);padding:0;cursor:pointer;animation:rzszbob 2.4s ease-in-out infinite alternate}
+.rzszb i{position:absolute;left:50%;top:100%;width:2px;height:70px;background:#1D1D2B;transform:translateX(-50%)}
+.rzszb::after{content:'';position:absolute;left:50%;bottom:-10px;transform:translateX(-50%);border:7px solid transparent;border-bottom:9px solid #1D1D2B;border-top:0}
+@keyframes rzszbob{to{transform:translateY(-14px)}}
+.rzmrc.shake,.rzszb.shake{animation:shake .35s}
+.rzszb.pop{animation:rzszpop .35s ease forwards}@keyframes rzszpop{50%{transform:scale(1.25)}100%{transform:scale(0);opacity:0}}
+</style>`);
+
 /* ===== mouth.js (v23.17): bigger, livelier talking mouths (Chester: "the mouth animations barely move")
    Lisa and Lucas: a real open mouth (dark with a tongue) now opens and closes with the voice, syllable by syllable,
    drawn over their painted mouth. The voice meter is also more sensitive, which helps the 15 friends' mouths too. ===== */
@@ -7099,6 +7158,154 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .tlbupd{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:9;display:flex;flex-direction:column;align-items:center;background:#2F3A6B;color:#FFF3C4;border-radius:18px;padding:6px 18px;text-decoration:none;box-shadow:0 5px 0 rgba(0,0,0,.2);animation:pulse 2s ease-in-out infinite}
 .tlbupd b{font-size:18px}.tlbupd small{font-size:12px;font-weight:700;opacity:.9}
 .home3 > .tlbupd{display:flex!important}
+</style>`);
+
+/* ===== flyer.js (v23.22): Fly with Priya. The reward for finding all 15 hidden butterflies.
+   Tap to flap. Priya flies over Grok's painted maps, which side-scroll and hand over through a cloud bank.
+   Fly through the gaps in the flower stems and sip the nectar. 3 hearts; Little Explorer floor is soft. ===== */
+const FLY_MAPS = [['paris','Paris'],['rome','Rome'],['egypt','Egypt'],['greece','Greece'],['mexico','Mexico'],['peru','Peru'],['japan','Japan'],['alaska','Alaska'],['australia','Australia'],['costarica','Costa Rica'],['ireland','Ireland'],['nyc','New York'],['kenya','Kenya']];
+function flyOpen(){ return bflyGot().size >= 15 || /[?&]flyer/.test(location.search); }
+function flyBest(v){ try{ if(v!=null){ localStorage.setItem('tlb_flybest', String(v)); return v; } return +(localStorage.getItem('tlb_flybest')||0); }catch(e){ return 0; } }
+
+function showFlyer(){
+  hush(); G.live = false; document.querySelectorAll('.modal,.bflyall').forEach(m=>m.remove());
+  try{ music.play('travel'); }catch(e){}
+  app.innerHTML = `<div class="screen flyscr"><canvas id="flycv" width="1024" height="700"></canvas>
+    <div class="hdr flyhdr"><div class="left"><button class="iconbtn" id="flyback" aria-label="Back to the start screen">&#8592;</button><div><div class="sub">All 15 butterflies found</div><h2>Fly with Priya!</h2></div></div>
+    <div class="left">${fsOK?`<button class="iconbtn" data-act="fs" aria-label="Full screen">${ICON_FS}</button>`:''}<button class="iconbtn" data-act="sound" aria-label="Sound on or off">${soundOn?ICON.sound:ICON.mute}</button></div></div>
+    <div class="flyhud"><span id="flyhearts"></span><b id="flyscore">0</b></div>
+    <div class="flyplace" id="flyplace"></div>
+    <div class="flymsg" id="flymsg"><b>Tap to flap!</b><span>Fly through the flowers and sip the nectar.</span></div></div>`;
+  cbind();
+  document.getElementById('flyback').onclick = ()=>{ sfx.pop(); showTitle(); };
+  const cv = document.getElementById('flycv'), g = cv.getContext('2d'), W = 1024, H = 700;
+  const little = easy(), GAP = little ? 270 : 215, SPACE = little ? 420 : 360;
+  const order = FLY_MAPS.slice(); const st = Math.floor(Math.random()*order.length); const maps = order.slice(st).concat(order.slice(0, st));
+  const imgs = {}; const img = k=>{ if(!imgs[k]){ const im = new Image(); im.src = BG_CITY[k][0]; imgs[k] = im; } return imgs[k]; };
+  maps.slice(0,3).forEach(m=>img(m[0]));
+  const pri = new Image(); pri.src = 'friends/img/priya.webp';
+  const MW = 1244; // a 1600x900 map at the stage height
+  const P = {x:250, y:330, vy:0, flap:0, hurt:0};
+  let state = 'ready', t0 = 0, last = 0, dist = 0, bgx = 0, speed = little ? 150 : 175, score = 0, hearts = little ? 5 : 3, gates = [], nextGate = 700, curMap = -1, puffs = [], tick = 0;
+  const hud = ()=>{ document.getElementById('flyhearts').innerHTML = '&#10084;&#65039;'.repeat(hearts) + '<i>&#9825;</i>'.repeat((little?5:3)-hearts); document.getElementById('flyscore').textContent = score; };
+  hud();
+  const seamClouds = k=>{ const r = []; let s = k*9301+49297; const rnd = ()=>{ s = (s*9301+49297)%233280; return s/233280; }; for(let i=0;i<16;i++) r.push([ (rnd()-.5)*150, rnd()*H, 50+rnd()*60 ]); return r; };
+  const seams = {};
+  function drawBg(){
+    const first = Math.floor(bgx / MW);
+    for(let k=first; k<=first+1; k++){
+      const m = maps[((k%maps.length)+maps.length)%maps.length], im = img(m[0]), x = k*MW - bgx;
+      if(im.complete && im.naturalWidth) g.drawImage(im, x, 0, MW, H); else { g.fillStyle = '#CFE8F5'; g.fillRect(x, 0, MW, H); }
+      img(maps[(((k+1)%maps.length)+maps.length)%maps.length][0]);
+    }
+    // the hand-over: a soft white haze and a bank of clouds over each seam
+    for(let k=first; k<=first+1; k++){ const sx = k*MW - bgx; if(sx < -260 || sx > W+260 || k===0) continue;
+      const gr = g.createLinearGradient(sx-200, 0, sx+200, 0); gr.addColorStop(0,'rgba(255,255,255,0)'); gr.addColorStop(.5,'rgba(255,255,255,.85)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(sx-200, 0, 400, H);
+      (seams[k] = seams[k] || seamClouds(k)).forEach(([dx,y,r])=>{ g.fillStyle = 'rgba(255,255,255,.92)'; g.beginPath(); g.arc(sx+dx, y, r, 0, 7); g.fill(); }); }
+    const here = Math.floor((bgx + P.x) / MW); if(here !== curMap){ curMap = here; const m = maps[((here%maps.length)+maps.length)%maps.length]; const pl = document.getElementById('flyplace'); if(pl){ pl.textContent = 'Flying over ' + m[1] + '!'; pl.classList.remove('on'); void pl.offsetWidth; pl.classList.add('on'); } }
+  }
+  function stem(x, y0, y1, top){ // a flower stem with leaves; the flower faces the gap
+    g.fillStyle = '#4C9A2A'; g.strokeStyle = '#2F6B1A'; g.lineWidth = 4;
+    const h = y1 - y0; g.beginPath(); g.roundRect ? g.roundRect(x-16, y0, 32, h, 14) : g.rect(x-16, y0, 32, h); g.fill(); g.stroke();
+    for(let yy = y0+40; yy < y1-50; yy += 90){ const s = ((yy/90)|0)%2 ? 1 : -1; g.fillStyle = '#6BBF3A'; g.beginPath(); g.ellipse(x+s*30, yy, 26, 11, s*.5, 0, 7); g.fill(); g.stroke(); }
+    const fy = top ? y1 : y0, cols = ['#FF6FA5','#FFB703','#9B5DE5','#FF7F11'], c = cols[Math.abs(Math.round(x/97))%4];
+    for(let a=0;a<6;a++){ const an = a*Math.PI/3 + tick*.01; g.fillStyle = c; g.beginPath(); g.ellipse(x+Math.cos(an)*22, fy+Math.sin(an)*22, 17, 12, an, 0, 7); g.fill(); g.strokeStyle = '#1D1D2B'; g.lineWidth = 2.5; g.stroke(); }
+    g.fillStyle = '#FFD23F'; g.beginPath(); g.arc(x, fy, 15, 0, 7); g.fill(); g.stroke();
+  }
+  function drawGates(){ gates.forEach(q=>{ const x = q.x - dist; if(x < -80 || x > W+80) return;
+      stem(x, -10, q.y - GAP/2, true); stem(x, q.y + GAP/2, H + 10, false);
+      if(!q.got){ const bob = Math.sin(tick*.08 + q.x)*6; g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.arc(x, q.y+bob, 22, 0, 7); g.fill();
+        g.fillStyle = '#7FD4FF'; g.strokeStyle = '#1D1D2B'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(x, q.y+bob-16); g.quadraticCurveTo(x+13, q.y+bob+2, x, q.y+bob+12); g.quadraticCurveTo(x-13, q.y+bob+2, x, q.y+bob-16); g.fill(); g.stroke(); } }); }
+  function drawPriya(){
+    const sz = 104, s = .5 + .5*Math.abs(Math.cos(P.flap)), tilt = Math.max(-.45, Math.min(.6, P.vy/700));
+    g.save(); g.translate(P.x, P.y); g.rotate(tilt); if(P.hurt > 0 && ((tick>>2)&1)) g.globalAlpha = .4;
+    if(pri.complete && pri.naturalWidth){
+      const w = sz, h = sz*410/420;
+      g.save(); g.scale(s, 1); g.drawImage(pri, -w/2, -h/2, w, h); g.restore(); // the wings, flapping
+      const bx = 150, bw = 120; g.drawImage(pri, bx, 0, bw, 410, -w/2 + w*bx/420, -h/2, w*bw/420, h); // the body stays put
+    } else { g.fillStyle = '#FF7F11'; g.beginPath(); g.ellipse(0,0,40*s,30,0,0,7); g.fill(); }
+    g.restore();
+    puffs.forEach(p=>{ g.fillStyle = `rgba(255,255,255,${p.a})`; g.beginPath(); g.arc(p.x, p.y, p.r, 0, 7); g.fill(); });
+  }
+  function flap(){
+    if(state === 'over') return;
+    if(state === 'ready'){ state = 'play'; const m = document.getElementById('flymsg'); if(m) m.classList.add('gone'); }
+    P.vy = little ? -300 : -330; P.flap = 0;
+    for(let i=0;i<3;i++) puffs.push({x:P.x-30, y:P.y+10+i*6, r:6+Math.random()*5, a:.7, vx:-60-Math.random()*40});
+    tone(700 + Math.random()*120, .07, 'triangle', .07);
+  }
+  function hit(){
+    if(P.hurt > 0) return; hearts--; P.hurt = 1.6; hud(); try{ sfx.oops(); }catch(e){}
+    if(hearts <= 0) over();
+  }
+  function over(){
+    state = 'over'; const best = Math.max(flyBest(), score); const nb = score > flyBest(); flyBest(best);
+    const scr = document.querySelector('.flyscr'); if(!scr) return;
+    const d = document.createElement('div'); d.className = 'flyend';
+    d.innerHTML = `<div class="flycard"><div class="flypri"><img src="friends/img/priya.webp" alt=""></div><h2>${nb ? 'A new best flight!' : 'What a flight!'}</h2>
+      <p>You scored <b>${score}</b>. Your best is <b>${best}</b>.</p><div class="row"><button class="big ghost" id="flyhome">Back to the start</button><button class="big green" id="flyagain">Fly again!</button></div></div>`;
+    scr.appendChild(d); try{ (nb ? sfx.win : sfx.chime)(); }catch(e){}
+    d.querySelector('#flyagain').onclick = ()=>{ sfx.pop(); showFlyer(); };
+    d.querySelector('#flyhome').onclick = ()=>{ sfx.pop(); showTitle(); };
+  }
+  cv.addEventListener('pointerdown', e=>{ e.preventDefault(); flap(); });
+  const key = e=>{ if(!cv.isConnected){ document.removeEventListener('keydown', key); return; } if(e.code==='Space' || e.code==='ArrowUp'){ e.preventDefault(); flap(); } };
+  document.addEventListener('keydown', key);
+  function step(now){
+    if(!cv.isConnected) return;
+    const dt = Math.min(.04, last ? (now - last)/1000 : .016); last = now; tick++;
+    P.flap += dt * (state==='play' && P.vy < 0 ? 26 : 9);
+    if(state === 'ready'){ P.y = 330 + Math.sin(now/300)*14; bgx += speed*.35*dt; }
+    if(state === 'play'){
+      speed = Math.min(little ? 210 : 260, speed + dt*2.2);
+      P.vy += (little ? 820 : 950)*dt; P.y += P.vy*dt; dist += speed*dt; bgx += speed*.45*dt;
+      if(P.hurt > 0) P.hurt -= dt;
+      if(P.y < 110){ P.y = 110; P.vy = Math.max(P.vy, 0); }
+      if(P.y > H - 40){ P.y = H - 40; P.vy = little ? -380 : -300; if(!little) hit(); else tone(260,.08,'sine',.08); }
+      while(nextGate < dist + W + 100){ const lo = 110 + GAP/2, hi = H - 110 - GAP/2; gates.push({x:nextGate, y: lo + Math.random()*(hi-lo), got:false, passed:false}); nextGate += SPACE; }
+      gates = gates.filter(q=>q.x - dist > -120);
+      gates.forEach(q=>{ const x = q.x - dist;
+        if(Math.abs(x - P.x) < 16 + 26 && (P.y < q.y - GAP/2 + 24 || P.y > q.y + GAP/2 - 24)) hit();
+        if(!q.got && Math.hypot(x - P.x, q.y - P.y) < 44){ q.got = true; score += 2; hud(); try{ sfx.chime(); }catch(e){} }
+        if(!q.passed && x < P.x - 30){ q.passed = true; score += 1; hud(); } });
+    }
+    puffs.forEach(p=>{ p.x += p.vx*dt; p.a -= dt*1.4; p.r += dt*8; }); puffs = puffs.filter(p=>p.a > 0);
+    g.clearRect(0,0,W,H); drawBg(); drawGates(); drawPriya();
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+/* the way in: the butterfly book and the all-15 card get a "Fly with Priya" button */
+(function(){
+  const add = ()=>{ const c = document.querySelector('.bflyall .bflycard'); if(!c || c.querySelector('#flygo')) return;
+    if(flyOpen()){ const b = document.createElement('button'); b.className = 'big green flygo'; b.id = 'flygo'; b.innerHTML = '&#129419; Fly with Priya!'; b.onclick = ()=>{ sfx.pop(); showFlyer(); }; c.insertBefore(b, c.querySelector('#bfok')); }
+    else { const p = document.createElement('p'); p.className = 'flylock'; p.innerHTML = '&#128274; Find all 15 to fly with Priya the butterfly!'; c.insertBefore(p, c.querySelector('#bfok')); } };
+  const ob = bflyBook; bflyBook = function(){ const r = ob.apply(this, arguments); add(); return r; };
+  const oa = bflyAll; bflyAll = function(){ const r = oa.apply(this, arguments); add(); return r; };
+})();
+
+document.head.insertAdjacentHTML('beforeend', `<style>
+.flyscr{background:#CFE8F5}
+#flycv{position:absolute;inset:0;width:1024px;height:700px;touch-action:none;cursor:pointer}
+.flyhdr{position:relative;z-index:3;pointer-events:none}.flyhdr button{pointer-events:auto}
+.flyhdr h2,.flyhdr .sub{text-shadow:0 2px 0 #fff,0 0 8px #fff}
+.flyhud{position:absolute;right:24px;top:92px;z-index:3;display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.88);border:3px solid #1D1D2B;border-radius:20px;padding:6px 16px;font-size:24px;pointer-events:none}
+.flyhud i{font-style:normal;color:#C9C3B8}.flyhud b{font-size:30px;min-width:40px;text-align:right}
+.flyplace{position:absolute;left:50%;top:96px;transform:translate(-50%,-20px);z-index:3;background:#FFF8E6;border:3px solid #1D1D2B;border-radius:22px;padding:6px 22px;font-weight:800;font-size:24px;opacity:0;pointer-events:none}
+.flyplace.on{animation:flyplace 2.8s ease forwards}
+@keyframes flyplace{0%{opacity:0;transform:translate(-50%,-20px)}12%,78%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-10px)}}
+.flymsg{position:absolute;left:50%;top:470px;transform:translateX(-50%);z-index:3;background:rgba(255,255,255,.94);border:3px solid #1D1D2B;border-radius:24px;padding:12px 28px;text-align:center;pointer-events:none;animation:flybob 1.2s ease-in-out infinite alternate;transition:opacity .3s}
+.flymsg b{display:block;font-size:34px}.flymsg span{font-size:19px}.flymsg.gone{opacity:0}
+@keyframes flybob{to{transform:translate(-50%,-8px)}}
+.flyend{position:absolute;inset:0;z-index:6;background:rgba(29,29,43,.35);display:flex;align-items:center;justify-content:center;animation:flyin .3s ease}
+.flycard{background:#FFF8E6;border:4px solid #1D1D2B;border-radius:30px;padding:20px 36px 26px;text-align:center;max-width:560px}
+.flycard h2{margin:6px 0}.flycard p{font-size:22px;margin:6px 0 16px}.flycard .row{display:flex;gap:14px;justify-content:center}
+.flypri img{width:150px;animation:flybob2 .5s ease-in-out infinite alternate}
+@keyframes flybob2{to{transform:translateY(-8px) scaleX(.9)}}
+@keyframes flyin{from{opacity:0}}
+.flygo{margin:10px auto 4px;display:block}.flylock{font-weight:700;margin:8px 0 4px}
 </style>`);
 
 /* ---------- hook music + wipes into the screens ---------- */
