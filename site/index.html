@@ -6948,6 +6948,78 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzszb.pop{animation:rzszpop .35s ease forwards}@keyframes rzszpop{50%{transform:scale(1.25)}100%{transform:scale(0);opacity:0}}
 </style>`);
 
+/* ===== rzfun12.js (v23.23): two more Challenge games
+   - turn: "Turn the tiles" one of Grok's paintings is cut into squares, some turned around; tap a square to turn it until the picture is right (Easy 2x2, Challenge 3x3). (cat slide)
+   - half: "Find the other half" pictures cut in two; tap a left half, then its right half (Easy 3, Challenge 5). (cat detect)
+   Nothing is lost on a wrong tap. ===== */
+const RZ_TURN_BG = ['001','002','004','005','006','007','008','009','010','011','012','013','014','084','085','086','087','088','089','090','091','092','093','094','095','096'];
+RZ_MAKE.turn = function(){ const e = easy(), n = e ? 2 : 3, bg = rzOne(RZ_TURN_BG);
+  let rot; do{ rot = [...Array(n*n)].map(()=>Math.random() < (e ? .7 : .8) ? 1 + Math.floor(Math.random()*3) : 0); } while(rot.filter(r=>r).length < (e ? 2 : 5));
+  return {type:'turn', title: e ? 'Turn the tiles! Tap a square to turn it.' : 'Turn the tiles! Fix the whole picture.', n, bg, rot, sig:bg+':'+rot.join('')}; };
+function rzTurnPlay(g){
+  const S = 420, n = g.n, t = S/n, bw = 1600/900*S, ox = -(bw - S)/2, rot = g.rot.slice(), turns = rot.map(r=>r);
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">${rot.filter(r=>r).length} to fix</div>
+    <div class="rztnw"><div class="rztng" style="width:${S}px;height:${S}px;grid-template-columns:repeat(${n},${t}px)">${rot.map((r,k)=>`<button class="rztnt" data-k="${k}" aria-label="Picture square" style="width:${t}px;height:${t}px;background-image:url(bg/${g.bg}.webp);background-size:${bw}px ${S}px;background-position:${ox - (k%n)*t}px ${-Math.floor(k/n)*t}px;transform:rotate(${r*90}deg)"></button>`).join('')}</div>
+    <div class="rztnex"><div style="background-image:url(bg/${g.bg}.webp);background-size:${1600/900*130}px 130px;background-position:${-(1600/900*130 - 130)/2}px 0"></div><span>Make it look like this</span></div></div>`);
+  const left = ()=>rot.filter(r=>r%4).length; let busy = false;
+  document.querySelectorAll('.rztnt').forEach(b=>b.onclick=()=>{ if(!G.live || busy) return; const k = +b.dataset.k;
+    if(rot[k]%4===0){ miss(); b.classList.remove('rztnok'); void b.offsetWidth; b.classList.add('rztnok'); tone(240,.08,'sine',.07); return; }
+    poke(); rot[k] = (rot[k]+1)%4; turns[k]++; b.style.transform = `rotate(${turns[k]*90}deg)`; tone(500+rot[k]*80,.07,'triangle',.12);
+    const L = left(); document.getElementById('cnt').textContent = L ? `${L} to fix` : 'The picture is fixed!';
+    if(rot[k]===0){ b.classList.add('rztnok'); }
+    if(!L){ busy = true; clearHint(); G.getT = null; document.querySelector('.rztng').classList.add('done'); rzDoneLater(1100); } });
+  armHint(()=>document.querySelector(`.rztnt[data-k="${rot.findIndex(r=>r%4)}"]`));
+}
+
+const RZ_HALF = ['🍎','🐞','🐸','🦋','🌻','🚗','🏠','🐟','🍉','🐢','🦀','🐙','⭐','🍩','🎈','🐝','🍓','🐳','🚀','🌈','🍄','🐧','🦉','🐌'];
+RZ_MAKE.half = function(){ const e = easy(), n = e ? 3 : 5, pics = cshuf(RZ_HALF).slice(0, n), order = cshuf([...Array(n).keys()]);
+  return {type:'half', title: e ? 'Find the other half! Tap a half, then its match.' : 'Find the other half of every picture!', n, pics, order, sig:pics.join('')+order.join('')}; };
+function rzHalfPlay(g){
+  const W = g.n===3 ? 130 : 104;
+  const half = (p, side, k)=>`<button class="rzhfh ${side}" data-k="${k}" style="width:${W/2+8}px;height:${W+16}px" aria-label="Half a picture"><span style="font-size:${W*.86}px;width:${W}px;left:${side==='L' ? 4 : 4 - W/2}px">${p}</span></button>`;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.n}</div>
+    <div class="rzhfw"><div class="rzhfr" id="rzhfl">${g.pics.map((p,k)=>half(p,'L',k)).join('')}</div><div class="rzhfr" id="rzhfr">${g.order.map(k=>half(g.pics[k],'R',k)).join('')}</div></div>`);
+  let sel = null, got = 0;
+  const pick = b=>{ document.querySelectorAll('.rzhfh.sel').forEach(x=>x.classList.remove('sel')); sel = b; if(b) b.classList.add('sel'); };
+  document.querySelectorAll('.rzhfh').forEach(b=>b.onclick=()=>{ if(!G.live || b.classList.contains('done')) return;
+    if(!sel || sel.classList.contains(b.classList.contains('L') ? 'L' : 'R')){ poke(); pick(b); tone(520,.06,'triangle',.1); return; }
+    if(sel.dataset.k===b.dataset.k){ poke(); const L = sel.classList.contains('L') ? sel : b, R = L===sel ? b : sel; pick(null);
+      L.classList.add('done'); R.classList.add('done'); got++; tone(523,.12,'triangle',.15); tone(784,.18,'triangle',.13,.1);
+      const pr = document.createElement('div'); pr.className = 'rzhfpair'; pr.textContent = g.pics[+L.dataset.k]; pr.style.fontSize = W*.86+'px';
+      const r = L.getBoundingClientRect(), wr = document.querySelector('.rzhfw').getBoundingClientRect(), sc = wr.width / document.querySelector('.rzhfw').offsetWidth;
+      pr.style.left = (r.left - wr.left)/sc + 'px'; pr.style.top = (r.top - wr.top)/sc + 'px'; document.querySelector('.rzhfw').appendChild(pr);
+      document.getElementById('cnt').textContent = `${got} / ${g.n}`; if(got>=g.n){ clearHint(); G.getT = null; rzDoneLater(1000); } }
+    else { miss(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); tone(220,.1,'sine',.08); } });
+  armHint(()=>{ const k = g.pics.findIndex((p,k)=>!document.querySelector(`#rzhfl .rzhfh[data-k="${k}"]`).classList.contains('done'));
+    if(k<0) return null; return sel && sel.dataset.k==String(k) ? document.querySelector(`#rzhfr .rzhfh[data-k="${k}"]`) : document.querySelector(`#rzhfl .rzhfh[data-k="${k}"]`); });
+}
+
+Object.assign(RZ_FAM, {turn:{cat:'slide'}, half:{cat:'detect'}});
+Object.assign(RZ_STAMP, {turn:['🔄','Turn the tiles'], half:['✂️','Other half']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {turn:rzTurnPlay, half:rzHalfPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rztnw{position:absolute;left:50%;top:190px;transform:translateX(-50%);display:flex;gap:24px;align-items:center;z-index:3}
+.rztng{display:grid;gap:4px;padding:8px;background:#1D1D2B;border-radius:18px;box-sizing:content-box}
+.rztng.done{gap:0;transition:gap .5s}
+.rztnt{border:0;padding:0;border-radius:6px;background-repeat:no-repeat;transition:transform .3s ease;cursor:pointer}
+.rztnt.rztnok{animation:rztnok .5s ease}@keyframes rztnok{50%{box-shadow:inset 0 0 0 5px #FFD23F}}
+.rztnex{display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(255,248,230,.95);border:3px solid #1D1D2B;border-radius:16px;padding:10px;font-weight:700;font-size:15px}
+.rztnex div{width:130px;height:130px;border-radius:10px;border:3px solid #1D1D2B;background-repeat:no-repeat}
+.rzhfw{position:absolute;left:50%;top:180px;transform:translateX(-50%);z-index:3;display:flex;flex-direction:column;gap:30px;background:rgba(255,248,230,.94);border:4px solid #1D1D2B;border-radius:24px;padding:18px 26px}
+.rzhfr{display:flex;gap:26px;justify-content:center}
+.rzhfh{position:relative;overflow:hidden;padding:0;background:#fff;border:3px dashed #9B8F7A;cursor:pointer}
+.rzhfh.L{border-radius:16px 0 0 16px;border-right-style:dashed}.rzhfh.R{border-radius:0 16px 16px 0}
+.rzhfh span{position:absolute;top:4px;line-height:1.1;text-align:center;pointer-events:none}
+.rzhfh.sel{border:4px solid #F4A300;box-shadow:0 0 0 4px #FFD23F88;transform:translateY(-4px)}
+.rzhfh.done{opacity:.25;cursor:default}
+.rzhfh.shake{animation:shake .35s}
+.rzhfpair{position:absolute;pointer-events:none;line-height:1.1;animation:rzhfpop 1s ease forwards}
+@keyframes rzhfpop{30%{transform:scale(1.3) translateY(-10px)}100%{transform:scale(1) translateY(-30px);opacity:0}}
+</style>`);
+
 /* ===== mouth.js (v23.17): bigger, livelier talking mouths (Chester: "the mouth animations barely move")
    Lisa and Lucas: a real open mouth (dark with a tongue) now opens and closes with the voice, syllable by syllable,
    drawn over their painted mouth. The voice meter is also more sensitive, which helps the 15 friends' mouths too. ===== */
@@ -7098,7 +7170,7 @@ function showBedtime(){
 }
 
 document.head.insertAdjacentHTML('beforeend', `<style>
-.home3 > :not(.hsart):not(.corner):not(.wt-head):not(.wt-top):not(.wt-dock):not(.bflychip):not(.bfly):not(.modal):not(.tlbupd){display:none!important}
+.home3 > :not(.hsart):not(.corner):not(.wt-head):not(.wt-top):not(.wt-dock):not(.bflychip):not(.bfly):not(.modal):not(.tlbupd):not(.flypill){display:none!important}
 .hsart{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:#FCF3D7}
 .hssky{position:absolute;left:0;right:0;top:0;height:140px;background:linear-gradient(#F3EBD2,#FCF3D7)}
 .hsimg{position:absolute;left:0;top:124px;width:1024px;height:576px;display:block}
@@ -7179,14 +7251,14 @@ function showFlyer(){
   cbind();
   document.getElementById('flyback').onclick = ()=>{ sfx.pop(); showTitle(); };
   const cv = document.getElementById('flycv'), g = cv.getContext('2d'), W = 1024, H = 700;
-  const little = easy(), GAP = little ? 270 : 215, SPACE = little ? 420 : 360;
+  const calm = typeof TLB_CALM!=='undefined' && TLB_CALM, little = easy(), GAP = (little ? 270 : 215) + (calm ? 40 : 0), SPACE = (little ? 420 : 360) + (calm ? 60 : 0);
   const order = FLY_MAPS.slice(); const st = Math.floor(Math.random()*order.length); const maps = order.slice(st).concat(order.slice(0, st));
   const imgs = {}; const img = k=>{ if(!imgs[k]){ const im = new Image(); im.src = BG_CITY[k][0]; imgs[k] = im; } return imgs[k]; };
   maps.slice(0,3).forEach(m=>img(m[0]));
   const pri = new Image(); pri.src = 'friends/img/priya.webp';
   const MW = 1244; // a 1600x900 map at the stage height
   const P = {x:250, y:330, vy:0, flap:0, hurt:0};
-  let state = 'ready', t0 = 0, last = 0, dist = 0, bgx = 0, speed = little ? 150 : 175, score = 0, hearts = little ? 5 : 3, gates = [], nextGate = 700, curMap = -1, puffs = [], tick = 0;
+  let state = 'ready', t0 = 0, last = 0, dist = 0, bgx = 0, speed = (little ? 150 : 175) * (calm ? .8 : 1), score = 0, hearts = little ? 5 : 3, gates = [], nextGate = 700, curMap = -1, puffs = [], tick = 0;
   const hud = ()=>{ document.getElementById('flyhearts').innerHTML = '&#10084;&#65039;'.repeat(hearts) + '<i>&#9825;</i>'.repeat((little?5:3)-hearts); document.getElementById('flyscore').textContent = score; };
   hud();
   const seamClouds = k=>{ const r = []; let s = k*9301+49297; const rnd = ()=>{ s = (s*9301+49297)%233280; return s/233280; }; for(let i=0;i<16;i++) r.push([ (rnd()-.5)*150, rnd()*H, 50+rnd()*60 ]); return r; };
@@ -7258,7 +7330,7 @@ function showFlyer(){
     P.flap += dt * (state==='play' && P.vy < 0 ? 26 : 9);
     if(state === 'ready'){ P.y = 330 + Math.sin(now/300)*14; bgx += speed*.35*dt; }
     if(state === 'play'){
-      speed = Math.min(little ? 210 : 260, speed + dt*2.2);
+      speed = Math.min((little ? 210 : 260) * (calm ? .8 : 1), speed + dt*2.2);
       P.vy += (little ? 820 : 950)*dt; P.y += P.vy*dt; dist += speed*dt; bgx += speed*.45*dt;
       if(P.hurt > 0) P.hurt -= dt;
       if(P.y < 110){ P.y = 110; P.vy = Math.max(P.vy, 0); }
@@ -7276,6 +7348,12 @@ function showFlyer(){
   }
   requestAnimationFrame(step);
 }
+
+/* the start screen: a "Fly with Priya" pill once all 15 are found */
+{ const base = showTitle; showTitle = function(){ const r = base.apply(this, arguments);
+  const scr = app.querySelector('.screen'); if(scr && flyOpen() && !scr.querySelector('.flypill')){ const b = document.createElement('button'); b.className = 'flypill'; b.setAttribute('aria-label','Fly with Priya');
+    b.innerHTML = '<img src="friends/img/priya.webp" alt=""><span>Fly!</span>'; b.onclick = e=>{ e.stopPropagation(); sfx.pop(); showFlyer(); }; scr.appendChild(b); }
+  return r; }; }
 
 /* the way in: the butterfly book and the all-15 card get a "Fly with Priya" button */
 (function(){
@@ -7305,6 +7383,9 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .flypri img{width:150px;animation:flybob2 .5s ease-in-out infinite alternate}
 @keyframes flybob2{to{transform:translateY(-8px) scaleX(.9)}}
 @keyframes flyin{from{opacity:0}}
+.flypill{position:absolute;right:128px;top:88px;z-index:5;display:flex;align-items:center;gap:6px;background:#FFF8E6;border:3px solid #1D1D2B;border-radius:22px;padding:0 12px 0 4px;height:40px;font-weight:800;font-size:19px;cursor:pointer;box-shadow:0 3px 0 #1D1D2B}
+.flypill img{width:34px;height:34px;object-fit:contain;animation:flybob2 .45s ease-in-out infinite alternate}
+html.calm .flypill img{animation:none}
 .flygo{margin:10px auto 4px;display:block}.flylock{font-weight:700;margin:8px 0 4px}
 </style>`);
 
