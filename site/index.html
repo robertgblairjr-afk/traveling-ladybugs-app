@@ -7956,6 +7956,225 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 @keyframes f2spin{to{transform:rotate(1080deg)}}
 </style>`);
 
+/* ===== play.js (v23.28): the Play Room + garden + evening + Razzle's daily surprise. Everything is saved on this device only (localStorage 'tlb_play').
+   Play Room (pill on the start screen, next to Bedtime): Sticker scenes, Dress up, Ladybug band, Two-player race.
+   Start screen: a bug garden grows one flower per solved place and per 3 Challenge puzzles; in the evening (7 pm to 6 am on the
+   tablet's clock, or right after Bedtime) the sky turns to dusk with stars and fireflies.
+   Challenge pavilion: "Today's surprise" (one puzzle type picked by the date; a gold star the first time it's solved that day). ===== */
+function plGet(){ try{ const p = JSON.parse(localStorage.getItem('tlb_play')||'{}'); return p && typeof p==='object' ? p : {}; }catch(e){ return {}; } }
+function plSet(p){ try{ localStorage.setItem('tlb_play', JSON.stringify(p)); }catch(e){} }
+{ const base = resetEverything; resetEverything = function(){ try{ localStorage.removeItem('tlb_play'); }catch(e){} return base.apply(this, arguments); }; }
+function plHdr(sub, title, back){ return `<div class="hdr"><div class="left"><button class="iconbtn" id="plback" aria-label="Back">&#8592;</button><div><div class="sub">${sub}</div><h2>${title}</h2></div></div>
+  <div class="left">${fsOK?`<button class="iconbtn" data-act="fs" aria-label="Full screen">${ICON_FS}</button>`:''}<button class="iconbtn" data-act="sound" aria-label="Sound on or off">${soundOn?ICON.sound:ICON.mute}</button></div></div>`; }
+function plBind(back){ cbind(); document.getElementById('plback').onclick = ()=>{ sfx.pop(); back(); }; }
+function plCalm(){ return typeof TLB_CALM!=='undefined' && TLB_CALM; }
+
+/* ---------- the Play Room ---------- */
+function showPlayRoom(){
+  hush(); G.live = false; document.querySelectorAll('.modal').forEach(m=>m.remove());
+  const doors = [['scene','&#127912;','Sticker scenes','Make your own picture'],['dress','&#127913;','Dress up','Hats and more for Lisa & Lucas'],['band','&#127927;','Ladybug band','Play music together'],['race','&#127937;','Two-player race','Race a friend through a maze']];
+  app.innerHTML = `<div class="screen plroom"><img class="plbg" src="bg/105.webp" alt="">${plHdr('Make, play and pretend','The Play Room')}
+    <div class="pldoors">${doors.map(([k,ic,t,s],i)=>`<button class="pldoor" data-k="${k}" style="animation-delay:${i*.08}s"><span>${ic}</span><b>${t}</b><small>${s}</small></button>`).join('')}</div></div>`;
+  plBind(showTitle);
+  app.querySelectorAll('.pldoor').forEach(b=>b.onclick=()=>{ unlockAudio(); sfx.chime(); ({scene:plScenePick, dress:plDress, band:plBand, race:plRace})[b.dataset.k](); });
+}
+
+/* ---------- Sticker scenes ---------- */
+const PL_BGS = ['001','007','010','084','092','094','097','106'];
+function plStickers(){ const own = (typeof sbState==='function') ? sbState().inv.slice() : []; const starter = SB_ITEMS.slice(0, 18).map(x=>x[0]); return [...new Set(own.concat(starter))]; }
+function plScenePick(){
+  app.innerHTML = `<div class="screen plroom"><img class="plbg" src="bg/105.webp" alt="">${plHdr('Sticker scenes','Pick a place')}
+    <div class="plpick">${PL_BGS.map(b=>`<button class="plpk" data-b="${b}" style="background-image:url(bg/${b}.webp)" aria-label="Picture ${b}"></button>`).join('')}</div></div>`;
+  plBind(showPlayRoom); app.querySelectorAll('.plpk').forEach(b=>b.onclick=()=>{ sfx.pop(); plScene(b.dataset.b); });
+}
+function plScene(bg){
+  const P = plGet(); P.sc = P.sc || {}; let items = (P.sc[bg] || []).map(a=>({id:a[0], x:a[1], y:a[2], s:a[3], f:a[4]||0}));
+  const save = ()=>{ const Q = plGet(); Q.sc = Q.sc || {}; Q.sc[bg] = items.map(i=>[i.id, Math.round(i.x), Math.round(i.y), i.s, i.f]); plSet(Q); };
+  const st = plStickers();
+  app.innerHTML = `<div class="screen plscene"><img class="plbg" src="bg/${bg}.webp" alt="">${plHdr('Sticker scenes','Make your picture!')}
+    <div class="plcanvas" id="plcv"></div>
+    <div class="pltools" id="pltools"><button data-a="big" aria-label="Bigger">&#10133;</button><button data-a="small" aria-label="Smaller">&#10134;</button><button data-a="flip" aria-label="Flip">&#8646;</button><button data-a="del" aria-label="Take it off">&#128465;</button></div>
+    <div class="pltray">${st.map(id=>`<button class="plts" data-id="${id}" aria-label="${sbName(id)}">${sbSticker(id, 72)}</button>`).join('')}</div>
+    <button class="plclear" id="plclear">Clear all</button></div>`;
+  plBind(plScenePick);
+  const cv = document.getElementById('plcv'), tools = document.getElementById('pltools'); let sel = null;
+  const draw = ()=>{ cv.innerHTML = items.map((it,k)=>`<div class="plit${sel===k?' sel':''}" data-k="${k}" style="left:${it.x}px;top:${it.y}px;transform:translate(-50%,-50%) scaleX(${it.f?-1:1})">${sbSticker(it.id, it.s)}</div>`).join('');
+    tools.classList.toggle('on', sel!==null); };
+  draw();
+  app.querySelectorAll('.plts').forEach(b=>b.onclick=()=>{ items.push({id:b.dataset.id, x:400 + Math.random()*220, y:330 + Math.random()*120, s:110, f:0}); sel = items.length-1; tone(660+Math.random()*200,.08,'triangle',.12); draw(); save(); });
+  let drag = null;
+  cv.addEventListener('pointerdown', ev=>{ const el = ev.target.closest('.plit'); if(!el){ sel = null; draw(); return; } sel = +el.dataset.k; const r = document.getElementById('stage').getBoundingClientRect(), sc = r.width/1024;
+    drag = {k:sel, ox:ev.clientX, oy:ev.clientY, x:items[sel].x, y:items[sel].y, sc}; cv.setPointerCapture(ev.pointerId); draw(); });
+  cv.addEventListener('pointermove', ev=>{ if(!drag) return; const it = items[drag.k]; it.x = Math.max(20, Math.min(1004, drag.x + (ev.clientX-drag.ox)/drag.sc)); it.y = Math.max(90, Math.min(560, drag.y + (ev.clientY-drag.oy)/drag.sc));
+    const el = cv.querySelector(`.plit[data-k="${drag.k}"]`); if(el){ el.style.left = it.x+'px'; el.style.top = it.y+'px'; } });
+  const up = ()=>{ if(drag){ drag = null; save(); } }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  tools.querySelectorAll('button').forEach(b=>b.onclick=()=>{ if(sel===null) return; const it = items[sel], a = b.dataset.a; sfx.pop();
+    if(a==='big') it.s = Math.min(260, it.s + 24); if(a==='small') it.s = Math.max(50, it.s - 24); if(a==='flip') it.f = it.f ? 0 : 1; if(a==='del'){ items.splice(sel,1); sel = null; }
+    draw(); save(); });
+  document.getElementById('plclear').onclick = ()=>{ if(!items.length) return; sfx.pop(); items = []; sel = null; draw(); save(); };
+}
+
+/* ---------- Dress up ---------- */
+const PL_WEAR = [ // [emoji, slot, name]  first 4 are free; one more for every place solved
+  ['👑','hat','Crown'],['🎀','neck','Bow'],['🕶️','eyes','Sunglasses'],['🎩','hat','Top hat'],
+  ['👒','hat','Sun hat'],['🧣','neck','Scarf'],['👓','eyes','Glasses'],['🎓','hat','Graduation cap'],['🏅','neck','Medal'],['🧢','hat','Cap'],['🌺','neck','Flower'],['🥽','eyes','Goggles'],
+  ['🎉','hat','Party hat'],['💐','neck','Bouquet'],['⭐','hat','Star'],['🌟','neck','Gold star'],['🦋','hat','Butterfly'],['🌈','hat','Rainbow'],['❤️','neck','Heart']];
+const PL_SPOT = {lisa:{w:353, hat:[185,95,96], eyes:[205,212,70], neck:[200,292,64]}, lucas:{w:298, hat:[110,110,96], eyes:[95,225,70], neck:[110,300,64]}};
+function plDress(){
+  const P = plGet(), solved = (typeof hsSolved==='function' ? hsSolved().length : 0), open = Math.min(PL_WEAR.length, 4 + solved);
+  P.dr = P.dr || {lisa:{}, lucas:{}}; let who = 'lisa';
+  const fig = id=>{ const sp = PL_SPOT[id], o = P.dr[id] || {}, k = .62;
+    return `<div class="pldfig" data-w="${id}" style="width:${sp.w*k}px"><img src="art/${id}.webp" alt="${id==='lisa'?'Lisa':'Lucas'}" style="width:${sp.w*k}px">${['hat','eyes','neck'].map(sl=>o[sl]!=null ? `<i class="pldw ${sl}" style="left:${sp[sl][0]*k}px;top:${sp[sl][1]*k}px;font-size:${sp[sl][2]*k}px">${PL_WEAR[o[sl]][0]}</i>` : '').join('')}</div>`; };
+  const draw = ()=>{ app.querySelector('.pldstage').innerHTML = fig('lisa') + fig('lucas');
+    app.querySelectorAll('.pldfig').forEach(f=>{ f.classList.toggle('sel', f.dataset.w===who); f.onclick = ()=>{ who = f.dataset.w; sfx.pop(); draw(); }; }); };
+  app.innerHTML = `<div class="screen pldress"><img class="plbg" src="bg/106.webp" alt="">${plHdr('Dress up','Tap Lisa or Lucas, then pick something to wear')}
+    <div class="pldstage"></div>
+    <div class="pldtray">${PL_WEAR.map(([e,sl,n],i)=>`<button class="pldi${i<open?'':' lock'}" data-i="${i}" aria-label="${i<open?n:'Locked: solve more places'}">${i<open?e:'&#128274;'}</button>`).join('')}<button class="pldi" data-i="off" aria-label="Take everything off">&#10006;</button></div>
+    <div class="pldtip">${open<PL_WEAR.length ? `Solve more places to open more things to wear! (${open} of ${PL_WEAR.length})` : 'Everything is open!'}</div></div>`;
+  plBind(showPlayRoom); draw();
+  app.querySelectorAll('.pldi').forEach(b=>b.onclick=()=>{ const i = b.dataset.i; if(i==='off'){ P.dr[who] = {}; plSet(P); sfx.pop(); draw(); return; }
+    if(+i >= open){ sfx.oops(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); return; }
+    const sl = PL_WEAR[+i][1]; P.dr[who] = P.dr[who] || {}; P.dr[who][sl] = P.dr[who][sl]===+i ? null : +i; plSet(P);
+    [784,988,1175].forEach((f,j)=>tone(f,.1,'triangle',.1,j*.07)); draw();
+    const f = app.querySelector(`.pldfig[data-w="${who}"]`); if(f){ f.classList.remove('hop'); void f.offsetWidth; f.classList.add('hop'); } });
+}
+
+/* ---------- Ladybug band ---------- */
+const PL_NOTES = [262,294,330,349,392,440,494,523], PL_NC = ['#E5383B','#FF7F11','#F4C430','#3FA34D','#2EC4B6','#2B7BE4','#9B5DE5','#FF6FA5'];
+const PL_SONGS = [['Twinkle twinkle',[0,0,4,4,5,5,4,3,3,2,2,1,1,0]],['Mary had a little lamb',[2,1,0,1,2,2,2,1,1,1,2,4,4]],['Hot cross buns',[2,1,0,2,1,0,0,0,0,0,1,1,1,1,2,1,0]]];
+function plBand(){
+  app.innerHTML = `<div class="screen plband"><img class="plbg" src="bg/094.webp" alt="">${plHdr('Ladybug band','Tap to make music!')}
+    <div class="plbfigs"><img src="art/lisa.webp" class="plbl" alt="Lisa"><img src="art/lucas.webp" class="plbr" alt="Lucas"></div>
+    <div class="plbells">${PL_NOTES.map((f,i)=>`<button class="plbell" data-i="${i}" style="--c:${PL_NC[i]};height:${150 - i*8}px" aria-label="Bell ${i+1}"></button>`).join('')}</div>
+    <div class="plperc"><button class="plpc" data-p="drum" aria-label="Drum">&#129345;</button><button class="plpc" data-p="shake" aria-label="Shaker">&#129688;</button><button class="plpc" data-p="clap" aria-label="Clap">&#128079;</button></div>
+    <div class="plsongs">${PL_SONGS.map((s,i)=>`<button class="plsong" data-s="${i}">&#9654; ${s[0]}</button>`).join('')}</div><div class="plnotes" id="plnotes"></div></div>`;
+  plBind(showPlayRoom);
+  const bop = ()=>{ app.querySelectorAll('.plbfigs img').forEach(im=>{ im.classList.remove('bop'); void im.offsetWidth; im.classList.add('bop'); }); };
+  const note = (i, fromSong)=>{ tone(PL_NOTES[i], .45, 'triangle', .16); tone(PL_NOTES[i]*2, .3, 'sine', .04); const b = app.querySelector(`.plbell[data-i="${i}"]`); if(b){ b.classList.remove('ring'); void b.offsetWidth; b.classList.add('ring'); }
+    bop(); const n = document.createElement('i'); n.textContent = ['♪','♫','♬'][i%3]; n.style.left = (300 + i*60)+'px'; n.style.color = PL_NC[i]; const box = document.getElementById('plnotes'); if(box){ box.appendChild(n); setTimeout(()=>n.remove(), 1400); } };
+  app.querySelectorAll('.plbell').forEach(b=>b.addEventListener('pointerdown', ()=>note(+b.dataset.i)));
+  const perc = {drum:()=>{ sfx.drum(); }, shake:()=>{ for(let k=0;k<3;k++) tone(5000+Math.random()*2000,.04,'square',.02,k*.05); }, clap:()=>{ tone(1800,.05,'square',.06); tone(1200,.05,'square',.05,.02); }};
+  app.querySelectorAll('.plpc').forEach(b=>b.addEventListener('pointerdown', ()=>{ perc[b.dataset.p](); bop(); b.classList.remove('ring'); void b.offsetWidth; b.classList.add('ring'); }));
+  let songT = [];
+  app.querySelectorAll('.plsong').forEach(b=>b.onclick=()=>{ songT.forEach(clearTimeout); songT = []; const seq = PL_SONGS[+b.dataset.s][1], scr = app.querySelector('.plband');
+    seq.forEach((n,k)=>songT.push(setTimeout(()=>{ if(scr.isConnected) note(n, true); }, k*480))); });
+}
+
+/* ---------- Two-player race ---------- */
+function plRace(){
+  const W = 7, H = 5, wall = rzMazeGen(W, H, 2), C = 44, goal = W*H-1, pos = [0, 0], D = [[0,-1],[1,0],[0,1],[-1,0]];
+  const mz = side=>{ let s = `<svg class="plrmz" viewBox="0 0 ${W*C+8} ${H*C+8}" width="${W*C+8}" height="${H*C+8}"><rect width="100%" height="100%" rx="10" fill="#FFF8E6"/><g transform="translate(4 4)" stroke="#1D1D2B" stroke-width="4" stroke-linecap="round">`;
+    for(let c=0;c<W*H;c++){ const x = (c%W)*C, y = Math.floor(c/W)*C; if(wall[c][0]) s += `<line x1="${x}" y1="${y}" x2="${x+C}" y2="${y}"/>`; if(wall[c][3]) s += `<line x1="${x}" y1="${y}" x2="${x}" y2="${y+C}"/>`; if(c%W===W-1 && wall[c][1]) s += `<line x1="${x+C}" y1="${y}" x2="${x+C}" y2="${y+C}"/>`; if(Math.floor(c/W)===H-1 && wall[c][2]) s += `<line x1="${x}" y1="${y+C}" x2="${x+C}" y2="${y+C}"/>`; }
+    s += `</g><text x="${(W-1)*C+26}" y="${(H-1)*C+36}" font-size="28" text-anchor="middle">&#127942;</text><g id="plrb${side}"><circle r="15" fill="${side?'#2B7BE4':'#E5383B'}" stroke="#1D1D2B" stroke-width="3"/><circle cx="-5" cy="-3" r="3" fill="#1D1D2B"/><circle cx="5" cy="4" r="3" fill="#1D1D2B"/></g></svg>`; return s; };
+  const pad = side=>`<div class="plrpad">${[['&#9650;',0],['&#9664;',3],['&#9654;',1],['&#9660;',2]].map(([a,d])=>`<button class="plrk" data-s="${side}" data-d="${d}" aria-label="Move">${a}</button>`).join('')}</div>`;
+  app.innerHTML = `<div class="screen plrace"><img class="plbg" src="bg/001.webp" alt="">${plHdr('Two-player race','First to the trophy wins!')}
+    <div class="plrside l"><b class="plrname">Red ladybug</b>${mz(0)}${pad(0)}</div><div class="plrside r"><b class="plrname">Blue ladybug</b>${mz(1)}${pad(1)}</div></div>`;
+  plBind(showPlayRoom); let over = false;
+  const put = s=>{ const c = pos[s]; document.getElementById('plrb'+s).setAttribute('transform', `translate(${(c%W)*C+26} ${Math.floor(c/W)*C+26})`); };
+  put(0); put(1);
+  app.querySelectorAll('.plrk').forEach(b=>b.addEventListener('pointerdown', ev=>{ ev.preventDefault(); if(over) return; const s = +b.dataset.s, d = +b.dataset.d, c = pos[s];
+    if(wall[c][d]){ tone(180,.06,'sine',.06); return; } const x = c%W + D[d][0], y = Math.floor(c/W) + D[d][1]; pos[s] = y*W + x; put(s); tone(s ? 600 : 500,.05,'triangle',.08);
+    if(pos[s]===goal){ over = true; sfx.win(); const m = document.createElement('div'); m.className = 'plrwin';
+      m.innerHTML = `<div class="plrcard"><h2>${s ? 'Blue' : 'Red'} ladybug wins!</h2><p>Great racing, both of you!</p><div class="row"><button class="big green" id="plragain">Race again</button><button class="big ghost" id="plrout">Play Room</button></div></div>`;
+      app.querySelector('.plrace').appendChild(m); document.getElementById('plragain').onclick = ()=>{ sfx.pop(); plRace(); }; document.getElementById('plrout').onclick = ()=>{ sfx.pop(); showPlayRoom(); }; } }));
+}
+
+/* ---------- start screen: Play Room pill, bug garden, evening ---------- */
+let plDuskNext = false;
+{ const base = showBedtime; showBedtime = function(){ plDuskNext = true; return base.apply(this, arguments); }; }
+function plHome(scr){
+  const corner = scr.querySelector('.corner'); if(corner && !corner.querySelector('#plroombtn')){ const b = document.createElement('button'); b.className = 'cornerbtn plroombtn'; b.id = 'plroombtn'; b.innerHTML = '&#127880; Play Room'; b.onclick = e=>{ e.stopPropagation(); sfx.pop(); unlockAudio(); showPlayRoom(); }; corner.prepend(b); }
+  if(!scr.querySelector('.hsimg') || scr.querySelector('.plgarden')) return;
+  const n = Math.min(24, (typeof hsSolved==='function' ? hsSolved().length : 0) + Math.floor(((typeof RZ!=='undefined' && RZ.n) || 0)/3));
+  const g = document.createElement('div'); g.className = 'hsfx plgarden';
+  const fl = ['🌷','🌼','🌸','🌻','🌺','💐'];
+  g.innerHTML = n ? [...Array(n)].map((_,i)=>`<button class="plfl" style="left:${12 + ((i*97)%21)*25}px;animation-delay:${(i*.23)%2}s" aria-label="Flower">${fl[i%fl.length]}</button>`).join('') : `<button class="plfl" style="left:250px" aria-label="A little sprout">🌱</button>`;
+  scr.appendChild(g);
+  g.querySelectorAll('.plfl').forEach(b=>b.onclick=e=>{ e.stopPropagation(); b.classList.remove('boing'); void b.offsetWidth; b.classList.add('boing'); tone(880+Math.random()*400,.08,'triangle',.1); });
+  const h = new Date().getHours(); if((h >= 19 || h < 6 || plDuskNext) && !plCalm()){ plDuskNext = false; const d = document.createElement('div'); d.className = 'hsfx pldusk'; d.setAttribute('aria-hidden','true');
+    d.innerHTML = [...Array(18)].map((_,i)=>`<i class="plstar" style="left:${(i*137)%1000}px;top:${10 + (i*53)%150}px;animation-delay:${(i*.3)%3}s"></i>`).join('') + [...Array(8)].map((_,i)=>`<i class="plff" style="left:${60 + (i*131)%900}px;top:${380 + (i*47)%220}px;animation-delay:${i*.7}s;animation-duration:${6 + i%4}s"></i>`).join('');
+    scr.appendChild(d); } else plDuskNext = false;
+}
+{ const base = showTitle; showTitle = function(){ const r = base.apply(this, arguments); const scr = app.querySelector('.screen'); if(scr) plHome(scr); return r; }; }
+
+/* ---------- Razzle's daily surprise ---------- */
+let plDaily = null;
+function plToday(){ const d = new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function plDailyFam(){ const keys = Object.keys(RZ_MAKE).filter(k=>RZ_STAMP[k]).sort(); let h = 0; for(const ch of plToday()) h = (h*31 + ch.charCodeAt(0)) >>> 0; return keys[h % keys.length]; }
+{ const base = rzHub; rzHub = function(){ const r = base.apply(this, arguments); plDaily = null; const f = app.querySelector('.rzhub'); if(!f || f.querySelector('#pldaily')) return r;
+  const P = plGet(), done = (P.daily||[]).includes(plToday()), fam = plDailyFam(), st = RZ_STAMP[fam] || ['🎁','Surprise'];
+  const b = document.createElement('button'); b.className = 'lvlb pldailybtn' + (done ? '' : ' pulse'); b.id = 'pldaily';
+  b.innerHTML = `&#127873; Today's surprise<small>${done ? `Done! &#11088; ${(P.daily||[]).length} gold ${(P.daily||[]).length===1?'star':'stars'}` : st[0]+' '+st[1]}</small>`;
+  b.onclick = ()=>{ unlockAudio(); sfx.chime(); plDaily = plToday(); const bb = rzFresh('any'); bb.g = RZ_MAKE[fam](); rzPlay(bb); };
+  f.appendChild(b); return r; }; }
+new MutationObserver(()=>{ if(!plDaily) return; const w = document.querySelector('.modal .rzwin'); if(!w || w.querySelector('.pldwin')) return;
+  const P = plGet(); P.daily = P.daily || []; const fresh = !P.daily.includes(plDaily); if(fresh){ P.daily.push(plDaily); if(P.daily.length > 400) P.daily = P.daily.slice(-400); plSet(P); }
+  const t = document.createElement('div'); t.className = 'pldwin'; t.innerHTML = fresh ? `&#11088; Today's surprise solved! You have ${P.daily.length} gold ${P.daily.length===1?'star':'stars'}.` : `&#11088; Surprise solved again!`; w.prepend(t); plDaily = null; })
+  .observe(document.documentElement, {childList:true, subtree:true});
+
+document.head.insertAdjacentHTML('beforeend', `<style>
+.plbg{position:absolute;inset:0;width:1024px;height:700px;object-fit:cover;z-index:0}
+.plroom .hdr,.plscene .hdr,.pldress .hdr,.plband .hdr,.plrace .hdr{position:relative;z-index:3}
+.pldoors{position:absolute;left:0;right:0;top:170px;display:grid;grid-template-columns:repeat(2,330px);gap:26px;justify-content:center;z-index:2}
+.pldoor{display:flex;flex-direction:column;align-items:center;gap:2px;padding:18px 10px;background:#FFF8E6;border:4px solid #1D1D2B;border-radius:28px;box-shadow:0 6px 0 #1D1D2B;cursor:pointer;animation:pldoor .4s ease both}
+.pldoor span{font-size:58px;line-height:1.1}.pldoor b{font-size:26px}.pldoor small{font-size:15px;color:#5A5A6E}
+.pldoor:active{transform:translateY(4px);box-shadow:0 2px 0 #1D1D2B}
+@keyframes pldoor{from{transform:translateY(30px);opacity:0}}
+.plroombtn{background:#FFE7F0!important}
+.plpick{position:absolute;left:0;right:0;top:150px;display:grid;grid-template-columns:repeat(4,210px);gap:20px;justify-content:center;z-index:2}
+.plpk{height:118px;border:4px solid #1D1D2B;border-radius:18px;background-size:cover;background-position:center;cursor:pointer;box-shadow:0 5px 0 #1D1D2B}
+.plcanvas{position:absolute;inset:0;z-index:2;touch-action:none}
+.plit{position:absolute;cursor:grab;filter:drop-shadow(0 4px 3px #0005)}
+.plit.sel{outline:3px dashed #FFD23F;outline-offset:4px;border-radius:12px}
+.pltray{position:absolute;left:0;right:0;bottom:0;height:96px;display:flex;gap:6px;overflow-x:auto;padding:10px 16px;background:rgba(255,248,230,.94);border-top:4px solid #1D1D2B;z-index:3;box-sizing:border-box}
+.plts{flex:none;width:76px;height:76px;border:2px solid #C9C3B8;border-radius:14px;background:#fff;padding:0;cursor:pointer}
+.pltools{position:absolute;right:16px;top:100px;display:none;flex-direction:column;gap:8px;z-index:3}.pltools.on{display:flex}
+.pltools button{width:56px;height:56px;font-size:26px;border:3px solid #1D1D2B;border-radius:16px;background:#FFF8E6;cursor:pointer}
+.plclear{position:absolute;left:16px;top:100px;z-index:3;padding:8px 14px;border:3px solid #1D1D2B;border-radius:16px;background:#FFF8E6;font-weight:800;cursor:pointer}
+.pldstage{position:absolute;left:0;right:0;top:96px;height:450px;display:flex;justify-content:center;align-items:flex-end;gap:70px;z-index:2}
+.pldfig{position:relative;cursor:pointer;transition:transform .2s}.pldfig img{display:block}
+.pldfig.sel{filter:drop-shadow(0 0 12px #FFD23F) drop-shadow(0 0 4px #FFD23F)}
+.pldfig.hop{animation:pldhop .5s ease}@keyframes pldhop{40%{transform:translateY(-24px)}}
+.pldw{position:absolute;font-style:normal;transform:translate(-50%,-50%);line-height:1;pointer-events:none;animation:pldpop .35s ease}
+@keyframes pldpop{from{transform:translate(-50%,-50%) scale(0)}}
+.pldtray{position:absolute;left:16px;right:16px;bottom:44px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;z-index:3;background:rgba(255,248,230,.94);border:4px solid #1D1D2B;border-radius:22px;padding:8px}
+.pldi{width:54px;height:54px;font-size:30px;border:2px solid #C9C3B8;border-radius:14px;background:#fff;cursor:pointer;padding:0}
+.pldi.lock{font-size:20px;opacity:.55}.pldi.shake{animation:shake .35s}
+.pldtip{position:absolute;left:0;right:0;bottom:12px;text-align:center;z-index:3;font-weight:700;color:#fff;text-shadow:0 2px 3px #000}
+.plbfigs img{position:absolute;bottom:150px;height:250px;z-index:2;transform-origin:50% 100%}.plbl{left:30px}.plbr{right:30px}
+.plbfigs img.bop{animation:plbop .3s ease}@keyframes plbop{40%{transform:translateY(-14px) scaleY(1.04) rotate(-3deg)}}
+.plbells{position:absolute;left:220px;right:220px;top:200px;display:flex;align-items:flex-end;justify-content:center;gap:10px;z-index:3}
+.plbell{width:58px;border:4px solid #1D1D2B;border-radius:14px 14px 22px 22px;background:linear-gradient(90deg,#fff6 0 20%,transparent 40%),var(--c);cursor:pointer;box-shadow:0 5px 0 #1D1D2B;touch-action:manipulation}
+.plbell.ring,.plpc.ring{animation:plring .3s ease}@keyframes plring{40%{transform:translateY(5px) scale(.95);filter:brightness(1.3)}}
+.plperc{position:absolute;left:0;right:0;top:410px;display:flex;gap:20px;justify-content:center;z-index:3}
+.plpc{width:84px;height:84px;font-size:44px;border:4px solid #1D1D2B;border-radius:50%;background:#FFF8E6;cursor:pointer;touch-action:manipulation}
+.plsongs{position:absolute;left:0;right:0;bottom:30px;display:flex;gap:12px;justify-content:center;z-index:3}
+.plsong{padding:10px 16px;font-weight:800;font-size:17px;border:3px solid #1D1D2B;border-radius:18px;background:#FFF8E6;cursor:pointer}
+.plnotes{position:absolute;inset:0;pointer-events:none;z-index:4}.plnotes i{position:absolute;top:200px;font-style:normal;font-size:40px;font-weight:900;-webkit-text-stroke:1px #1D1D2B;animation:plnote 1.3s ease-out forwards}
+@keyframes plnote{to{transform:translateY(-130px) rotate(20deg);opacity:0}}
+.plrside{position:absolute;top:96px;width:480px;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:2}.plrside.l{left:16px}.plrside.r{right:16px}
+.plrname{background:#FFF8E6;border:3px solid #1D1D2B;border-radius:14px;padding:2px 14px}
+.plrside.l .plrname{color:#C8262A}.plrside.r .plrname{color:#1F5FB8}
+.plrmz{border:4px solid #1D1D2B;border-radius:14px;background:#FFF8E6}
+.plrpad{display:grid;grid-template-columns:repeat(4,82px);gap:10px}
+.plrk{height:72px;font-size:30px;border:4px solid #1D1D2B;border-radius:18px;background:#FFF8E6;cursor:pointer;touch-action:manipulation;box-shadow:0 4px 0 #1D1D2B}
+.plrk:active{transform:translateY(3px);box-shadow:0 1px 0 #1D1D2B}
+.plrwin{position:absolute;inset:0;z-index:6;background:rgba(29,29,43,.35);display:flex;align-items:center;justify-content:center}
+.plrcard{background:#FFF8E6;border:4px solid #1D1D2B;border-radius:30px;padding:22px 40px;text-align:center}.plrcard .row{display:flex;gap:14px;justify-content:center}
+.plgarden{position:absolute;left:0;top:668px;width:560px;height:32px;z-index:3}
+.plfl{position:absolute;bottom:0;font-size:24px;border:0;background:none;padding:0;cursor:pointer;transform-origin:50% 100%;animation:plsway 3s ease-in-out infinite alternate}
+@keyframes plsway{from{transform:rotate(-6deg)}to{transform:rotate(6deg)}}
+.plfl.boing{animation:plboing .5s ease}@keyframes plboing{40%{transform:scale(1.5) translateY(-6px)}}
+.pldusk{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(rgba(40,30,90,.55),rgba(60,40,110,.25) 55%,rgba(20,20,60,.15))}
+.plstar{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff;box-shadow:0 0 6px 2px #fff;animation:pltw 2.4s ease-in-out infinite alternate}
+@keyframes pltw{from{opacity:.2}to{opacity:1}}
+.plff{position:absolute;width:8px;height:8px;border-radius:50%;background:#FFE14D;box-shadow:0 0 12px 5px #FFE14Daa;animation:plff ease-in-out infinite alternate}
+@keyframes plff{0%{transform:translate(0,0);opacity:.3}50%{opacity:1}100%{transform:translate(60px,-50px);opacity:.4}}
+.pldailybtn{position:absolute;left:30px;top:96px;z-index:4;background:#FFF3C4!important;border:3px solid #1D1D2B!important;display:flex;flex-direction:column;align-items:flex-start}
+.pldwin{background:#FFD23F;border:3px solid #1D1D2B;border-radius:14px;padding:6px 12px;font-weight:800;margin-bottom:8px;text-align:center}
+html.calm .plfl,html.calm .plstar,html.calm .plff{animation:none}
+</style>`);
+
 /* ---------- hook music + wipes into the screens ---------- */
 {
   const THEMES = ['roman','tower','fire','palace','bigben'];
