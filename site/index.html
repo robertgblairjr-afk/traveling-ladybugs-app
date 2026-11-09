@@ -7518,6 +7518,105 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzktf.who circle{animation:rzktwho 1s ease-in-out infinite alternate}@keyframes rzktwho{to{stroke-width:14}}
 </style>`);
 
+/* ===== rzfun18.js (v23.31): two more Challenge games
+   - jam: "Traffic jam" slide the cars (drag along their road, or tap a car then an arrow) so the red ladybug car can drive out of the gate.
+          Every board is solved by a search before it is given: Easy needs 2-5 moves, Challenge 8+ (a hard one). Undo. (cat maze)
+   - wash: "Bath time!" mud splats on a ladybug; rub them away with a finger (or tap each splat a few times). Easy 5 big splats, Challenge 10 smaller ones. Bubbles fly while you scrub. (cat play)
+   Nothing is lost on a wrong move. ===== */
+const RZ_JN = 6, RZ_JEXIT = 2;
+function rzJamKey(cars){ return cars.map(c=>c.x+','+c.y).join(';'); }
+function rzJamGrid(cars){ const g = Array(36).fill(-1); cars.forEach((c,i)=>{ for(let k=0;k<c.len;k++){ const x = c.x + (c.h?k:0), y = c.y + (c.h?0:k); g[y*6+x] = i; } }); return g; }
+function rzJamMoves(cars){ const g = rzJamGrid(cars), out = [];
+  cars.forEach((c,i)=>{ for(const d of [-1,1]){ let s = 1; while(true){ const x = c.h ? (d<0 ? c.x - s : c.x + c.len - 1 + s) : c.x, y = c.h ? c.y : (d<0 ? c.y - s : c.y + c.len - 1 + s);
+      if(x<0||y<0||x>5||y>5||g[y*6+x]!==-1) break; out.push([i, d*s]); s++; } } }); return out; }
+function rzJamApply(cars, [i, s]){ return cars.map((c,k)=>k!==i ? c : Object.assign({}, c, c.h ? {x:c.x+s} : {y:c.y+s})); }
+function rzJamSolve(cars, cap){ const start = rzJamKey(cars), prev = new Map([[start, null]]), q = [cars]; let n = 0;
+  while(q.length){ const s = q.shift(); if(++n > (cap||20000)) return null; if(s[0].x + s[0].len === 6){ const path = []; let k = rzJamKey(s); while(prev.get(k)){ const [pk, m] = prev.get(k); path.unshift(m); k = pk; } return path; }
+    for(const m of rzJamMoves(s)){ const t = rzJamApply(s, m), k = rzJamKey(t); if(!prev.has(k)){ prev.set(k, [rzJamKey(s), m]); q.push(t); } } } return null; }
+RZ_MAKE.jam = function(){ const e = easy(), lo = e ? 3 : 8, hi = e ? 5 : 40, nc = e ? [5,7] : [9,12];
+  for(let t=0;t<400;t++){ const cars = [{x:Math.floor(Math.random()*2), y:RZ_JEXIT, len:2, h:1}], want = nc[0] + Math.floor(Math.random()*(nc[1]-nc[0]+1));
+    for(let tries=0; tries<200 && cars.length<want; tries++){ const h = Math.random()<.5 ? 1 : 0, len = Math.random()<.25 ? 3 : 2, x = Math.floor(Math.random()*(h?7-len:6)), y = Math.floor(Math.random()*(h?6:7-len));
+      if(h && y===RZ_JEXIT) continue; const c = {x, y, len, h}, g = rzJamGrid(cars); let okk = true; for(let k=0;k<len;k++){ if(g[(y+(h?0:k))*6 + x+(h?k:0)]!==-1){ okk = false; break; } } if(okk) cars.push(c); }
+    const sol = rzJamSolve(cars, 30000); if(!sol || sol.length < lo || sol.length > hi) continue;
+    return {type:'jam', title: e ? 'Traffic jam! Slide the cars so the red car can drive out.' : 'Traffic jam! A tricky one. Clear the way for the red car!', cars, best: sol.length, sig: rzJamKey(cars)}; }
+  return RZ_MAKE.icemaze ? RZ_MAKE.icemaze() : RZ_MAKE.numtrain(); };
+function rzJamPlay(g){
+  const C = 78, O = [512 - 3*C, 150], COL = ['#E5383B','#2B7BE4','#F4C430','#3FA34D','#9B5DE5','#FF7F11','#2EC4B6','#FF6FA5','#8B5A2B','#5A5A6E','#B794F6','#7CB342'];
+  let cars = g.cars.map(c=>Object.assign({}, c)), hist = [], moves = 0, sel = -1, done = false;
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Moves: 0</div><div class="rzrhb" id="rzrhb" style="left:${O[0]-14}px;top:${O[1]-14}px;width:${6*C+28}px;height:${6*C+28}px"><div class="rzrhgate" style="top:${RZ_JEXIT*C+14}px;height:${C}px"></div></div>
+    <div class="rzrharr" id="rzrharr"><button data-d="-1" aria-label="Back">&#9664;</button><button data-d="1" aria-label="Forward">&#9654;</button></div><button class="big ghost rzrhundo" id="rzrhundo">&#8630; Undo</button>`);
+  const box = document.getElementById('rzrhb');
+  const draw = ()=>{ box.querySelectorAll('.rzrhcar').forEach(e=>e.remove());
+    cars.forEach((c,i)=>{ const e = document.createElement('div'); e.className = 'rzrhcar' + (i===0 ? ' hero' : '') + (i===sel ? ' sel' : ''); e.dataset.i = i;
+      e.style.cssText = `left:${14 + c.x*C + 4}px;top:${14 + c.y*C + 4}px;width:${(c.h ? c.len*C : C) - 8}px;height:${(c.h ? C : c.len*C) - 8}px;background:${i===0 ? '#E5383B' : COL[(i+3)%COL.length]}`;
+      e.innerHTML = i===0 ? '<i class="sp a"></i><i class="sp b"></i><i class="sp c"></i><b>&#10140;</b>' : `<i class="rzrhw ${c.h?'h':'v'}"></i>`; box.appendChild(e); });
+    const ar = document.getElementById('rzrharr'); ar.classList.toggle('on', sel>=0); if(sel>=0) ar.classList.toggle('v', !cars[sel].h); };
+  const commit = m=>{ hist.push(cars); cars = rzJamApply(cars, m); moves++; document.getElementById('cnt').textContent = `Moves: ${moves}`; tone(420 + Math.random()*120,.06,'triangle',.1); draw();
+    if(cars[0].x + cars[0].len === 6 && !done){ done = true; clearHint(); G.getT = null; const hero = box.querySelector('.rzrhcar.hero'); if(hero){ hero.style.transition = 'left .9s ease-in'; requestAnimationFrame(()=>{ hero.style.left = (14 + 7*C)+'px'; }); }
+      [0,150,300].forEach((t,k)=>tone(523+k*130,.15,'triangle',.14,t/1000)); document.getElementById('cnt').textContent = `Out in ${moves} moves!`; rzDoneLater(1300); } };
+  const legal = (i, s)=>rzJamMoves(cars).some(([a,b])=>a===i && b===s);
+  let drag = null;
+  box.addEventListener('pointerdown', ev=>{ const e = ev.target.closest('.rzrhcar'); if(!e || done || !G.live) return; sel = +e.dataset.i; poke(); const r = document.getElementById('stage').getBoundingClientRect();
+    drag = {i:sel, x0:ev.clientX, y0:ev.clientY, sc:r.width/1024, el:e, moved:0}; box.setPointerCapture(ev.pointerId); draw(); drag.el = box.querySelector(`.rzrhcar[data-i="${sel}"]`); });
+  box.addEventListener('pointermove', ev=>{ if(!drag) return; const c = cars[drag.i], d = c.h ? (ev.clientX-drag.x0)/drag.sc : (ev.clientY-drag.y0)/drag.sc; let s = Math.round(d / C);
+    while(s!==0 && !legal(drag.i, s)) s += s>0 ? -1 : 1; const px = Math.max(-C*5, Math.min(C*5, s*C)); drag.el.style.transform = c.h ? `translateX(${px}px)` : `translateY(${px}px)`; drag.moved = s; });
+  const up = ()=>{ if(!drag) return; const s = drag.moved, i = drag.i; drag = null; if(s){ commit([i, s]); } else draw(); };
+  box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
+  document.querySelectorAll('#rzrharr button').forEach(b=>b.onclick=()=>{ if(sel<0 || done) return; const s = +b.dataset.d; if(legal(sel, s)) commit([sel, s]); else { miss(); tone(200,.08,'sine',.08); } });
+  document.getElementById('rzrhundo').onclick = ()=>{ if(!hist.length || done) return; poke(); cars = hist.pop(); moves = Math.max(0, moves-1); document.getElementById('cnt').textContent = `Moves: ${moves}`; draw(); };
+  draw(); window._rzjam = {get cars(){ return cars; }, commit};
+  armHint(()=>{ const sol = rzJamSolve(cars, 20000); if(!sol || !sol.length) return document.getElementById('rzrhundo'); return box.querySelector(`.rzrhcar[data-i="${sol[0][0]}"]`); });
+}
+
+RZ_MAKE.wash = function(){ const e = easy(), n = e ? 5 : 10, spots = []; let t = 0;
+  while(spots.length < n && t++ < 500){ const x = 440 + Math.random()*150, y = 240 + Math.random()*260; if(spots.every(([a,b])=>Math.hypot(a-x,b-y) > (e ? 62 : 44))) spots.push([Math.round(x), Math.round(y)]); }
+  return {type:'wash', title: e ? 'Bath time! Rub the mud off the ladybug.' : 'Bath time! Scrub away every mud splat.', spots, r: e ? 40 : 30, who: Math.random()<.5 ? 'lisa' : 'lucas', sig: spots.map(s=>s.join(',')).join(' ')}; };
+function rzWashPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">${g.spots.length} splats to go</div><div class="rzscw" id="rzscw"><div class="rzsctub"></div><img src="art/${g.who}.webp" class="rzscbug" alt="">
+    ${g.spots.map(([x,y],i)=>`<div class="rzscmud" data-i="${i}" style="left:${x - g.r}px;top:${y - g.r}px;width:${g.r*2}px;height:${g.r*2}px"></div>`).join('')}</div>`);
+  const w = document.getElementById('rzscw'), mud = [...w.querySelectorAll('.rzscmud')], dirt = mud.map(()=>1); let left = mud.length, last = 0;
+  const bubble = (x, y)=>{ const b = document.createElement('i'); b.className = 'rzscbub'; b.style.left = x+'px'; b.style.top = y+'px'; b.style.setProperty('--s', (.5 + Math.random()*.8).toFixed(2)); w.appendChild(b); setTimeout(()=>b.remove(), 1200); };
+  const scrub = (i, amt, x, y)=>{ if(dirt[i] <= 0) return; dirt[i] = Math.max(0, dirt[i] - amt); mud[i].style.opacity = dirt[i]; const now = performance.now();
+    if(now - last > 70){ last = now; bubble(x + (Math.random()-.5)*40, y + (Math.random()-.5)*30); tone(900 + Math.random()*500,.03,'sine',.04); }
+    if(dirt[i] <= 0){ left--; poke(); mud[i].classList.add('gone'); tone(784,.1,'triangle',.12); document.getElementById('cnt').textContent = left ? `${left} ${left===1?'splat':'splats'} to go` : 'Squeaky clean!';
+      if(!left){ clearHint(); G.getT = null; w.classList.add('shine'); for(let k=0;k<12;k++) setTimeout(()=>bubble(400 + Math.random()*240, 250 + Math.random()*260), k*60); rzDoneLater(1400); } } };
+  const at = ev=>{ const r = document.getElementById('stage').getBoundingClientRect(), sc = r.width/1024; return [(ev.clientX - r.left)/sc, (ev.clientY - r.top)/sc]; };
+  let down = false;
+  w.addEventListener('pointerdown', ev=>{ if(!G.live) return; down = true; w.setPointerCapture(ev.pointerId); const [x,y] = at(ev); hit(x, y, .34); });
+  w.addEventListener('pointermove', ev=>{ if(!down || !G.live) return; const [x,y] = at(ev); hit(x, y, .06); });
+  w.addEventListener('pointerup', ()=>{ down = false; }); w.addEventListener('pointercancel', ()=>{ down = false; });
+  const hit = (x, y, amt)=>{ g.spots.forEach(([sx,sy],i)=>{ if(Math.hypot(sx-x, sy-y) < g.r + 14) scrub(i, amt, x, y); }); };
+  armHint(()=>mud.find((m,i)=>dirt[i] > 0));
+}
+
+Object.assign(RZ_FAM, {jam:{cat:'maze'}, wash:{cat:'play'}});
+Object.assign(RZ_STAMP, {jam:['🚗','Traffic jam'], wash:['🛁','Bath time']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {jam:rzJamPlay, wash:rzWashPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzrhb{position:absolute;z-index:3;background:#6B6B78;border:6px solid #1D1D2B;border-radius:22px;box-sizing:border-box;touch-action:none;
+  background-image:linear-gradient(#ffffff22 2px,transparent 2px),linear-gradient(90deg,#ffffff22 2px,transparent 2px);background-size:78px 78px;background-position:8px 8px}
+.rzrhgate{position:absolute;right:-30px;width:30px;background:repeating-linear-gradient(#FFD23F 0 10px,#1D1D2B 10px 20px);border:3px solid #1D1D2B;border-radius:0 8px 8px 0}
+.rzrhcar{position:absolute;border:4px solid #1D1D2B;border-radius:16px;box-sizing:border-box;cursor:grab;box-shadow:inset 0 -8px 0 #0003,inset 0 6px 0 #fff4;transition:left .15s,top .15s}
+.rzrhcar.sel{box-shadow:0 0 0 5px #FFD23F,inset 0 -8px 0 #0003}
+.rzrhcar .rzrhw{position:absolute;background:#CFE8F5;border:3px solid #1D1D2B;border-radius:6px}.rzrhcar .rzrhw.h{left:22%;right:22%;top:18%;bottom:18%}.rzrhcar .rzrhw.v{left:18%;right:18%;top:22%;bottom:22%}
+.rzrhcar.hero .sp{position:absolute;width:14px;height:14px;border-radius:50%;background:#1D1D2B}.rzrhcar.hero .a{left:22%;top:20%}.rzrhcar.hero .b{left:44%;bottom:20%}.rzrhcar.hero .c{left:66%;top:22%}
+.rzrhcar.hero b{position:absolute;right:8px;top:50%;transform:translateY(-50%);color:#fff;font-size:26px}
+.rzrharr{position:absolute;right:40px;top:300px;z-index:4;display:none;gap:10px}.rzrharr.on{display:flex}.rzrharr.v{flex-direction:column}.rzrharr.v button{transform:rotate(90deg)}
+.rzrharr button{width:70px;height:70px;font-size:30px;border:4px solid #1D1D2B;border-radius:18px;background:#FFF8E6;cursor:pointer}
+.rzrhundo{position:absolute;left:40px;bottom:110px;z-index:4}
+.rzscw{position:absolute;inset:0;z-index:3;touch-action:none}
+.rzsctub{position:absolute;z-index:1;left:330px;top:500px;width:364px;height:130px;border-radius:20px 20px 80px 80px;background:linear-gradient(#fff,#DCEFF7);border:5px solid #1D1D2B}
+.rzscbug{position:absolute;left:512px;top:130px;height:470px;transform:translateX(-50%);pointer-events:none}
+.rzscmud{position:absolute;z-index:2;border-radius:46% 54% 42% 58% / 55% 45% 55% 45%;background:radial-gradient(circle at 40% 35%,#8B6B4A,#5C3D22 70%);box-shadow:8px 6px 0 -4px #6E4A2B,-6px 10px 0 -6px #6E4A2B;pointer-events:none;transition:opacity .1s}
+.rzscmud.gone{transform:scale(.4);opacity:0!important;transition:all .3s}
+.rzscbub{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:2px solid #fff;background:radial-gradient(circle at 30% 30%,#fff,#bfe6ff55 60%);pointer-events:none;transform:scale(var(--s));animation:rzscbub 1.1s ease-out forwards}
+@keyframes rzscbub{to{transform:translateY(-90px) scale(var(--s));opacity:0}}
+.rzscw.shine .rzscbug{animation:rzscsh .6s ease 3}@keyframes rzscsh{50%{filter:brightness(1.2) drop-shadow(0 0 16px #fff)}}
+</style>`);
+
 /* ===== mouth.js (v23.17): bigger, livelier talking mouths (Chester: "the mouth animations barely move")
    Lisa and Lucas: a real open mouth (dark with a tongue) now opens and closes with the voice, syllable by syllable,
    drawn over their painted mouth. The voice meter is also more sensitive, which helps the 15 friends' mouths too. ===== */
