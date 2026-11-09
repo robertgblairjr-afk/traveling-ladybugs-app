@@ -8547,6 +8547,78 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 html.calm .a3life{display:none}
 </style>`);
 
+/* ===== anim4.js (v23.33): weather and life that fits each place, added to the living-painting layer (anim3.js)
+   Japan: cherry petals. India: marigold petals. Alaska: snow + a soft aurora. Paris and Rome: autumn leaves. Ireland: a light drizzle and a
+   rainbow that fades in and out. Egypt and Kenya: warm dust drifting up + heat shimmer. Greece: sea glints. Peru: low mist + a gliding condor.
+   Mexico: papel picado colours (paper petals). Costa Rica and Australia: butterflies. New York: twinkling city lights.
+   Other screens (Challenge puzzles etc.) get a theme picked from the painting's file name. Soft clouds drift across the sky on every daytime painting.
+   Off in calm mode; pointer-events none. ===== */
+const A4_THEME = {japan:'sakura', india:'marigold', alaska:'snow', paris:'leaves', rome:'leaves', ireland:'drizzle', egypt:'dust', kenya:'dust',
+  greece:'glint', peru:'mist', mexico:'picado', costarica:'flutter', australia:'flutter', nyc:'lights', london:'drizzle'};
+const A4_ANY = ['sakura','leaves','flutter','glint','marigold','flutter'];
+function a4Theme(href){
+  if(typeof CUR==='string' && A4_THEME[CUR]) return A4_THEME[CUR];
+  let h = 0; for(const c of String(href)) h = (h*31 + c.charCodeAt(0)) >>> 0; return A4_ANY[h % A4_ANY.length];
+}
+function a4Add(L){
+  if(L.querySelector('.a4fx')) return; const img = L.parentElement && L.parentElement.querySelector(':scope > svg.full image.bgimg'); const href = img ? img.getAttribute('href') : '';
+  const night = L.classList.contains('night'), t = a4Theme(href), r = (a,b)=>a + Math.random()*(b-a), fx = document.createElement('div'); fx.className = 'a4fx a4-' + t;
+  let h = '';
+  if(!night) h += [0,1,2].map(i=>`<i class="a4cl" style="top:${r(70,170).toFixed(0)}px;animation-duration:${r(70,120).toFixed(0)}s;animation-delay:-${r(0,90).toFixed(0)}s;--w:${r(160,260).toFixed(0)}px"></i>`).join('');
+  const fall = (cls, n, d1, d2)=>[...Array(n)].map(()=>`<i class="${cls}" style="left:${r(-40,1000).toFixed(0)}px;animation-duration:${r(d1,d2).toFixed(1)}s;animation-delay:-${r(0,d2).toFixed(1)}s;--dx:${r(60,220).toFixed(0)}px;--rz:${r(180,720).toFixed(0)}deg;--sc:${r(.6,1.2).toFixed(2)}"></i>`).join('');
+  if(t==='sakura') h += fall('a4petal', 16, 8, 14);
+  if(t==='marigold') h += fall('a4petal mari', 14, 8, 13);
+  if(t==='leaves') h += fall('a4leaf', 10, 9, 15);
+  if(t==='picado') h += fall('a4petal pic', 16, 9, 14);
+  if(t==='snow') h += fall('a4snow', 34, 7, 14) + (night ? '' : '<i class="a4aur"></i>');
+  if(t==='drizzle') h += fall('a4rain', 40, .9, 1.5) + '<i class="a4bow"></i>';
+  if(t==='dust') h += [...Array(16)].map(()=>`<i class="a4dust" style="left:${r(0,1024).toFixed(0)}px;top:${r(380,700).toFixed(0)}px;animation-duration:${r(8,14).toFixed(1)}s;animation-delay:-${r(0,14).toFixed(1)}s"></i>`).join('') + '<i class="a4haze"></i>';
+  if(t==='glint') h += [...Array(14)].map(()=>`<i class="a4gl" style="left:${r(0,1024).toFixed(0)}px;top:${r(430,660).toFixed(0)}px;animation-delay:-${r(0,3).toFixed(1)}s;animation-duration:${r(1.6,3).toFixed(1)}s"></i>`).join('');
+  if(t==='mist') h += '<i class="a4mist m1"></i><i class="a4mist m2"></i><svg class="a4condor" viewBox="0 0 80 30" width="80" height="30"><path d="M2 18 Q20 2 40 16 Q60 2 78 18" stroke="#2A2A35" stroke-width="5" fill="none" stroke-linecap="round"/></svg>';
+  if(t==='flutter') h += [...Array(4)].map((_,i)=>`<i class="a4bf" style="--c:${['#FF7F11','#2B7BE4','#F4C430','#E5383B'][i]};top:${r(260,560).toFixed(0)}px;animation-duration:${r(18,28).toFixed(0)}s;animation-delay:-${r(0,25).toFixed(0)}s"><b></b><b></b></i>`).join('');
+  if(t==='lights') h += [...Array(22)].map(()=>`<i class="a4win" style="left:${r(30,1000).toFixed(0)}px;top:${r(200,520).toFixed(0)}px;animation-delay:-${r(0,6).toFixed(1)}s;animation-duration:${r(3,7).toFixed(1)}s"></i>`).join('');
+  fx.innerHTML = h; L.appendChild(fx);
+}
+new MutationObserver(()=>{ const L = document.querySelector('#app > .screen > .a3life'); if(L) a4Add(L); }).observe(document.getElementById('app') || document.body, {childList:true, subtree:true});
+document.head.insertAdjacentHTML('beforeend', `<style>
+.a4fx{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.a4cl{position:absolute;left:-300px;width:var(--w);height:60px;border-radius:60px;background:radial-gradient(ellipse at 50% 60%,rgba(255,255,255,.7),rgba(255,255,255,.3) 55%,rgba(255,255,255,0) 72%);animation:a4cl linear infinite}
+@keyframes a4cl{to{transform:translateX(1500px)}}
+.a4petal,.a4leaf,.a4snow,.a4rain{position:absolute;top:-30px;animation:a4fall linear infinite}
+@keyframes a4fall{0%{transform:translate(0,0) rotate(0) scale(var(--sc))}100%{transform:translate(var(--dx),760px) rotate(var(--rz)) scale(var(--sc))}}
+.a4petal{width:18px;height:13px;border-radius:70% 0 70% 0;background:radial-gradient(circle at 30% 30%,#fff,#FFB7CE 60%,#F58FB1)}
+.a4petal.mari{background:radial-gradient(circle at 30% 30%,#FFE08A,#FFA62B 60%,#E87A00)}
+.a4petal.pic{width:16px;height:12px;border-radius:2px}.a4petal.pic:nth-child(4n){background:#E5383B}.a4petal.pic:nth-child(4n+1){background:#2EC4B6}.a4petal.pic:nth-child(4n+2){background:#F4C430}.a4petal.pic:nth-child(4n+3){background:#9B5DE5}
+.a4leaf{width:22px;height:15px;border-radius:0 80% 0 80%;background:linear-gradient(135deg,#F4A300,#D9480F)}
+.a4leaf:nth-child(3n){background:linear-gradient(135deg,#E9C46A,#B5651D)}
+.a4snow{width:9px;height:9px;border-radius:50%;background:#fff;box-shadow:0 0 4px #fff;opacity:.9}
+.a4rain{width:2px;height:22px;background:linear-gradient(transparent,rgba(200,225,255,.75));--rz:0deg!important;opacity:.6}
+.a4bow{position:absolute;left:520px;top:120px;width:520px;height:260px;opacity:0;animation:a4bow 24s ease-in-out infinite;background:radial-gradient(circle at 50% 100%,transparent 196px,#9B5DE5 197px 206px,#2B7BE4 207px 216px,#3FA34D 217px 226px,#F4C430 227px 236px,#FF7F11 237px 246px,#E5383B 247px 258px,transparent 259px)}
+@keyframes a4bow{0%,45%{opacity:0}60%,85%{opacity:.45}100%{opacity:0}}
+.a4aur{position:absolute;left:-10%;right:-10%;top:40px;height:200px;background:linear-gradient(90deg,transparent,rgba(124,242,156,.28),rgba(127,212,255,.22),rgba(183,148,246,.25),transparent);filter:blur(18px);animation:a4aur 14s ease-in-out infinite alternate;mix-blend-mode:screen}
+@keyframes a4aur{from{transform:translateX(-80px) skewX(-10deg)}to{transform:translateX(80px) skewX(10deg)}}
+.a4dust{position:absolute;width:4px;height:4px;border-radius:50%;background:rgba(255,226,170,.85);animation:a4dust linear infinite}
+@keyframes a4dust{0%{transform:translate(0,0);opacity:0}20%{opacity:.8}100%{transform:translate(120px,-200px);opacity:0}}
+.a4haze{position:absolute;left:0;right:0;bottom:0;height:200px;background:linear-gradient(transparent,rgba(255,214,150,.12));animation:a4haze 6s ease-in-out infinite alternate}
+@keyframes a4haze{to{opacity:.4;transform:translateY(-6px)}}
+.a4gl{position:absolute;width:10px;height:10px;background:radial-gradient(circle,#fff 0 20%,transparent 60%);animation:a4gl ease-in-out infinite}
+.a4gl::before,.a4gl::after{content:'';position:absolute;left:4px;top:-4px;width:2px;height:18px;background:linear-gradient(transparent,#fff,transparent)}.a4gl::after{transform:rotate(90deg)}
+@keyframes a4gl{0%,60%,100%{opacity:0;transform:scale(.4)}75%{opacity:1;transform:scale(1)}}
+.a4mist{position:absolute;left:-30%;width:160%;height:140px;background:radial-gradient(ellipse at center,rgba(255,255,255,.45),transparent 70%);filter:blur(8px);animation:a4mist 40s linear infinite alternate}
+.a4mist.m1{top:430px}.a4mist.m2{top:520px;animation-duration:55s;animation-direction:alternate-reverse;opacity:.7}
+@keyframes a4mist{to{transform:translateX(18%)}}
+.a4condor{position:absolute;left:-100px;top:150px;animation:a4condor 40s linear infinite}
+@keyframes a4condor{0%{transform:translate(0,0)}50%{transform:translate(620px,40px)}100%{transform:translate(1250px,-20px)}}
+.a4bf{position:absolute;left:-60px;width:30px;height:24px;animation:a4bf linear infinite}
+.a4bf b{position:absolute;top:0;width:15px;height:22px;background:var(--c);border:2px solid #1D1D2B;border-radius:50% 50% 40% 40%;animation:a4wing .18s ease-in-out infinite alternate}
+.a4bf b:first-child{left:0;transform-origin:100% 50%}.a4bf b:last-child{right:0;transform-origin:0 50%}
+@keyframes a4wing{to{transform:scaleX(.25)}}
+@keyframes a4bf{0%{transform:translate(0,0)}25%{transform:translate(300px,-60px)}50%{transform:translate(560px,30px)}75%{transform:translate(820px,-40px)}100%{transform:translate(1120px,10px)}}
+.a4win{position:absolute;width:5px;height:7px;background:#FFE9A8;box-shadow:0 0 6px 2px rgba(255,233,168,.6);animation:a4win ease-in-out infinite alternate;opacity:0}
+@keyframes a4win{0%,40%{opacity:0}100%{opacity:.9}}
+html.calm .a4fx{display:none}
+</style>`);
+
 /* ---------- hook music + wipes into the screens ---------- */
 {
   const THEMES = ['roman','tower','fire','palace','bigben'];
