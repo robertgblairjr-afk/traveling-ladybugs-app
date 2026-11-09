@@ -8021,14 +8021,14 @@ function showFlyer(){
   cbind();
   document.getElementById('flyback').onclick = ()=>{ sfx.pop(); showTitle(); };
   const cv = document.getElementById('flycv'), g = cv.getContext('2d'), W = 1024, H = 700;
-  const calm = typeof TLB_CALM!=='undefined' && TLB_CALM, little = easy(), GAP = (little ? 270 : 215) + (calm ? 40 : 0), SPACE = (little ? 420 : 360) + (calm ? 60 : 0);
+  const calm = typeof TLB_CALM!=='undefined' && TLB_CALM, little = easy(), GAP = (little ? 345 : 290) + (calm ? 40 : 0), SPACE = (little ? 470 : 420) + (calm ? 60 : 0);
   const order = FLY_MAPS.slice(); const st = Math.floor(Math.random()*order.length); const maps = order.slice(st).concat(order.slice(0, st));
   const imgs = {}; const img = k=>{ if(!imgs[k]){ const im = new Image(); im.src = BG_CITY[k][0]; imgs[k] = im; } return imgs[k]; };
   maps.slice(0,3).forEach(m=>img(m[0]));
   const pri = new Image(); pri.src = 'friends/img/priya.webp';
   const MW = 1244; // a 1600x900 map at the stage height
   const P = {x:250, y:330, vy:0, flap:0, hurt:0};
-  let state = 'ready', t0 = 0, last = 0, dist = 0, bgx = 0, speed = (little ? 150 : 175) * (calm ? .8 : 1), score = 0, hearts = little ? 5 : 3, gates = [], nextGate = 700, curMap = -1, puffs = [], tick = 0;
+  let state = 'ready', t0 = 0, last = 0, dist = 0, bgx = 0, speed = (little ? 140 : 160) * (calm ? .8 : 1), score = 0, hearts = little ? 5 : 3, gates = [], nextGate = 700, curMap = -1, puffs = [], tick = 0;
   const hud = ()=>{ document.getElementById('flyhearts').innerHTML = '&#10084;&#65039;'.repeat(hearts) + '<i>&#9825;</i>'.repeat((little?5:3)-hearts); document.getElementById('flyscore').textContent = score; };
   hud();
   const seamClouds = k=>{ const r = []; let s = k*9301+49297; const rnd = ()=>{ s = (s*9301+49297)%233280; return s/233280; }; for(let i=0;i<16;i++) r.push([ (rnd()-.5)*150, rnd()*H, 50+rnd()*60 ]); return r; };
@@ -8100,7 +8100,7 @@ function showFlyer(){
     P.flap += dt * (state==='play' && P.vy < 0 ? 26 : 9);
     if(state === 'ready'){ P.y = 330 + Math.sin(now/300)*14; bgx += speed*.35*dt; }
     if(state === 'play'){
-      speed = Math.min((little ? 210 : 260) * (calm ? .8 : 1), speed + dt*2.2);
+      speed = Math.min((little ? 195 : 235) * (calm ? .8 : 1), speed + dt*2.2);
       P.vy += (little ? 820 : 950)*dt; P.y += P.vy*dt; dist += speed*dt; bgx += speed*.45*dt;
       if(P.hurt > 0) P.hurt -= dt;
       if(P.y < 110){ P.y = 110; P.vy = Math.max(P.vy, 0); }
