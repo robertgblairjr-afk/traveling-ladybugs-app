@@ -8619,6 +8619,58 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 html.calm .a4fx{display:none}
 </style>`);
 
+/* ===== backup.js (v23.34): (1) Light mode for slow tablets, (2) a progress backup code. Both live in the grown-ups panel. Nothing leaves the device; the code is just text a grown-up can copy. ===== */
+let TLB_LITE = false;
+function liteGet(){ try{ return localStorage.getItem('tlb_lite'); }catch(e){ return null; } }
+function liteApply(on){ TLB_LITE = !!on; document.documentElement.classList.toggle('lite', TLB_LITE); }
+liteApply(liteGet()==='1');
+/* Auto: sample ~2.5 seconds of frames at start. Very slow tablets (avg frame over 45ms) switch to light mode on their own. */
+(function(){ if(liteGet()!==null) return; let n = 0, t0 = 0, raf = 0;
+  const tick = t=>{ if(!t0) t0 = t; n++; if(t - t0 < 2500){ raf = requestAnimationFrame(tick); return; }
+    const avg = (t - t0)/n; if(avg > 45 && !document.hidden) liteApply(true); };
+  setTimeout(()=>{ raf = requestAnimationFrame(tick); }, 2500); })();
+function bkExport(){ const o = {}; try{ for(let i=0;i<localStorage.length;i++){ const k = localStorage.key(i); if(/^tlb_/.test(k) && k!=='tlb_lite') o[k] = localStorage.getItem(k); } }catch(e){}
+  const j = JSON.stringify(o); return 'TLB1-' + btoa(unescape(encodeURIComponent(j))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function bkImport(code){ try{ code = String(code||'').trim().replace(/\s+/g,''); if(code.indexOf('TLB1-')!==0) return false;
+    let b = code.slice(5).replace(/-/g,'+').replace(/_/g,'/'); while(b.length%4) b += '=';
+    const o = JSON.parse(decodeURIComponent(escape(atob(b)))); if(!o || typeof o!=='object' || Array.isArray(o)) return false;
+    const keys = Object.keys(o).filter(k=>/^tlb_[a-z0-9_]{1,30}$/.test(k) && typeof o[k]==='string' && o[k].length < 400000); if(!keys.length) return false;
+    keys.forEach(k=>localStorage.setItem(k, o[k])); return true; }catch(e){ return false; } }
+(function(){
+  const o = parentReset;
+  parentReset = function(){ const r = o.apply(this, arguments);
+    const card = document.querySelector('#pgate .card'), row = card && card.querySelector('.row'); if(!row) return r;
+    const wrap = document.createElement('div'); wrap.style.cssText = 'margin:2px 0 12px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap';
+    const lb = document.createElement('button'); lb.className = 'big ghost'; lb.id = 'litebtn';
+    const paint = ()=>{ const v = liteGet(); lb.textContent = 'Light mode: ' + (v==='1' ? 'On' : v==='0' ? 'Off' : 'Auto' + (TLB_LITE ? ' (on)' : '')); };
+    paint(); lb.onclick = ()=>{ sfx.pop(); const v = liteGet(); const nx = v===null ? '1' : v==='1' ? '0' : null;
+      try{ if(nx===null) localStorage.removeItem('tlb_lite'); else localStorage.setItem('tlb_lite', nx); }catch(e){} liteApply(nx==='1'); paint(); };
+    const bb = document.createElement('button'); bb.className = 'big ghost'; bb.id = 'bkbtn'; bb.textContent = 'Backup code';
+    bb.onclick = ()=>{ sfx.pop(); bkPanel(); };
+    wrap.appendChild(lb); wrap.appendChild(bb); card.insertBefore(wrap, row);
+    return r; };
+})();
+function bkPanel(){
+  const g = document.getElementById('pgate'); if(g) g.remove();
+  const m = document.createElement('div'); m.className = 'modal'; m.id = 'bkgate';
+  m.innerHTML = `<div class="card" style="display:block;max-width:560px;width:90%;text-align:center;padding:18px 22px"><div class="era">For grown-ups</div><h3 style="margin:4px 0 8px">Backup code</h3>
+    <p>Copy this code and keep it somewhere safe. To move progress to another tablet, paste it below there. Nothing is sent anywhere.</p>
+    <textarea id="bkout" readonly rows="3" style="width:100%;font:13px monospace;box-sizing:border-box"></textarea>
+    <div class="row" style="justify-content:center;gap:8px;margin:8px 0"><button class="big gold" id="bkcopy">Copy code</button></div>
+    <p style="margin:8px 0 4px">Restore from a code:</p>
+    <textarea id="bkin" rows="2" placeholder="Paste a code starting with TLB1-" style="width:100%;font:13px monospace;box-sizing:border-box"></textarea>
+    <p id="bkmsg" style="min-height:1.4em;margin:6px 0"></p>
+    <div class="row" style="justify-content:center;gap:8px"><button class="big green" id="bkrest">Restore</button><button class="big ghost" id="bkclose">Close</button></div></div>`;
+  stage.appendChild(m);
+  const out = m.querySelector('#bkout'), msg = m.querySelector('#bkmsg'); out.value = bkExport();
+  m.querySelector('#bkcopy').onclick = ()=>{ sfx.pop(); out.select(); let ok = false;
+    try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(out.value); ok = true; } }catch(e){}
+    if(!ok){ try{ ok = document.execCommand('copy'); }catch(e){} } msg.textContent = ok ? 'Copied!' : 'Press and hold the code to copy it.'; };
+  m.querySelector('#bkrest').onclick = ()=>{ sfx.pop(); if(bkImport(m.querySelector('#bkin').value)){ saveGame = function(){}; rzSave = function(){}; msg.textContent = 'Restored! Starting over with your progress...'; setTimeout(()=>location.reload(), 900); } else msg.textContent = 'That code did not work. Check it and try again.'; };
+  m.querySelector('#bkclose').onclick = ()=>{ sfx.pop(); m.remove(); };
+}
+document.head.insertAdjacentHTML('beforeend', `<style>html.lite .a3life,html.lite .a4fx,html.lite .bfly:not(.hidbfly){display:none!important}html.lite .hsfx,html.lite .a2life{display:none!important}</style>`);
+
 /* ---------- hook music + wipes into the screens ---------- */
 {
   const THEMES = ['roman','tower','fire','palace','bigben'];
