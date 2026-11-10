@@ -9002,6 +9002,22 @@ function a2Say(name){ if(typeof soundOn!=='undefined' && !soundOn) return; const
 /* wire it in */
 ['pop','chime','win','flag','oops','thud'].forEach(n=>{ sfx[n] = function(){ a2Say(n); }; });
 sfx.drum = function(){ a2Go('drum'); };
+/* every other tone() in the game (right/wrong notes, small beeps) now gets the same soft, bell-like voice:
+   harsh square/saw waves become gentle triangles, and sine/triangle notes get a quiet bell overtone. Same pitches and timing, just nicer. */
+tone = function(f, d, type, vol, when){
+  if(typeof soundOn!=='undefined' && !soundOn) return; const c = ctx(); if(!c) return; try{ if(c.state==='suspended') c.resume(); }catch(e){}
+  const t = c.currentTime + (when||0), out = a2Out(c), v = vol||.2; d = Math.max(.03, d||.15);
+  if(type==='square' || type==='sawtooth'){ a2Osc(c, out, t, 'triangle', f, 0, d, v*.8, .004); }
+  else { a2Osc(c, out, t, type||'sine', f, 0, d, v, .004); if(f>300 && f<2500 && d>.08) a2Osc(c, out, t, 'sine', f*2.76, 0, d*.4, v*.16, .003); } };
+document.head.insertAdjacentHTML('beforeend', `<style>
+.pin .disc{background-image:radial-gradient(circle at 35% 28%,rgba(255,255,255,.9),rgba(255,255,255,0) 55%),linear-gradient(180deg,#fff,#F7EEDA);box-shadow:0 6px 0 rgba(0,0,0,.18),0 12px 18px rgba(30,20,60,.22),inset 0 -4px 0 rgba(0,0,0,.05);transition:transform .15s}
+.pin:active .disc{transform:scale(.94)}
+.pin .lbl{background-image:linear-gradient(180deg,#fff,#FBF3E0);box-shadow:0 3px 0 rgba(0,0,0,.12),0 8px 12px rgba(30,20,60,.16),inset 0 2px 0 #fff}
+.pin.done .disc{border-color:var(--teal);box-shadow:0 6px 0 rgba(0,0,0,.18),0 0 0 6px rgba(42,157,143,.25),0 12px 18px rgba(30,20,60,.22)}
+.pin.next::before{content:'';position:absolute;top:-8px;width:130px;height:130px;border-radius:50%;border:4px solid rgba(244,211,94,.8);animation:a11ring 2.2s ease-out infinite;pointer-events:none}
+.pin.locked .disc{box-shadow:0 4px 0 rgba(0,0,0,.12)}
+html.calm .pin.next::before,html.lite .pin.next::before{animation:none;opacity:.5}
+</style>`);
 
 /* ---------- hook music + wipes into the screens ---------- */
 {
