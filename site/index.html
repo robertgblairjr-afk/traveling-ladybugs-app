@@ -8989,7 +8989,18 @@ function a2Play(kind, freq, c, out, t){
     a2Osc(c, out, t, 'triangle', freq*2, 0, .3, .1, .002);
     a2Noise(c, out, t, .02, 'highpass', 4000, .7, .08, .001); } }
 function a2Go(kind, freq){ if(typeof soundOn!=='undefined' && !soundOn) return; const c = ctx(); if(!c) return; try{ if(c.state==='suspended') c.resume(); }catch(e){} a2Play(kind, freq, c, a2Out(c), c.currentTime + .005); }
+/* the everyday sounds, same engine: a soft bloop for taps, bell chimes, a sparkly win, a gentle oops */
+function a2Bell(c, out, t, f, vol, dur){ a2Osc(c, out, t, 'sine', f, 0, dur, vol, .004); a2Osc(c, out, t, 'sine', f*2.76, 0, dur*.35, vol*.28, .002); a2Osc(c, out, t, 'sine', f*5.4, 0, dur*.15, vol*.1, .002); }
+function a2Sfx(name, c, out, t){
+  if(name==='pop'){ a2Osc(c, out, t, 'sine', 420, 760, .13, .85, .003); a2Osc(c, out, t, 'triangle', 840, 1200, .07, .2, .002); }
+  else if(name==='chime'){ [523,659,784,1047].forEach((f,i)=>a2Bell(c, out, t + i*.09, f, .3, .7)); }
+  else if(name==='win'){ [523,659,784,1047,784,1047,1319].forEach((f,i)=>a2Bell(c, out, t + i*.11, f, .28, .6)); a2Noise(c, out, t + .6, .5, 'highpass', 7000, .7, .06, .05); }
+  else if(name==='flag'){ [1320,1568,1760,2093].forEach((f,i)=>a2Bell(c, out, t + i*.12, f*.5, .26, .5)); }
+  else if(name==='oops'){ a2Osc(c, out, t, 'sine', 330, 260, .22, .3, .004); a2Osc(c, out, t + .12, 'sine', 260, 200, .3, .3, .004); }
+  else if(name==='thud'){ a2Osc(c, out, t, 'sine', 150, 70, .2, 1, .002); a2Noise(c, out, t, .05, 'lowpass', 900, .7, .35, .001); } }
+function a2Say(name){ if(typeof soundOn!=='undefined' && !soundOn) return; const c = ctx(); if(!c) return; try{ if(c.state==='suspended') c.resume(); }catch(e){} a2Sfx(name, c, a2Out(c), c.currentTime + .005); }
 /* wire it in */
+['pop','chime','win','flag','oops','thud'].forEach(n=>{ sfx[n] = function(){ a2Say(n); }; });
 sfx.drum = function(){ a2Go('drum'); };
 
 /* ---------- hook music + wipes into the screens ---------- */
