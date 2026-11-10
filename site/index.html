@@ -8900,6 +8900,31 @@ html.calm .a8f,html.calm .a8fl,html.calm .pldoor,html.lite .a8f,html.lite .a8fl,
 html.calm .a8fl,html.lite .a8fl{display:none}
 </style>`);
 
+/* ===== anim9.js (v23.42b -> v23.43): Razzle's win dance (a game-show shimmy with a spotlight) and a glossy finish for the rest of the Challenge games
+   (weigh, simon, paint pots, twins, traffic jam, ...). Calm and Light mode keep it still. ===== */
+document.head.insertAdjacentHTML('beforeend', `<style>
+.mg-title{max-width:640px;white-space:normal!important;text-align:center;line-height:1.08;background-image:linear-gradient(180deg,#fff,#FBF3E0);box-shadow:0 4px 0 rgba(0,0,0,.12),0 10px 18px rgba(30,20,60,.14),inset 0 2px 0 #fff}
+.mg-title{border-radius:28px}
+.screen:has(.mg-title) .counter{top:150px}
+/* win dance */
+@keyframes a9dance{0%{transform:translateY(0) rotate(0) scale(1)}12%{transform:translateY(-34px) rotate(-8deg) scale(1.04,.97)}25%{transform:translateY(0) rotate(0) scale(.97,1.04)}38%{transform:translateY(-30px) rotate(8deg) scale(1.04,.97)}50%{transform:translateY(0) rotate(0) scale(.97,1.04)}62%{transform:translateY(-44px) rotate(-6deg) scale(1.06)}78%{transform:translateY(0) rotate(5deg)}100%{transform:none}}
+.modal .rzwin .rzrig{animation:a9dance 1.6s ease-in-out 2 both}
+.rzwin::before{content:'';position:absolute;left:-30px;top:-120px;width:340px;height:760px;background:conic-gradient(from 168deg at 50% 0,rgba(255,240,170,0) 0,rgba(255,240,170,.42) 6deg,rgba(255,240,170,0) 12deg);pointer-events:none;border-radius:32px;opacity:.9;animation:a9spot 3.2s ease-in-out infinite alternate;transform-origin:50% 0;z-index:0}
+@keyframes a9spot{from{transform:rotate(-9deg)}to{transform:rotate(9deg)}}
+/* glossy pieces across the rest of the games */
+.rzwga,.rzltb,.rzpairc,.rzrhcar,.rzpot,.rznst{background-image:linear-gradient(180deg,rgba(255,255,255,.5) 0,rgba(255,255,255,.1) 46%,rgba(0,0,0,.08) 100%)}
+.rzwga{box-shadow:0 6px 0 rgba(0,0,0,.22),inset 0 2px 0 rgba(255,255,255,.6)}
+.rzltb{box-shadow:0 5px 0 rgba(0,0,0,.35),inset 0 3px 0 rgba(255,255,255,.45);filter:saturate(1.15)}
+.rzpairc{box-shadow:0 5px 0 rgba(0,0,0,.14),0 10px 16px rgba(30,20,60,.16),inset 0 2px 0 #fff}
+.rzrhcar{box-shadow:0 4px 0 rgba(0,0,0,.3),inset 0 3px 0 rgba(255,255,255,.5)}
+.rzpot{box-shadow:inset -8px 0 14px rgba(0,0,0,.12),inset 8px 0 14px rgba(255,255,255,.35)}
+.rznstsign{background-image:linear-gradient(180deg,#fff,#F7EBCC);box-shadow:0 3px 0 rgba(0,0,0,.18),inset 0 2px 0 #fff}
+.rzbdriv{filter:saturate(1.15)}
+html.calm .modal .rzwin .rzrig,html.lite .modal .rzwin .rzrig{animation:none}
+html.calm .rzwin::before,html.lite .rzwin::before{display:none}
+@media (prefers-reduced-motion:reduce){.modal .rzwin .rzrig{animation:none}.rzwin::before{display:none}}
+</style>`);
+
 /* ---------- hook music + wipes into the screens ---------- */
 {
   const THEMES = ['roman','tower','fire','palace','bigben'];
