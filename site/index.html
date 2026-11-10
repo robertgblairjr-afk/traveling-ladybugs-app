@@ -9019,6 +9019,23 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 html.calm .pin.next::before,html.lite .pin.next::before{animation:none;opacity:.5}
 </style>`);
 
+/* ===== anim12.js (v23.49): start screen polish. The title card is a soft glass panel, the title letters get a gentle lift and glow, the "Tap to start" button
+   breathes a warm glow ring (the button itself never moves, so small fingers can always hit it), the dock buttons are glossy, and the tiny corner pills
+   get a glass finish. Calm and Light mode keep it still. ===== */
+document.head.insertAdjacentHTML('beforeend', `<style>
+.wt-head{background-image:linear-gradient(180deg,rgba(255,255,255,.8),rgba(255,248,230,.6));box-shadow:0 12px 30px rgba(30,20,60,.22),inset 0 2px 0 #fff,0 0 0 3px rgba(255,255,255,.7)!important;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+.wt-head h1{text-shadow:0 3px 0 rgba(255,255,255,.85),0 10px 16px rgba(30,20,60,.2)}
+.wt-sub{text-shadow:0 1px 0 rgba(255,255,255,.7);white-space:normal!important;max-width:380px;margin-left:auto;margin-right:auto;text-align:center;line-height:1.2}
+.wt-top .big,.wt-dock .big{position:relative}
+.wt-top .big.red::before,.wt-top .big:not(.ghost):not(.gold):not(.green)::before{content:'';position:absolute;inset:-7px;border-radius:999px;border:4px solid rgba(229,56,59,.45);animation:a12glow 2.4s ease-in-out infinite;pointer-events:none}
+@keyframes a12glow{0%,100%{opacity:.2;transform:scale(.99)}50%{opacity:.9;transform:scale(1.035)}}
+.wt-dock button:not(.big){background-image:linear-gradient(180deg,#fff,#F6EEDB);box-shadow:0 4px 0 rgba(0,0,0,.14),0 10px 16px rgba(30,20,60,.18),inset 0 2px 0 #fff}
+.corner .cornerbtn{background-image:linear-gradient(180deg,rgba(255,255,255,.95),rgba(246,238,223,.7));box-shadow:0 3px 0 rgba(0,0,0,.12),0 6px 10px rgba(30,20,60,.14),inset 0 2px 0 #fff}
+html.calm .wt-top .big::before,html.lite .wt-top .big::before{animation:none;opacity:.4}
+html.lite .wt-head{backdrop-filter:none}
+</style>`);
+document.head.insertAdjacentHTML('beforeend', `<style>.wt-tag{white-space:normal!important;max-width:370px;margin:4px auto 0;text-align:center;line-height:1.2;font-size:18px}</style>`);
+
 /* ---------- hook music + wipes into the screens ---------- */
 {
   const THEMES = ['roman','tower','fire','palace','bigben'];
