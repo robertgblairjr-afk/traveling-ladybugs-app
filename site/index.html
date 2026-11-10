@@ -9056,7 +9056,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .fcard .fbadge:not(.soon){background-image:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 55%);box-shadow:0 2px 0 rgba(0,0,0,.18)}
 </style>`);
 
-/* ===== rzfun21 (v23.60): five more Challenge games (CSS prefix q24)
+/* ===== rzfun21 (v23.59): five more Challenge games (CSS prefix q24)
    - sthunt: "Sticker hunt": find every copy of one scrapbook sticker among others. (cat detect)
    - zoom:   "Zoom detective": a close-up crop of a sticker; pick which sticker it is. (cat detect)
    - steps:  "Treasure steps": follow the arrows from the ladybug and tap the square you land on. (cat maze)
@@ -9101,11 +9101,11 @@ RZ_MAKE.steps = function(){ const e = easy(), k = e ? 2 : 4, D = [[1,0,'&#10145;
     if(x===sx && y===sy) ok = false; }
   return {type:'steps', title:'Treasure steps! Follow the arrows, then tap where you land.', sx, sy, ex:x, ey:y, ms, sig:`st:${sx}${sy}${x}${y}:${ms.length}:`+Math.random().toString(36).slice(2,5)}; };
 function q24StepsPlay(g){
-  const cells = Array.from({length:25}, (_,i)=>`<button class="q24sq" data-x="${i%5}" data-y="${(i/5)|0}" aria-label="Square">${(i%5===g.sx && ((i/5)|0)===g.sy) ? '<span class="q24bug">&#128030;</span>' : ''}</button>`).join('');
+  const cells = Array.from({length:25}, (_,i)=>`<button class="q24sq ${(i%5===g.sx && ((i/5)|0)===g.sy)?'q24st':((i%5+((i/5)|0))%2?'q24gb':'q24ga')}" data-x="${i%5}" data-y="${(i/5)|0}" aria-label="Square">${(i%5===g.sx && ((i/5)|0)===g.sy) ? '<span class="q24bug"><img src="gm/ladybug_token.webp" alt="" draggable="false"></span>' : ''}</button>`).join('');
   cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">${g.ms.length} steps</div><div class="q24board">${cells}</div><div class="q24path"><b>Go:</b><div>${g.ms.map(m=>`<span>${m}</span>`).join('')}</div></div>`);
   let done = false;
   document.querySelectorAll('.q24sq').forEach(b=>b.onclick=()=>{ if(done) return; const x = +b.dataset.x, y = +b.dataset.y;
-    if(x===g.ex && y===g.ey){ done = true; poke(); clearHint(); G.getT = null; const bug = document.querySelector('.q24bug'); b.appendChild(bug); bug.classList.add('hop'); b.classList.add('yay'); b.insertAdjacentHTML('beforeend','<i class="q24chest">&#127873;</i>'); tone(660,.12,'triangle',.15); tone(990,.14,'triangle',.12); rzDoneLater(1300); }
+    if(x===g.ex && y===g.ey){ done = true; poke(); clearHint(); G.getT = null; const bug = document.querySelector('.q24bug'); b.appendChild(bug); bug.classList.add('hop'); b.classList.add('yay'); b.insertAdjacentHTML('beforeend','<i class="q24chest"><img src="gm/chest_open.webp" alt=""></i>'); tone(660,.12,'triangle',.15); tone(990,.14,'triangle',.12); rzDoneLater(1300); }
     else q24bad(b); });
   armHint(()=>document.querySelector(`.q24sq[data-x="${g.ex}"][data-y="${g.ey}"]`));
 }
@@ -9116,7 +9116,7 @@ RZ_MAKE.balpop = function(){ const e = easy(), nc = e ? 3 : 5, n = e ? 7 : 11, c
   const bs = cshuf(list).map((c,i)=>({c:cols[c], x:sp[i][0], y:sp[i][1], t:c===ti}));
   return {type:'balpop', title:`Pop the colour! Pop all the ${cols[ti][1].toUpperCase()} balloons.`, bs, k, col:cols[ti], sig:'bp:'+cols[ti][1]+':'+sp.map(p=>p.map(v=>Math.round(v/40))).join('.')}; };
 function q24BalPlay(g){
-  const bal = g.bs.map((b,i)=>`<button class="q24bal" data-t="${b.t?1:0}" style="left:${b.x-36}px;top:${b.y-110}px;--c:${b.c[0]}" aria-label="${b.c[1]} balloon"><i></i><u></u></button>`).join('');
+  const bal = g.bs.map((b,i)=>`<button class="q24bal" data-t="${b.t?1:0}" style="left:${b.x-36}px;top:${b.y-110}px;--c:${b.c[0]}" aria-label="${b.c[1]} balloon"><img src="gm/balloon_${b.c[1]}.webp" alt="" draggable="false"></button>`).join('');
   cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.k}</div>${bal}<div class="q24sw" style="background:${g.col[0]}"></div>`);
   let got = 0;
   document.querySelectorAll('.q24bal').forEach(b=>b.onclick=()=>{ if(b.classList.contains('pop')) return;
@@ -9133,8 +9133,8 @@ function q24FacesPlay(g){
   let r = 0; const box = document.getElementById('q24box');
   const win = (b)=>{ poke(); b.classList.add('got'); tone(660,.12,'triangle',.15); tone(880,.12,'triangle',.12); r++; if(r>=g.rs.length){ clearHint(); G.getT = null; rzDoneLater(1200); } else setTimeout(show, 900); };
   const show = ()=>{ const R = g.rs[r], f = FR[R.t];
-    if(g.e){ box.innerHTML = `<div class="q24face"><img src="friends/img/${R.t}.webp" alt=""></div><div class="q24names">${R.opts.map(id=>`<button class="q24nm" data-id="${id}">${FR[id].name}</button>`).join('')}</div>`; }
-    else { box.innerHTML = `<div class="q24ask">Find <b>${f.name}</b> the ${f.insect.toLowerCase()}!</div><div class="q24faces">${R.opts.map(id=>`<button class="q24fc" data-id="${id}" aria-label="${FR[id].name}"><img src="friends/img/${id}.webp" alt=""></button>`).join('')}</div>`; }
+    if(g.e){ box.innerHTML = `<div class="q24face"><img src="${q24Face(R.t)}" alt=""></div><div class="q24names">${R.opts.map(id=>`<button class="q24nm" data-id="${id}">${FR[id].name}</button>`).join('')}</div>`; }
+    else { box.innerHTML = `<div class="q24ask">Find <b>${f.name}</b> the ${f.insect.toLowerCase()}!</div><div class="q24faces">${R.opts.map(id=>`<button class="q24fc" data-id="${id}" aria-label="${FR[id].name}"><img src="${q24Face(id)}" alt=""></button>`).join('')}</div>`; }
     document.getElementById('cnt').textContent = `${r+1} / ${g.rs.length}`;
     box.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{ if(b.dataset.id===R.t) win(b); else q24bad(b); });
     armHint(()=>box.querySelector(`[data-id="${R.t}"]`)); };
@@ -9189,7 +9189,7 @@ html.calm .q24zin,html.lite .q24zin{transition:none}
    finish their land (hsSolved). Razzle's opens with Challenge Mode. Every character has their own themed outfits.
    Saved in tlb_play.cc = {id:{slot:itemIndex}} (Lisa/Lucas keep tlb_play.dr, so the start screen still shows their outfit).
    An item can have art: cc/<id>_<slug>.webp (transparent piece); if the file is missing the emoji is shown instead. ===== */
-const CC_SLOT = {hat:['Hats',1.0], eyes:['Eyes',.8], neck:['Neck',.72]};
+const CC_SLOT = {body:['Jacket',1.5,2.6], hat:['Hats',1.0], eyes:['Eyes',.8], neck:['Neck',.72]};
 /* a: [hatX,hatY, eyesX,eyesY, neckX,neckY] as fractions of the picture; hw: head width as a fraction of picture width */
 const CC = {
   pip:{a:[.5,.13,.5,.28,.5,.57],hw:.42,i:[['🎩','hat','Top hat','tophat'],['👑','hat','Royal crown','crown'],['☂️','hat','Rainy-day umbrella','umbrella'],['👓','eyes','Reading glasses','glasses'],['🕶️','eyes','Sunglasses','shades'],['🧣','neck','Striped scarf','scarf'],['🎖️','neck','Guard medal','medal'],['🎀','neck','Big bow','bow']]},
@@ -9207,7 +9207,7 @@ const CC = {
   aoife:{a:[.42,.1,.45,.32,.45,.52],hw:.45,i:[['🍀','hat','Shamrock hat','shamrock'],['🎩','hat','Green top hat','tophat'],['🌈','hat','Rainbow hat','rainbow'],['👓','eyes','Glasses','glasses'],['🕶️','eyes','Sunglasses','shades'],['🧣','neck','Green scarf','scarf'],['🪙','neck','Gold coin','coin'],['🎀','neck','Green bow','bow']]},
   ruby:{a:[.45,.34,.45,.43,.45,.5],hw:.2,i:[['🧢','hat','City cap','cap'],['🗽','hat','Statue crown','statue'],['🎩','hat','Broadway hat','tophat'],['🕶️','eyes','Sunglasses','shades'],['👓','eyes','Glasses','glasses'],['📷','neck','Camera','camera'],['🥨','neck','Pretzel charm','pretzel'],['🏅','neck','Marathon medal','medal']]},
   jabari:{a:[.4,.12,.35,.3,.35,.4],hw:.35,i:[['🦁','hat','Lion hat','lion'],['👒','hat','Safari hat','safari'],['🦓','hat','Zebra hat','zebra'],['🔭','eyes','Binoculars','binoculars'],['🕶️','eyes','Sunglasses','shades'],['📿','neck','Beaded collar','beads'],['🧣','neck','Red cloth','cloth'],['🦒','neck','Giraffe charm','giraffe']]},
-  razzle:{a:[.3,.15,.32,.3,.38,.42],hw:.3,i:[['🎩','hat','Top hat','tophat'],['👑','hat','Show-time crown','crown'],['🪄','hat','Magic wand hat','wand'],['🎪','hat','Circus hat','circus'],['🕶️','eyes','Star shades','shades'],['🎭','eyes','Party mask','mask'],['👓','eyes','Host glasses','glasses'],['🎀','neck','Tuxedo bow tie','bowtie'],['🥇','neck','Gold medal','medal'],['🌟','neck','Star pin','star']]}
+  razzle:{a:[.3,.15,.32,.3,.38,.42,.46,.62],hw:.3,i:[['🎩','hat','Top hat','tophat'],['👑','hat','Show-time crown','crown'],['🪄','hat','Magic wand hat','wand'],['🎪','hat','Circus hat','circus'],['🕶️','eyes','Star shades','shades'],['🎭','eyes','Party mask','mask'],['👓','eyes','Host glasses','glasses'],['🎀','neck','Tuxedo bow tie','bowtie'],['🥇','neck','Gold medal','medal'],['🌟','neck','Star pin','star'],['🧥','body','Jeweled jacket','jeweledjacket',100]]}
 };
 const CC_ART = {lisa:['art/lisa.webp',353,700,[.524,.136,.581,.303,.567,.417],.27,'Lisa'], lucas:['art/lucas.webp',298,700,[.369,.157,.319,.321,.369,.429],.32,'Lucas'], razzle:['rz/razzle.webp',356,520,null,0,'Razzle']};
 function ccWho(){ // [{id,name,img,w,h,a,hw,open,lock}]
@@ -9223,25 +9223,25 @@ function ccRoom(){
   const P = plGet(), solved = (typeof hsSolved==='function' ? hsSolved().length : 0), openLL = Math.min(PL_WEAR.length, 4 + solved);
   P.cc = P.cc || {}; P.dr = P.dr || {lisa:{}, lucas:{}};
   const all = ccWho(); let who = 'lisa';
-  const items = id=> (id==='lisa'||id==='lucas') ? PL_WEAR.map((e,i)=>({e:e[0],s:e[1],n:e[2],i,lock:i>=openLL})) : CC[id].i.map((e,i)=>({e:e[0],s:e[1],n:e[2],i,art:'cc/'+id+'_'+e[3]+'.webp'}));
+  const items = id=> (id==='lisa'||id==='lucas') ? PL_WEAR.map((e,i)=>({e:e[0],s:e[1],n:e[2],i,lock:i>=openLL})) : CC[id].i.map((e,i)=>({e:e[0],s:e[1],n:e[2],i,art:'cc/'+id+'_'+e[3]+'.webp',need:e[4]||0,lock:!!(e[4] && (RZ.n||0)<e[4])}));
   const sel = id=> ((id==='lisa'||id==='lucas') ? P.dr[id] : P.cc[id]) || {};
   const setSel = (id,o)=>{ if(id==='lisa'||id==='lucas') P.dr[id] = o; else P.cc[id] = o; plSet(P); ccBuild(id); };
-  const spot = (c,sl)=>{ const k = {hat:0,eyes:2,neck:4}[sl]; return [c.a[k],c.a[k+1]]; };
+  const spot = (c,sl)=>{ const k = {hat:0,eyes:2,neck:4,body:6}[sl]; return [c.a[k],c.a[k+1]]; };
   const piece = (c,it,sl,W)=>{ const [x,y] = spot(c,sl), fs = Math.round(c.hw*W*CC_SLOT[sl][1]*((c.id==='lisa'||c.id==='lucas')?1.2:1.1));
-    return `<i class="ccw ${sl}" style="left:${(x*W).toFixed(0)}px;top:${(y*c.H).toFixed(0)}px;font-size:${fs}px">${it.art?`<img src="${it.art}" alt="" style="width:${(c.hw*W*1.3).toFixed(0)}px" onerror="this.replaceWith(document.createTextNode('${it.e}'))">`:it.e}</i>`; };
+    return `<i class="ccw ${sl}" style="left:${(x*W).toFixed(0)}px;top:${(y*c.H).toFixed(0)}px;font-size:${fs}px">${it.art?`<img src="${it.art}" alt="" style="width:${(c.hw*W*(CC_SLOT[sl][2]||1.3)).toFixed(0)}px" onerror="this.replaceWith(document.createTextNode('${it.e}'))">`:it.e}</i>`; };
   const draw = ()=>{
     const c = all.find(a=>a.id===who), its = items(who), o = sel(who), H = 330, bw = 420;
     const stage = app.querySelector('.ccstage'), img = new Image();
     const fin = ()=>{ const nw = img.naturalWidth||c.w, nh = img.naturalHeight||c.h, k = Math.min(bw/nw, H/nh), W = nw*k; c.H = nh*k;
-      stage.innerHTML = `<div class="ccfig" style="width:${W.toFixed(0)}px;height:${c.H.toFixed(0)}px"><img src="${c.img}" alt="${c.name}" style="width:${W.toFixed(0)}px">${['hat','eyes','neck'].map(sl=>o[sl]!=null&&its[o[sl]]?piece(c,its[o[sl]],sl,W):'').join('')}</div><div class="ccname">${c.name}</div>`; };
+      stage.innerHTML = `<div class="ccfig" style="width:${W.toFixed(0)}px;height:${c.H.toFixed(0)}px"><img src="${c.img}" alt="${c.name}" style="width:${W.toFixed(0)}px">${['body','hat','eyes','neck'].map(sl=>o[sl]!=null&&its[o[sl]]?piece(c,its[o[sl]],sl,W):'').join('')}</div><div class="ccname">${c.name}</div>`; };
     img.onload = fin; img.onerror = fin; img.src = c.img; if(img.complete && img.naturalWidth) fin();
     const tray = app.querySelector('.cctray');
-    tray.innerHTML = ['hat','eyes','neck'].map(sl=>{ const row = its.filter(t=>t.s===sl); if(!row.length) return '';
-      return `<div class="ccrow"><b>${CC_SLOT[sl][0]}</b>${row.map(t=>`<button class="pldi${t.lock?' lock':''}${o[sl]===t.i?' on':''}" data-i="${t.i}" aria-label="${t.lock?'Locked: solve more places':t.n}" title="${t.n}">${t.lock?'&#128274;':t.e}</button>`).join('')}</div>`; }).join('')
+    tray.innerHTML = ['body','hat','eyes','neck'].map(sl=>{ const row = its.filter(t=>t.s===sl); if(!row.length) return '';
+      return `<div class="ccrow"><b>${CC_SLOT[sl][0]}</b>${row.map(t=>`<button class="pldi${t.lock?' lock':''}${o[sl]===t.i?' on':''}" data-i="${t.i}" aria-label="${t.lock?(t.need?'Locked: win '+t.need+' Razzle puzzles':'Locked: solve more places'):t.n}" title="${t.n}">${t.lock?(t.need?'&#128142;<small>&#128274; '+Math.min(RZ.n||0,t.need)+'/'+t.need+'</small>':'&#128274;'):t.e}</button>`).join('')}</div>`; }).join('')
       + `<button class="ccoff" data-i="off">Take it all off &#10006;</button>`;
     app.querySelectorAll('.ccpick').forEach(b=>b.classList.toggle('sel', b.dataset.id===who));
     tray.querySelectorAll('button').forEach(b=>b.onclick=()=>{ const i = b.dataset.i; if(i==='off'){ setSel(who,{}); sfx.pop(); draw(); return; }
-      const t = its[+i]; if(t.lock){ sfx.oops(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); return; }
+      const t = its[+i]; if(t.lock){ if(t.need){ const tp = app.querySelector('.cctip'); if(tp) tp.textContent = `Win ${t.need} of Razzle's puzzles to earn the ${t.n}! You have ${Math.min(RZ.n||0,t.need)}.`; } sfx.oops(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); return; }
       const cur = Object.assign({}, sel(who)); cur[t.s] = cur[t.s]===t.i ? null : t.i; setSel(who,cur);
       [784,988,1175].forEach((f,j)=>tone(f,.1,'triangle',.1,j*.07)); draw();
       const f = app.querySelector('.ccfig'); if(f){ f.classList.remove('hop'); void f.offsetWidth; f.classList.add('hop'); } });
@@ -9262,17 +9262,17 @@ function ccRoom(){
 const CC_SKIN = {}; // id -> loaded Image of the dressed picture
 function ccGeo(id){ if(id==='lisa'||id==='lucas'){ const c = CC_ART[id]; return {a:c[3],hw:c[4],src:c[0],k:1.2}; } const d = CC[id]; return d ? {a:d.a,hw:d.hw,src:id==='razzle'?'rz/razzle.webp':'friends/img/'+id+'.webp',k:1.1} : null; }
 function ccWorn(id){ const P = plGet(), out = [];
-  if(id==='lisa'||id==='lucas'){ const o = (P.dr||{})[id]||{}; ['hat','eyes','neck'].forEach(sl=>{ if(o[sl]!=null && PL_WEAR[o[sl]]) out.push({sl,e:PL_WEAR[o[sl]][0]}); }); return out; }
+  if(id==='lisa'||id==='lucas'){ const o = (P.dr||{})[id]||{}; ['body','hat','eyes','neck'].forEach(sl=>{ if(o[sl]!=null && PL_WEAR[o[sl]]) out.push({sl,e:PL_WEAR[o[sl]][0]}); }); return out; }
   const o = (P.cc||{})[id]||{}, d = CC[id]; if(!d) return out;
-  ['hat','eyes','neck'].forEach(sl=>{ if(o[sl]!=null && d.i[o[sl]]){ const t = d.i[o[sl]]; out.push({sl,e:t[0],art:'cc/'+id+'_'+t[3]+'.webp'}); } }); return out; }
+  ['body','hat','eyes','neck'].forEach(sl=>{ if(o[sl]!=null && d.i[o[sl]]){ const t = d.i[o[sl]]; out.push({sl,e:t[0],art:'cc/'+id+'_'+t[3]+'.webp'}); } }); return out; }
 function ccBuild(id){ const g = ccGeo(id); if(!g) return Promise.resolve(); const worn = ccWorn(id);
   if(!worn.length){ delete CC_SKIN[id]; return Promise.resolve(); }
   return new Promise(res=>{ const im = new Image(); im.onload = ()=>{ try{
       const W = im.naturalWidth, H = im.naturalHeight, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d'); x.drawImage(im,0,0);
       const jobs = worn.map(w=>new Promise(r2=>{ if(!w.art) return r2(null); const a = new Image(); a.onload = ()=>r2(a); a.onerror = ()=>r2(null); a.src = w.art; }));
-      Promise.all(jobs).then(arts=>{ try{ worn.forEach((w,i)=>{ const j = {hat:0,eyes:2,neck:4}[w.sl], fs = g.hw*W*CC_SLOT[w.sl][1]*g.k;
+      Promise.all(jobs).then(arts=>{ try{ worn.forEach((w,i)=>{ const j = {hat:0,eyes:2,neck:4,body:6}[w.sl], fs = g.hw*W*CC_SLOT[w.sl][1]*g.k;
           let px = g.a[j]*W, py = g.a[j+1]*H; px = Math.max(fs/2, Math.min(W-fs/2, px)); py = Math.max(fs/2, py);
-          if(arts[i]){ const aw = g.hw*W*1.3, ah = aw*arts[i].naturalHeight/arts[i].naturalWidth; x.drawImage(arts[i], px-aw/2, py-ah/2, aw, ah); }
+          if(arts[i]){ const aw = g.hw*W*(CC_SLOT[w.sl][2]||1.3), ah = aw*arts[i].naturalHeight/arts[i].naturalWidth; x.drawImage(arts[i], px-aw/2, py-ah/2, aw, ah); }
           else { x.font = Math.round(fs)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(w.e, px, py); } });
         const sk = new Image(); sk.onload = ()=>{ CC_SKIN[id] = sk; ccSwapAll(); res(); }; sk.onerror = ()=>res(); sk.src = cv.toDataURL('image/png'); }catch(e){ res(); } });
     }catch(e){ res(); } }; im.onerror = ()=>res(); im.src = g.src; }); }
@@ -9287,7 +9287,7 @@ function ccOverlay(el){
   if(el.classList.contains('pup')){ const id = el.dataset.who, w = ccWorn(id); if(!w.length) return; const h = el.querySelector('.p-head'), r = RIG[id]; const hp = r && r.parts.find(p=>p.id==='head'); if(!h||!hp) return;
     const sp = PL_SPOT[id]; w.forEach(o=>{ const s = sp[o.sl]; const i = document.createElement('i'); i.className = 'ccw ccov '+o.sl; i.textContent = o.e; i.style.cssText = `left:${(s[0]-hp.x).toFixed(0)}px;top:${(s[1]-hp.y).toFixed(0)}px;font-size:${s[2]}px;animation:none;z-index:9`; h.appendChild(i); }); }
   else if(el.classList.contains('rzrig')){ const w = ccWorn('razzle'); if(!w.length) return; const g = ccGeo('razzle'), ht = el.clientHeight || parseFloat(el.style.height) || 300, W = ht*356/520; const box = document.createElement('div'); box.className = 'ccov ccrzbox'; box.style.cssText = `position:absolute;left:0;top:0;width:${W}px;height:${ht}px;pointer-events:none;z-index:9`;
-    w.forEach(o=>{ const j = {hat:0,eyes:2,neck:4}[o.sl]; const i = document.createElement('i'); i.className = 'ccw'; i.textContent = o.e; i.style.cssText = `left:${(g.a[j]*100).toFixed(1)}%;top:${(g.a[j+1]*100).toFixed(1)}%;font-size:${Math.round(g.hw*W*CC_SLOT[o.sl][1]*1.1)}px;animation:none`; box.appendChild(i); }); el.appendChild(box); } }
+    w.forEach(o=>{ const j = {hat:0,eyes:2,neck:4,body:6}[o.sl]; const i = document.createElement('i'); i.className = 'ccw'; i.textContent = o.e; i.style.cssText = `left:${(g.a[j]*100).toFixed(1)}%;top:${(g.a[j+1]*100).toFixed(1)}%;font-size:${Math.round(g.hw*W*CC_SLOT[o.sl][1]*1.1)}px;animation:none`; box.appendChild(i); }); el.appendChild(box); } }
 function ccScan(n){ if(!n || n.nodeType!==1) return; if(n.tagName==='IMG') ccSwapImg(n); else if(n.querySelectorAll){ n.querySelectorAll('img').forEach(ccSwapImg); } const t = []; if(n.matches && n.matches('.pup,.rzrig')) t.push(n); if(n.querySelectorAll) n.querySelectorAll('.pup,.rzrig').forEach(e=>t.push(e)); t.forEach(ccOverlay); }
 new MutationObserver(ms=>{ ms.forEach(m=>m.addedNodes.forEach(ccScan)); }).observe(document.body, {childList:true, subtree:true});
 ['lisa','lucas','razzle',...Object.keys(CC).filter(k=>k!=='razzle')].forEach(id=>ccBuild(id));
@@ -9317,6 +9317,36 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .ccoff{border:2px solid #C9C3B8;border-radius:12px;background:#fff;padding:6px 14px;font-weight:800;cursor:pointer}
 .cctip{position:absolute;left:0;right:0;bottom:14px;text-align:center;z-index:3;font-weight:800;color:#fff;text-shadow:0 2px 3px #000;font-size:17px}
 html.calm .ccw,.calm .ccw,html.lite .ccw{animation:none}
+</style>`);
+
+/* ===== gmart (v23.61): Grok art in the new games + Razzle's Jeweled Jacket (100 Challenge wins). Prefix gm.
+   - gm/ folder: balloon_<colour>, ladybug_token, chest_open/closed, tile_grass_a/b, tile_path, face_<friend> (headshots; only some friends so far).
+   - Jacket: Razzle item slot 'body' (anchor a[6],a[7]), locked until RZ.n >= 100. Art hook: cc/razzle_jeweledjacket.webp (emoji 🧥 until then). ===== */
+const GM_FACES = ['aoife','colette','jabari','kenta','lucia','luna','mateo'];
+function q24Face(id){ return GM_FACES.includes(id) ? 'gm/face_'+id+'.webp' : 'friends/img/'+id+'.webp'; }
+const GM_JACKET = 100;
+{ const base = rzWin; rzWin = function(){ const r = base.apply(this, arguments);
+  if((RZ.n||0) >= GM_JACKET && !RZ.jk){ RZ.jk = 1; rzSave(); const cs = document.querySelectorAll('.modal .rzwin .rzwtxt'), c = cs[cs.length-1];
+    if(c){ const d = document.createElement('div'); d.className = 'gmjk'; d.innerHTML = '&#128142; You earned Razzle\'s <b>Jeweled Jacket</b>! Find it in the Changing Room.'; c.insertBefore(d, c.querySelector('.row')); [988,1319,1568,1976].forEach((f,j)=>tone(f,.14,'triangle',.12,.4+j*.1)); ccBuild('razzle'); } }
+  return r; }; }
+{ const base = rzHub; rzHub = function(){ const r = base.apply(this, arguments);
+  const f = document.querySelector('.rzhub'); if(f && !f.querySelector('.gmjkp')){ const n = RZ.n||0; const d = document.createElement('div'); d.className = 'wt-prog gmjkp';
+    d.innerHTML = n >= GM_JACKET ? '&#128142; Jeweled Jacket earned!' : `&#128142; ${n} / ${GM_JACKET} to Razzle's Jeweled Jacket`; f.appendChild(d); }
+  return r; }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.q24bal{width:76px;height:104px}
+.q24bal img{display:block;width:76px;height:101px;pointer-events:none;filter:drop-shadow(0 4px 3px rgba(0,0,0,.18))}
+.q24sq.q24ga{background:url(gm/tile_grass_a.webp) center/cover,#9AD48F}
+.q24sq.q24gb{background:url(gm/tile_grass_b.webp) center/cover,#9AD48F}
+.q24sq.q24st{background:url(gm/tile_path.webp) center/cover,#E9D49A}
+.q24sq.yay{box-shadow:inset 0 0 0 5px #FFD23F,0 0 14px rgba(255,210,63,.9)}
+.q24board{background:#6FB565}
+.q24bug img{width:62px;height:62px;display:block;filter:drop-shadow(0 3px 2px rgba(0,0,0,.25))}
+.q24bug{position:absolute;left:5px;top:5px}
+.q24chest{right:-14px;top:-26px}.q24chest img{width:58px;height:58px;display:block}
+.pldi small{display:block;font-size:12px;font-weight:800;line-height:1;margin-top:2px;white-space:nowrap}
+.gmjk{margin:8px 0 6px;padding:8px 14px;border-radius:18px;background:linear-gradient(180deg,#FFF6D8,#FFE08A);border:3px solid #C8901A;font-weight:800;font-size:19px;color:#5A3A00;box-shadow:0 3px 0 rgba(0,0,0,.12)}
+.gmjkp{position:absolute;left:22px;bottom:78px;z-index:4;background:linear-gradient(180deg,#FFF6D8,#FFE08A)!important;border:3px solid #C8901A;color:#5A3A00;font-weight:800}
 </style>`);
 
 /* ===== anim13 (v23.54): scrapbook polish. Polaroid cards with washi tape, glossy page buttons, ribbon title, one-shot page-in. ===== */
