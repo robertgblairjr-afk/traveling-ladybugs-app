@@ -9042,6 +9042,14 @@ document.head.insertAdjacentHTML('beforeend', `<style>.rzrig::after{background:
   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 0Q11.2 8.8 20 10Q11.2 11.2 10 20Q8.8 11.2 0 10Q8.8 8.8 10 0Z' fill='%23FFD6F2'/%3E%3C/svg%3E") 94% 66%/44px 44px no-repeat,
   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 0Q11.2 8.8 20 10Q11.2 11.2 10 20Q8.8 11.2 0 10Q8.8 8.8 10 0Z' fill='%23FFFFFF'/%3E%3C/svg%3E") 30% 4%/34px 34px no-repeat,
   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 0Q11.2 8.8 20 10Q11.2 11.2 10 20Q8.8 11.2 0 10Q8.8 8.8 10 0Z' fill='%23BFF3FF'/%3E%3C/svg%3E") 72% 92%/40px 40px no-repeat!important}</style>`);
+document.head.insertAdjacentHTML('beforeend', `<style>
+.ppst.on{background:radial-gradient(circle at 35% 28%,#fff 0,#FFF3C9 45%,#FFE29A 100%);box-shadow:0 4px 0 rgba(150,40,30,.25),0 8px 14px rgba(150,40,30,.22),inset 0 2px 0 #fff;animation:a12stamp .5s cubic-bezier(.3,1.6,.5,1) both}
+.ppst.on::after{content:'';position:absolute;left:18%;top:10%;width:34%;height:16%;border-radius:50%;background:rgba(255,255,255,.75);transform:rotate(-25deg);pointer-events:none}
+.ppst em{right:0;top:0;bottom:auto;box-shadow:0 2px 0 rgba(0,0,0,.2)}
+.ppst:not(.on){background:rgba(255,255,255,.35)}
+@keyframes a12stamp{0%{transform:rotate(4deg) scale(1.5);opacity:0}100%{transform:rotate(4deg) scale(1);opacity:1}}
+html.calm .ppst.on,html.lite .ppst.on{animation:none}
+</style>`);
 
 /* ---------- hook music + wipes into the screens ---------- */
 {
