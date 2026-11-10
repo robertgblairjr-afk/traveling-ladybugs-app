@@ -9056,7 +9056,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .fcard .fbadge:not(.soon){background-image:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 55%);box-shadow:0 2px 0 rgba(0,0,0,.18)}
 </style>`);
 
-/* ===== rzfun21 (v23.59): five more Challenge games (CSS prefix q24)
+/* ===== rzfun21 (v23.60): five more Challenge games (CSS prefix q24)
    - sthunt: "Sticker hunt": find every copy of one scrapbook sticker among others. (cat detect)
    - zoom:   "Zoom detective": a close-up crop of a sticker; pick which sticker it is. (cat detect)
    - steps:  "Treasure steps": follow the arrows from the ladybug and tap the square you land on. (cat maze)
@@ -9182,6 +9182,141 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .q24fc img{max-width:178px;max-height:228px}
 html.calm .q24bug.hop,html.lite .q24bug.hop,html.calm .q24bal.pop,html.lite .q24bal.pop{animation:none}
 html.calm .q24zin,html.lite .q24zin{transition:none}
+</style>`);
+
+/* ===== ccroom (v23.60): the Changing Room. Replaces the Play Room "Dress up" door.
+   Lisa and Lucas are always there (their old hats-and-more tray, opened by solving places). Each friend's wardrobe opens when you
+   finish their land (hsSolved). Razzle's opens with Challenge Mode. Every character has their own themed outfits.
+   Saved in tlb_play.cc = {id:{slot:itemIndex}} (Lisa/Lucas keep tlb_play.dr, so the start screen still shows their outfit).
+   An item can have art: cc/<id>_<slug>.webp (transparent piece); if the file is missing the emoji is shown instead. ===== */
+const CC_SLOT = {hat:['Hats',1.0], eyes:['Eyes',.8], neck:['Neck',.72]};
+/* a: [hatX,hatY, eyesX,eyesY, neckX,neckY] as fractions of the picture; hw: head width as a fraction of picture width */
+const CC = {
+  pip:{a:[.5,.13,.5,.28,.5,.57],hw:.42,i:[['🎩','hat','Top hat','tophat'],['👑','hat','Royal crown','crown'],['☂️','hat','Rainy-day umbrella','umbrella'],['👓','eyes','Reading glasses','glasses'],['🕶️','eyes','Sunglasses','shades'],['🧣','neck','Striped scarf','scarf'],['🎖️','neck','Guard medal','medal'],['🎀','neck','Big bow','bow']]},
+  priya:{a:[.5,.27,.52,.4,.52,.52],hw:.3,i:[['🪷','hat','Lotus crown','lotus'],['👑','hat','Maharani crown','crown'],['🌼','hat','Marigold hat','marigold'],['🕶️','eyes','Sunglasses','shades'],['👓','eyes','Round glasses','glasses'],['📿','neck','Bead necklace','beads'],['🌺','neck','Flower garland','garland'],['🧣','neck','Silk scarf','scarf']]},
+  colette:{a:[.46,.13,.5,.33,.5,.5],hw:.5,i:[['👒','hat','Sun hat','sunhat'],['🌹','hat','Rose hat','rose'],['🎩','hat','Fancy hat','tophat'],['🕶️','eyes','Sunglasses','shades'],['👓','eyes','Artist glasses','glasses'],['📿','neck','Pearls','pearls'],['🎀','neck','Silk bow','bow'],['🧣','neck','Paris scarf','scarf']]},
+  lucia:{a:[.4,.15,.42,.3,.4,.42],hw:.34,i:[['🌿','hat','Laurel wreath','laurel'],['🍦','hat','Gelato hat','gelato'],['👑','hat','Little crown','crown'],['🕶️','eyes','Sunglasses','shades'],['👓','eyes','Round glasses','glasses'],['🥇','neck','Gold medal','medal'],['🎀','neck','Ribbon','ribbon'],['🍕','neck','Pizza charm','pizza']]},
+  sami:{a:[.5,.2,.5,.34,.5,.5],hw:.42,i:[['👑','hat','Pharaoh crown','crown'],['🌞','hat','Sun disc','sun'],['🧢','hat','Explorer cap','cap'],['🕶️','eyes','Desert shades','shades'],['🥽','eyes','Sand goggles','goggles'],['📿','neck','Gold collar','collar'],['🪙','neck','Gold coin','coin'],['🏺','neck','Little jar','jar']]},
+  nikos:{a:[.5,.16,.55,.38,.5,.52],hw:.38,i:[['🌿','hat','Olive wreath','olive'],['🏆','hat','Winner cup','cup'],['🎓','hat','Scholar cap','scholar'],['🕶️','eyes','Sunglasses','shades'],['🥽','eyes','Swim goggles','goggles'],['🥇','neck','Gold medal','medal'],['🫒','neck','Olive charm','olive'],['🎀','neck','Blue bow','bow']]},
+  paco:{a:[.6,.4,.6,.5,.6,.62],hw:.28,i:[['👒','hat','Straw hat','strawhat'],['🌵','hat','Cactus hat','cactus'],['🌮','hat','Taco hat','taco'],['🕶️','eyes','Sunglasses','shades'],['🥸','eyes','Fun glasses','funny'],['🌶️','neck','Chili necklace','chili'],['🌺','neck','Flower','flower'],['🧣','neck','Bright scarf','scarf']]},
+  mateo:{a:[.82,.2,.83,.32,.76,.42],hw:.2,i:[['🦙','hat','Llama hat','llama'],['🧢','hat','Mountain cap','cap'],['🌄','hat','Sunrise hat','sunrise'],['🥽','eyes','Climbing goggles','goggles'],['🕶️','eyes','Sunglasses','shades'],['🧣','neck','Woven scarf','scarf'],['🥔','neck','Potato charm','potato'],['🌈','neck','Rainbow poncho','poncho']]},
+  kenta:{a:[.42,.22,.45,.42,.42,.55],hw:.38,i:[['🌸','hat','Cherry blossom','sakura'],['🎍','hat','Bamboo hat','bamboo'],['🎌','hat','Festival flag','flag'],['🥽','eyes','Racing goggles','goggles'],['🕶️','eyes','Sunglasses','shades'],['🥇','neck','Champion medal','medal'],['🧧','neck','Lucky charm','charm'],['🎀','neck','Red ribbon','ribbon']]},
+  skye:{a:[.44,.2,.44,.3,.45,.42],hw:.15,i:[['❄️','hat','Snowflake crown','snow'],['🧢','hat','Warm cap','cap'],['🎿','hat','Ski hat','ski'],['🥽','eyes','Snow goggles','goggles'],['🕶️','eyes','Sunglasses','shades'],['🧣','neck','Cozy scarf','scarf'],['🧤','neck','Mitten charm','mitten'],['🐟','neck','Fish charm','fish']]},
+  matilda:{a:[.5,.14,.5,.4,.5,.58],hw:.55,i:[['👒','hat','Sun hat','sunhat'],['🪃','hat','Boomerang hat','boomerang'],['🏄','hat','Surfer hat','surf'],['🕶️','eyes','Sunglasses','shades'],['🥽','eyes','Snorkel goggles','goggles'],['🌺','neck','Flower lei','lei'],['🏅','neck','Surf medal','medal'],['🐚','neck','Shell necklace','shell']]},
+  luna:{a:[.5,.36,.5,.42,.5,.5],hw:.14,i:[['🌺','hat','Flower crown','flowers'],['🦜','hat','Parrot hat','parrot'],['🍍','hat','Pineapple hat','pineapple'],['🕶️','eyes','Sunglasses','shades'],['🥽','eyes','Jungle goggles','goggles'],['🌴','neck','Palm charm','palm'],['🥥','neck','Coconut charm','coconut'],['🌸','neck','Blossom','blossom']]},
+  aoife:{a:[.42,.1,.45,.32,.45,.52],hw:.45,i:[['🍀','hat','Shamrock hat','shamrock'],['🎩','hat','Green top hat','tophat'],['🌈','hat','Rainbow hat','rainbow'],['👓','eyes','Glasses','glasses'],['🕶️','eyes','Sunglasses','shades'],['🧣','neck','Green scarf','scarf'],['🪙','neck','Gold coin','coin'],['🎀','neck','Green bow','bow']]},
+  ruby:{a:[.45,.34,.45,.43,.45,.5],hw:.2,i:[['🧢','hat','City cap','cap'],['🗽','hat','Statue crown','statue'],['🎩','hat','Broadway hat','tophat'],['🕶️','eyes','Sunglasses','shades'],['👓','eyes','Glasses','glasses'],['📷','neck','Camera','camera'],['🥨','neck','Pretzel charm','pretzel'],['🏅','neck','Marathon medal','medal']]},
+  jabari:{a:[.4,.12,.35,.3,.35,.4],hw:.35,i:[['🦁','hat','Lion hat','lion'],['👒','hat','Safari hat','safari'],['🦓','hat','Zebra hat','zebra'],['🔭','eyes','Binoculars','binoculars'],['🕶️','eyes','Sunglasses','shades'],['📿','neck','Beaded collar','beads'],['🧣','neck','Red cloth','cloth'],['🦒','neck','Giraffe charm','giraffe']]},
+  razzle:{a:[.3,.15,.32,.3,.38,.42],hw:.3,i:[['🎩','hat','Top hat','tophat'],['👑','hat','Show-time crown','crown'],['🪄','hat','Magic wand hat','wand'],['🎪','hat','Circus hat','circus'],['🕶️','eyes','Star shades','shades'],['🎭','eyes','Party mask','mask'],['👓','eyes','Host glasses','glasses'],['🎀','neck','Tuxedo bow tie','bowtie'],['🥇','neck','Gold medal','medal'],['🌟','neck','Star pin','star']]}
+};
+const CC_ART = {lisa:['art/lisa.webp',353,700,[.524,.136,.581,.303,.567,.417],.27,'Lisa'], lucas:['art/lucas.webp',298,700,[.369,.157,.319,.321,.369,.429],.32,'Lucas'], razzle:['rz/razzle.webp',356,520,null,0,'Razzle']};
+function ccWho(){ // [{id,name,img,w,h,a,hw,open,lock}]
+  const done = typeof hsSolved==='function' ? hsSolved() : [], out = [];
+  ['lisa','lucas'].forEach(id=>{ const c = CC_ART[id]; out.push({id,name:c[5],img:c[0],w:c[1],h:c[2],a:c[3],hw:c[4],open:true}); });
+  const SP = {london:['pip','London'], india:['priya','India']};
+  CITY_ORDER.forEach(cid=>{ const c = CITIES[cid], fid = SP[cid] ? SP[cid][0] : (c && c.friend); if(!fid || !CC[fid]) return; const f = FR[fid]; const d = CC[fid];
+    out.push({id:fid,name:f?f.name:fid,img:'friends/img/'+fid+'.webp',w:0,h:0,a:d.a,hw:d.hw,open:done.includes(cid),lock:SP[cid]?SP[cid][1]:(c.city||cid)}); });
+  const rz = CC.razzle; out.push({id:'razzle',name:'Razzle',img:'rz/razzle.webp',w:356,h:520,a:rz.a,hw:rz.hw,open:!!(typeof rzCheckUnlock==='function' && rzCheckUnlock()),lock:'Challenge Mode'});
+  return out;
+}
+function ccRoom(){
+  const P = plGet(), solved = (typeof hsSolved==='function' ? hsSolved().length : 0), openLL = Math.min(PL_WEAR.length, 4 + solved);
+  P.cc = P.cc || {}; P.dr = P.dr || {lisa:{}, lucas:{}};
+  const all = ccWho(); let who = 'lisa';
+  const items = id=> (id==='lisa'||id==='lucas') ? PL_WEAR.map((e,i)=>({e:e[0],s:e[1],n:e[2],i,lock:i>=openLL})) : CC[id].i.map((e,i)=>({e:e[0],s:e[1],n:e[2],i,art:'cc/'+id+'_'+e[3]+'.webp'}));
+  const sel = id=> ((id==='lisa'||id==='lucas') ? P.dr[id] : P.cc[id]) || {};
+  const setSel = (id,o)=>{ if(id==='lisa'||id==='lucas') P.dr[id] = o; else P.cc[id] = o; plSet(P); ccBuild(id); };
+  const spot = (c,sl)=>{ const k = {hat:0,eyes:2,neck:4}[sl]; return [c.a[k],c.a[k+1]]; };
+  const piece = (c,it,sl,W)=>{ const [x,y] = spot(c,sl), fs = Math.round(c.hw*W*CC_SLOT[sl][1]*((c.id==='lisa'||c.id==='lucas')?1.2:1.1));
+    return `<i class="ccw ${sl}" style="left:${(x*W).toFixed(0)}px;top:${(y*c.H).toFixed(0)}px;font-size:${fs}px">${it.art?`<img src="${it.art}" alt="" style="width:${(c.hw*W*1.3).toFixed(0)}px" onerror="this.replaceWith(document.createTextNode('${it.e}'))">`:it.e}</i>`; };
+  const draw = ()=>{
+    const c = all.find(a=>a.id===who), its = items(who), o = sel(who), H = 330, bw = 420;
+    const stage = app.querySelector('.ccstage'), img = new Image();
+    const fin = ()=>{ const nw = img.naturalWidth||c.w, nh = img.naturalHeight||c.h, k = Math.min(bw/nw, H/nh), W = nw*k; c.H = nh*k;
+      stage.innerHTML = `<div class="ccfig" style="width:${W.toFixed(0)}px;height:${c.H.toFixed(0)}px"><img src="${c.img}" alt="${c.name}" style="width:${W.toFixed(0)}px">${['hat','eyes','neck'].map(sl=>o[sl]!=null&&its[o[sl]]?piece(c,its[o[sl]],sl,W):'').join('')}</div><div class="ccname">${c.name}</div>`; };
+    img.onload = fin; img.onerror = fin; img.src = c.img; if(img.complete && img.naturalWidth) fin();
+    const tray = app.querySelector('.cctray');
+    tray.innerHTML = ['hat','eyes','neck'].map(sl=>{ const row = its.filter(t=>t.s===sl); if(!row.length) return '';
+      return `<div class="ccrow"><b>${CC_SLOT[sl][0]}</b>${row.map(t=>`<button class="pldi${t.lock?' lock':''}${o[sl]===t.i?' on':''}" data-i="${t.i}" aria-label="${t.lock?'Locked: solve more places':t.n}" title="${t.n}">${t.lock?'&#128274;':t.e}</button>`).join('')}</div>`; }).join('')
+      + `<button class="ccoff" data-i="off">Take it all off &#10006;</button>`;
+    app.querySelectorAll('.ccpick').forEach(b=>b.classList.toggle('sel', b.dataset.id===who));
+    tray.querySelectorAll('button').forEach(b=>b.onclick=()=>{ const i = b.dataset.i; if(i==='off'){ setSel(who,{}); sfx.pop(); draw(); return; }
+      const t = its[+i]; if(t.lock){ sfx.oops(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); return; }
+      const cur = Object.assign({}, sel(who)); cur[t.s] = cur[t.s]===t.i ? null : t.i; setSel(who,cur);
+      [784,988,1175].forEach((f,j)=>tone(f,.1,'triangle',.1,j*.07)); draw();
+      const f = app.querySelector('.ccfig'); if(f){ f.classList.remove('hop'); void f.offsetWidth; f.classList.add('hop'); } });
+    const tip = app.querySelector('.cctip'), n = all.filter(a=>a.open).length;
+    tip.textContent = who==='lisa'||who==='lucas' ? (openLL<PL_WEAR.length ? `Solve more places to open more things for Lisa and Lucas! (${openLL} of ${PL_WEAR.length})` : 'Everything is open for Lisa and Lucas!') : `${n} of ${all.length} wardrobes are open. Solve more places to meet more friends!`;
+  };
+  app.innerHTML = `<div class="screen ccroom"><img class="plbg" src="bg/106.webp" alt="">${plHdr('Changing Room','Pick a friend, then pick an outfit')}
+    <div class="ccpicks">${all.map(a=>`<button class="ccpick${a.open?'':' lock'}" data-id="${a.id}" aria-label="${a.open?a.name:'Locked: finish '+a.lock+' to open '+a.name+'\'s wardrobe'}"><img src="${a.img}" alt="">${a.open?'':'<u>&#128274;</u>'}<span>${a.name}</span></button>`).join('')}</div>
+    <div class="ccstage"></div><div class="cctray"></div><div class="cctip"></div></div>`;
+  plBind(showPlayRoom);
+  app.querySelectorAll('.ccpick').forEach(b=>b.onclick=()=>{ const a = all.find(x=>x.id===b.dataset.id);
+    if(!a.open){ sfx.oops(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); const tip = app.querySelector('.cctip'); tip.textContent = a.id==='razzle' ? 'Solve all 15 places to open Challenge Mode and meet Razzle!' : `Finish ${a.lock} to open ${a.name}'s wardrobe!`; return; }
+    who = a.id; sfx.pop(); draw(); });
+  draw();
+}
+
+/* ---- worn outfits show everywhere: friends' pictures are re-painted with their outfit (cached), Razzle and Lisa/Lucas get pieces laid over them ---- */
+const CC_SKIN = {}; // id -> loaded Image of the dressed picture
+function ccGeo(id){ if(id==='lisa'||id==='lucas'){ const c = CC_ART[id]; return {a:c[3],hw:c[4],src:c[0],k:1.2}; } const d = CC[id]; return d ? {a:d.a,hw:d.hw,src:id==='razzle'?'rz/razzle.webp':'friends/img/'+id+'.webp',k:1.1} : null; }
+function ccWorn(id){ const P = plGet(), out = [];
+  if(id==='lisa'||id==='lucas'){ const o = (P.dr||{})[id]||{}; ['hat','eyes','neck'].forEach(sl=>{ if(o[sl]!=null && PL_WEAR[o[sl]]) out.push({sl,e:PL_WEAR[o[sl]][0]}); }); return out; }
+  const o = (P.cc||{})[id]||{}, d = CC[id]; if(!d) return out;
+  ['hat','eyes','neck'].forEach(sl=>{ if(o[sl]!=null && d.i[o[sl]]){ const t = d.i[o[sl]]; out.push({sl,e:t[0],art:'cc/'+id+'_'+t[3]+'.webp'}); } }); return out; }
+function ccBuild(id){ const g = ccGeo(id); if(!g) return Promise.resolve(); const worn = ccWorn(id);
+  if(!worn.length){ delete CC_SKIN[id]; return Promise.resolve(); }
+  return new Promise(res=>{ const im = new Image(); im.onload = ()=>{ try{
+      const W = im.naturalWidth, H = im.naturalHeight, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d'); x.drawImage(im,0,0);
+      const jobs = worn.map(w=>new Promise(r2=>{ if(!w.art) return r2(null); const a = new Image(); a.onload = ()=>r2(a); a.onerror = ()=>r2(null); a.src = w.art; }));
+      Promise.all(jobs).then(arts=>{ try{ worn.forEach((w,i)=>{ const j = {hat:0,eyes:2,neck:4}[w.sl], fs = g.hw*W*CC_SLOT[w.sl][1]*g.k;
+          let px = g.a[j]*W, py = g.a[j+1]*H; px = Math.max(fs/2, Math.min(W-fs/2, px)); py = Math.max(fs/2, py);
+          if(arts[i]){ const aw = g.hw*W*1.3, ah = aw*arts[i].naturalHeight/arts[i].naturalWidth; x.drawImage(arts[i], px-aw/2, py-ah/2, aw, ah); }
+          else { x.font = Math.round(fs)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(w.e, px, py); } });
+        const sk = new Image(); sk.onload = ()=>{ CC_SKIN[id] = sk; ccSwapAll(); res(); }; sk.onerror = ()=>res(); sk.src = cv.toDataURL('image/png'); }catch(e){ res(); } });
+    }catch(e){ res(); } }; im.onerror = ()=>res(); im.src = g.src; }); }
+const CC_IMG_RE = /(?:friends\/img\/(\w+)|art\/(lisa|lucas)|rz\/(razzle))\.webp$/;
+function ccSwapImg(img){ if(img.dataset.ccs || !img.getAttribute) return; const src = img.getAttribute('src')||''; const m = CC_IMG_RE.exec(src); if(!m) return;
+  if(img.closest('.fr, .rzrig, .pup')) return; const id = m[1]||m[2]||m[3], sk = CC_SKIN[id]; if(!sk) return; img.dataset.ccs = '1'; img.src = sk.src; }
+function ccSwapAll(){ document.querySelectorAll('img').forEach(ccSwapImg); }
+{ const base = frBuild; frBuild = function(id, img, a, b){ const sk = CC_SKIN[id]; return base.call(this, id, (sk && sk.complete && sk.naturalWidth===img.naturalWidth) ? sk : img, a, b); }; }
+/* Lisa/Lucas puppets and Razzle's rig: lay the pieces over them */
+function ccOverlay(el){
+  if(el.querySelector && el.querySelector(':scope .ccov')) return;
+  if(el.classList.contains('pup')){ const id = el.dataset.who, w = ccWorn(id); if(!w.length) return; const h = el.querySelector('.p-head'), r = RIG[id]; const hp = r && r.parts.find(p=>p.id==='head'); if(!h||!hp) return;
+    const sp = PL_SPOT[id]; w.forEach(o=>{ const s = sp[o.sl]; const i = document.createElement('i'); i.className = 'ccw ccov '+o.sl; i.textContent = o.e; i.style.cssText = `left:${(s[0]-hp.x).toFixed(0)}px;top:${(s[1]-hp.y).toFixed(0)}px;font-size:${s[2]}px;animation:none;z-index:9`; h.appendChild(i); }); }
+  else if(el.classList.contains('rzrig')){ const w = ccWorn('razzle'); if(!w.length) return; const g = ccGeo('razzle'), ht = el.clientHeight || parseFloat(el.style.height) || 300, W = ht*356/520; const box = document.createElement('div'); box.className = 'ccov ccrzbox'; box.style.cssText = `position:absolute;left:0;top:0;width:${W}px;height:${ht}px;pointer-events:none;z-index:9`;
+    w.forEach(o=>{ const j = {hat:0,eyes:2,neck:4}[o.sl]; const i = document.createElement('i'); i.className = 'ccw'; i.textContent = o.e; i.style.cssText = `left:${(g.a[j]*100).toFixed(1)}%;top:${(g.a[j+1]*100).toFixed(1)}%;font-size:${Math.round(g.hw*W*CC_SLOT[o.sl][1]*1.1)}px;animation:none`; box.appendChild(i); }); el.appendChild(box); } }
+function ccScan(n){ if(!n || n.nodeType!==1) return; if(n.tagName==='IMG') ccSwapImg(n); else if(n.querySelectorAll){ n.querySelectorAll('img').forEach(ccSwapImg); } const t = []; if(n.matches && n.matches('.pup,.rzrig')) t.push(n); if(n.querySelectorAll) n.querySelectorAll('.pup,.rzrig').forEach(e=>t.push(e)); t.forEach(ccOverlay); }
+new MutationObserver(ms=>{ ms.forEach(m=>m.addedNodes.forEach(ccScan)); }).observe(document.body, {childList:true, subtree:true});
+['lisa','lucas','razzle',...Object.keys(CC).filter(k=>k!=='razzle')].forEach(id=>ccBuild(id));
+
+plDress = ccRoom;
+{ const base = showPlayRoom; showPlayRoom = function(){ const r = base.apply(this, arguments);
+  const d = document.querySelector('.pldoor[data-k=dress]'); if(d){ d.querySelector('b').textContent = 'Changing room'; d.querySelector('small').textContent = 'Outfits for every friend'; } return r; }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.ccroom .hdr{position:relative;z-index:3}
+.ccpicks{position:absolute;left:12px;right:12px;top:92px;z-index:3;display:grid;grid-template-columns:repeat(9,1fr);gap:6px}
+.ccpick{position:relative;height:74px;border:3px solid #1D1D2B;border-radius:16px;background:linear-gradient(180deg,#fff,#F6EEDB);padding:2px 2px 14px;cursor:pointer;box-shadow:0 4px 0 #1D1D2B}
+.ccpick img{width:100%;height:100%;object-fit:contain;display:block}
+.ccpick span{position:absolute;left:0;right:0;bottom:0;font-size:11px;font-weight:800;line-height:14px;color:#1D1D2B}
+.ccpick.lock img{filter:grayscale(1) brightness(.6);opacity:.6}
+.ccpick u{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);text-decoration:none;font-size:22px}
+.ccpick.sel{background:#FFE9A0;box-shadow:0 0 0 4px #FFD23F,0 4px 0 #1D1D2B}
+.ccpick.shake{animation:shake .35s}
+.ccstage{position:absolute;left:30px;top:262px;width:420px;height:370px;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+.ccfig{position:relative;transition:transform .2s}.ccfig img{display:block}
+.ccfig.hop{animation:pldhop .5s ease}
+.ccw{position:absolute;transform:translate(-50%,-50%);line-height:1;pointer-events:none;font-style:normal;animation:pldpop .35s ease}
+.ccw img{display:block;transform:none}
+.ccname{margin-top:4px;background:#fff;border:3px solid #1D1D2B;border-radius:12px;padding:2px 16px;font-weight:900;font-size:20px;color:#1D1D2B}
+.cctray{position:absolute;left:480px;right:16px;top:262px;z-index:3;background:rgba(255,248,230,.95);border:4px solid #1D1D2B;border-radius:22px;padding:10px 12px;box-shadow:0 6px 0 #1D1D2B}
+.ccrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}.ccrow b{width:50px;font-size:14px;color:#1D1D2B}
+.cctray .pldi.on{border-color:#E5383B;box-shadow:0 0 0 3px #FFD23F}
+.ccoff{border:2px solid #C9C3B8;border-radius:12px;background:#fff;padding:6px 14px;font-weight:800;cursor:pointer}
+.cctip{position:absolute;left:0;right:0;bottom:14px;text-align:center;z-index:3;font-weight:800;color:#fff;text-shadow:0 2px 3px #000;font-size:17px}
+html.calm .ccw,.calm .ccw,html.lite .ccw{animation:none}
 </style>`);
 
 /* ===== anim13 (v23.54): scrapbook polish. Polaroid cards with washi tape, glossy page buttons, ribbon title, one-shot page-in. ===== */
