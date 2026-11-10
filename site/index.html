@@ -9056,6 +9056,173 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .fcard .fbadge:not(.soon){background-image:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 55%);box-shadow:0 2px 0 rgba(0,0,0,.18)}
 </style>`);
 
+/* ===== rzfun21 (v23.59): five more Challenge games (CSS prefix q24)
+   - sthunt: "Sticker hunt": find every copy of one scrapbook sticker among others. (cat detect)
+   - zoom:   "Zoom detective": a close-up crop of a sticker; pick which sticker it is. (cat detect)
+   - steps:  "Treasure steps": follow the arrows from the ladybug and tap the square you land on. (cat maze)
+   - balpop: "Pop the colour": pop only the balloons of the named colour. (cat play)
+   - faces:  "Friend faces": name the friend from the picture (Easy); find the named friend among faces (Challenge). (cat detect)
+   A wrong tap only wobbles. No moving targets. ===== */
+const Q24_COL = [['#E5383B','red'],['#4CC9F0','blue'],['#FFD23F','yellow'],['#3FA34D','green'],['#9B5DE5','purple'],['#FF9F1C','orange']];
+const q24bad = (el)=>{ miss(); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); tone(220,.1,'sine',.08); };
+const q24ids = ()=>SB_ITEMS.map(x=>x[0]);
+
+RZ_MAKE.sthunt = function(){ const e = easy(), k = e ? 3 : 4, n = e ? 12 : 20, all = cshuf(q24ids()), t = all[0], others = all.slice(1, 1 + n - k);
+  const cells = cshuf(Array(k).fill(t).concat(others)); return {type:'sthunt', title:`Sticker hunt! Find all ${k} of these.`, t, k, cells, sig:'sth:'+t+':'+cells.join('').slice(-24)}; };
+function q24HuntPlay(g){
+  const sz = g.cells.length > 12 ? 84 : 92, cols = g.cells.length > 12 ? 5 : 4;
+  const grid = g.cells.map((id,i)=>`<button class="q24cell" data-i="${i}" data-id="${id}" aria-label="${sbName(id)}">${sbSticker(id, sz)}</button>`).join('');
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.k}</div><div class="q24tgt"><b>Find</b>${sbSticker(g.t, 120)}<small>${sbName(g.t)}</small></div><div class="q24grid" style="grid-template-columns:repeat(${cols},${sz+14}px)">${grid}</div>`);
+  let got = 0;
+  document.querySelectorAll('.q24cell').forEach(b=>b.onclick=()=>{ if(b.classList.contains('got')) return;
+    if(b.dataset.id===g.t){ poke(); b.classList.add('got'); got++; tone(520+got*110,.12,'triangle',.15); document.getElementById('cnt').textContent = `${got} / ${g.k}`;
+      if(got>=g.k){ clearHint(); G.getT = null; rzDoneLater(1200); } } else q24bad(b); });
+  armHint(()=>document.querySelector(`.q24cell[data-id="${g.t}"]:not(.got)`));
+}
+
+RZ_MAKE.zoom = function(){ const e = easy(), n = e ? 3 : 4, rounds = e ? 2 : 3, all = cshuf(q24ids()), rs = [];
+  for(let r=0;r<rounds;r++){ const t = all[r*n], opts = cshuf(all.slice(r*n, r*n + n)); rs.push({t, opts, ox:90+Math.floor(Math.random()*70), oy:90+Math.floor(Math.random()*70)}); }
+  return {type:'zoom', title:'Zoom detective! What is this close-up?', rs, big:e?500:640, sig:'zm:'+rs.map(r=>r.t).join(',')}; };
+function q24ZoomPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">1 / ${g.rs.length}</div><div id="q24box"></div>`);
+  let r = 0; const box = document.getElementById('q24box');
+  const show = ()=>{ const R = g.rs[r];
+    box.innerHTML = `<div class="q24zoom"><div class="q24zin" style="left:${-Math.round(R.ox*g.big/500)}px;top:${-Math.round(R.oy*g.big/500)}px">${sbSticker(R.t, g.big)}</div></div><div class="q24opts">${R.opts.map(id=>`<button class="q24opt" data-id="${id}" aria-label="${sbName(id)}">${sbSticker(id, 92)}<small>${sbName(id)}</small></button>`).join('')}</div>`;
+    document.getElementById('cnt').textContent = `${r+1} / ${g.rs.length}`;
+    box.querySelectorAll('.q24opt').forEach(b=>b.onclick=()=>{ if(b.dataset.id===R.t){ poke(); b.classList.add('got'); tone(660,.12,'triangle',.15); tone(880,.12,'triangle',.12); box.querySelector('.q24zoom').classList.add('open'); r++;
+        if(r>=g.rs.length){ clearHint(); G.getT = null; rzDoneLater(1200); } else setTimeout(show, 1000); } else q24bad(b); });
+    armHint(()=>box.querySelector(`.q24opt[data-id="${R.t}"]`)); };
+  show();
+}
+
+RZ_MAKE.steps = function(){ const e = easy(), k = e ? 2 : 4, D = [[1,0,'&#10145;&#65039;'],[-1,0,'&#11013;&#65039;'],[0,1,'&#11015;&#65039;'],[0,-1,'&#11014;&#65039;']]; let sx, sy, ms, x, y, ok = false;
+  for(let t=0;t<200 && !ok;t++){ sx = Math.floor(Math.random()*5); sy = Math.floor(Math.random()*5); x = sx; y = sy; ms = []; ok = true;
+    for(let i=0;i<k;i++){ const opts = D.filter(d=>x+d[0]>=0&&x+d[0]<5&&y+d[1]>=0&&y+d[1]<5); const d = opts[Math.floor(Math.random()*opts.length)]; ms.push(d[2]); x += d[0]; y += d[1]; }
+    if(x===sx && y===sy) ok = false; }
+  return {type:'steps', title:'Treasure steps! Follow the arrows, then tap where you land.', sx, sy, ex:x, ey:y, ms, sig:`st:${sx}${sy}${x}${y}:${ms.length}:`+Math.random().toString(36).slice(2,5)}; };
+function q24StepsPlay(g){
+  const cells = Array.from({length:25}, (_,i)=>`<button class="q24sq" data-x="${i%5}" data-y="${(i/5)|0}" aria-label="Square">${(i%5===g.sx && ((i/5)|0)===g.sy) ? '<span class="q24bug">&#128030;</span>' : ''}</button>`).join('');
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">${g.ms.length} steps</div><div class="q24board">${cells}</div><div class="q24path"><b>Go:</b><div>${g.ms.map(m=>`<span>${m}</span>`).join('')}</div></div>`);
+  let done = false;
+  document.querySelectorAll('.q24sq').forEach(b=>b.onclick=()=>{ if(done) return; const x = +b.dataset.x, y = +b.dataset.y;
+    if(x===g.ex && y===g.ey){ done = true; poke(); clearHint(); G.getT = null; const bug = document.querySelector('.q24bug'); b.appendChild(bug); bug.classList.add('hop'); b.classList.add('yay'); b.insertAdjacentHTML('beforeend','<i class="q24chest">&#127873;</i>'); tone(660,.12,'triangle',.15); tone(990,.14,'triangle',.12); rzDoneLater(1300); }
+    else q24bad(b); });
+  armHint(()=>document.querySelector(`.q24sq[data-x="${g.ex}"][data-y="${g.ey}"]`));
+}
+
+function q24Spots(n){ let pts = []; for(let t=0;t<30 && pts.length<n;t++) pts = scatter(n, 820, 300, 44); return pts.map(([x,y])=>[Math.round(x+102), Math.round(y+250)]); }
+RZ_MAKE.balpop = function(){ const e = easy(), nc = e ? 3 : 5, n = e ? 7 : 11, cols = cshuf(Q24_COL).slice(0, nc), ti = Math.floor(Math.random()*nc), k = e ? 2 + Math.floor(Math.random()*2) : 3 + Math.floor(Math.random()*2), sp = q24Spots(n), list = [];
+  for(let i=0;i<n;i++) list.push(i<k ? ti : (ti + 1 + Math.floor(Math.random()*(nc-1))) % nc);
+  const bs = cshuf(list).map((c,i)=>({c:cols[c], x:sp[i][0], y:sp[i][1], t:c===ti}));
+  return {type:'balpop', title:`Pop the colour! Pop all the ${cols[ti][1].toUpperCase()} balloons.`, bs, k, col:cols[ti], sig:'bp:'+cols[ti][1]+':'+sp.map(p=>p.map(v=>Math.round(v/40))).join('.')}; };
+function q24BalPlay(g){
+  const bal = g.bs.map((b,i)=>`<button class="q24bal" data-t="${b.t?1:0}" style="left:${b.x-36}px;top:${b.y-110}px;--c:${b.c[0]}" aria-label="${b.c[1]} balloon"><i></i><u></u></button>`).join('');
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">0 / ${g.k}</div>${bal}<div class="q24sw" style="background:${g.col[0]}"></div>`);
+  let got = 0;
+  document.querySelectorAll('.q24bal').forEach(b=>b.onclick=()=>{ if(b.classList.contains('pop')) return;
+    if(b.dataset.t==='1'){ poke(); b.classList.add('pop'); got++; tone(500+got*130,.1,'triangle',.15); document.getElementById('cnt').textContent = `${got} / ${g.k}`;
+      if(got>=g.k){ clearHint(); G.getT = null; rzDoneLater(1100); } } else q24bad(b); });
+  armHint(()=>document.querySelector('.q24bal[data-t="1"]:not(.pop)'));
+}
+
+RZ_MAKE.faces = function(){ const e = easy(), rounds = e ? 3 : 4, n = e ? 3 : 4, ids = cshuf(FRIENDS.map(f=>f.id)), rs = [];
+  for(let r=0;r<rounds;r++){ const pool = cshuf(ids.filter(i=>i!==ids[r])).slice(0, n-1); rs.push({t:ids[r], opts:cshuf(pool.concat([ids[r]]))}); }
+  return {type:'faces', title: e ? 'Friend faces! Who is this?' : 'Friend faces! Tap the friend you are asked for.', rs, e, sig:'fc:'+rs.map(r=>r.t).join(',')}; };
+function q24FacesPlay(g){
+  cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">1 / ${g.rs.length}</div><div id="q24box"></div>`);
+  let r = 0; const box = document.getElementById('q24box');
+  const win = (b)=>{ poke(); b.classList.add('got'); tone(660,.12,'triangle',.15); tone(880,.12,'triangle',.12); r++; if(r>=g.rs.length){ clearHint(); G.getT = null; rzDoneLater(1200); } else setTimeout(show, 900); };
+  const show = ()=>{ const R = g.rs[r], f = FR[R.t];
+    if(g.e){ box.innerHTML = `<div class="q24face"><img src="friends/img/${R.t}.webp" alt=""></div><div class="q24names">${R.opts.map(id=>`<button class="q24nm" data-id="${id}">${FR[id].name}</button>`).join('')}</div>`; }
+    else { box.innerHTML = `<div class="q24ask">Find <b>${f.name}</b> the ${f.insect.toLowerCase()}!</div><div class="q24faces">${R.opts.map(id=>`<button class="q24fc" data-id="${id}" aria-label="${FR[id].name}"><img src="friends/img/${id}.webp" alt=""></button>`).join('')}</div>`; }
+    document.getElementById('cnt').textContent = `${r+1} / ${g.rs.length}`;
+    box.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{ if(b.dataset.id===R.t) win(b); else q24bad(b); });
+    armHint(()=>box.querySelector(`[data-id="${R.t}"]`)); };
+  show();
+}
+
+Object.assign(RZ_FAM, {sthunt:{cat:'detect'}, zoom:{cat:'detect'}, steps:{cat:'maze'}, balpop:{cat:'play'}, faces:{cat:'detect'}});
+Object.assign(RZ_STAMP, {sthunt:['🔎','Sticker hunt'], zoom:['🧐','Zoom detective'], steps:['🗺️','Treasure steps'], balpop:['🎈','Pop the colour'], faces:['😊','Friend faces']});
+{ const base = rzPlay; rzPlay = function(b, again){ const t = b && b.g && b.g.type, f = {sthunt:q24HuntPlay, zoom:q24ZoomPlay, steps:q24StepsPlay, balpop:q24BalPlay, faces:q24FacesPlay}[t];
+  if(f){ rzCur = b; rzUndo = null; rzStage(b); CUR = 'rz'; hush(); f(b.g);
+    setTimeout(()=>{ if(CUR==='rz' && app.querySelector('.screen')) rzSay(again ? 'RETRY_001' : rzOne(['NEW_001','NEW_002'])); }, 350); return; }
+  return base.apply(this, arguments); }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.q24tgt{position:absolute;left:50px;top:190px;width:190px;background:linear-gradient(180deg,#fff,#FFF3D6);border:5px solid #1D1D2B;border-radius:26px;text-align:center;padding:10px 6px 8px;box-shadow:0 5px 0 #1D1D2B;z-index:3}
+.q24tgt b{display:block;font-family:'Baloo 2';font-size:24px}.q24tgt small{display:block;font-weight:800;font-size:17px;color:#5A4630}
+.q24grid{position:absolute;left:270px;top:150px;display:grid;gap:8px;z-index:3}
+.q24cell{border:4px solid #fff;background:rgba(255,255,255,.85);border-radius:20px;padding:4px;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.14);transition:transform .15s}
+.q24cell:active{transform:scale(.94)}.q24cell.got{background:#C9F5D0;border-color:#3FA34D;pointer-events:none}.q24cell.shake{animation:shake .35s}
+.q24zoom{position:absolute;left:110px;top:150px;width:260px;height:260px;border:6px solid #1D1D2B;border-radius:34px;overflow:hidden;background:#fff;box-shadow:0 6px 0 #1D1D2B;z-index:3}
+.q24zin{position:absolute;transition:transform .5s}.q24zoom.open .q24zin{transform:scale(.7)}
+.q24opts{position:absolute;left:430px;top:150px;width:520px;display:flex;flex-wrap:wrap;gap:14px;z-index:3}
+.q24opt{width:160px;border:4px solid #fff;background:rgba(255,255,255,.9);border-radius:22px;padding:6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;box-shadow:0 4px 0 rgba(0,0,0,.14)}
+.q24opt small{font-weight:800;font-size:15px;color:#5A4630}.q24opt.got{background:#C9F5D0;border-color:#3FA34D}.q24opt.shake{animation:shake .35s}
+.q24board{position:absolute;left:120px;top:150px;display:grid;grid-template-columns:repeat(5,78px);gap:6px;z-index:3;background:#8FD28A;padding:10px;border:5px solid #1D1D2B;border-radius:24px;box-shadow:0 5px 0 #1D1D2B}
+.q24sq{width:78px;height:78px;border:3px solid #fff;border-radius:16px;background:linear-gradient(180deg,#B6EBAE,#8FD28A);cursor:pointer;position:relative;font-size:46px;line-height:1;padding:0}
+.q24sq.yay{background:#FFE08A}.q24sq.shake{animation:shake .35s}.q24bug{display:inline-block}.q24bug.hop{animation:q24hop .5s}
+.q24chest{position:absolute;right:-4px;top:-8px;font-size:30px;font-style:normal}
+@keyframes q24hop{0%{transform:translateY(0)}50%{transform:translateY(-26px) scale(1.2)}100%{transform:translateY(0)}}
+.q24path{position:absolute;left:600px;top:170px;width:360px;background:#FFF8E6;border:5px solid #1D1D2B;border-radius:26px;padding:12px 16px;z-index:3;box-shadow:0 5px 0 #1D1D2B}
+.q24path b{font-family:'Baloo 2';font-size:26px}.q24path div{display:flex;flex-wrap:wrap;gap:6px}.q24path span{font-size:50px;line-height:1.1}
+.q24bal{position:absolute;width:72px;height:100px;border:0;background:none;padding:0;cursor:pointer;z-index:3}
+.q24bal i{position:absolute;left:0;top:0;width:72px;height:86px;border-radius:50% 50% 48% 48%/55% 55% 45% 45%;background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.8) 0 9%,transparent 11%),var(--c);border:4px solid #1D1D2B;box-shadow:inset -8px -10px 0 rgba(0,0,0,.12)}
+.q24bal u{position:absolute;left:34px;top:86px;width:3px;height:34px;background:#1D1D2B;opacity:.6}
+.q24bal.pop{animation:q24pop .3s forwards;pointer-events:none}.q24bal.shake{animation:shake .35s}
+@keyframes q24pop{0%{transform:scale(1)}40%{transform:scale(1.35);opacity:1}100%{transform:scale(1.6);opacity:0}}
+.q24sw{position:absolute;right:30px;top:130px;width:44px;height:44px;border-radius:50%;border:4px solid #1D1D2B;z-index:3}
+.q24face{position:absolute;left:150px;top:140px;width:300px;height:330px;background:rgba(255,255,255,.88);border:6px solid #1D1D2B;border-radius:36px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 0 #1D1D2B;z-index:3}
+.q24face img{max-width:260px;max-height:290px}
+.q24names{position:absolute;left:520px;top:150px;width:360px;display:flex;flex-direction:column;gap:14px;z-index:3}
+.q24nm{font-family:'Baloo 2';font-weight:800;font-size:34px;padding:10px 20px 6px;border:4px solid #fff;border-radius:999px;background:linear-gradient(180deg,#fff,#FFF3D6);box-shadow:0 5px 0 rgba(0,0,0,.14);cursor:pointer}
+.q24nm.got,.q24fc.got{background:#C9F5D0;border-color:#3FA34D}.q24nm.shake,.q24fc.shake{animation:shake .35s}
+.q24ask{position:absolute;left:0;right:0;top:140px;text-align:center;font-family:'Baloo 2';font-weight:800;font-size:32px;z-index:3}
+.q24faces{position:absolute;left:0;right:0;top:210px;display:flex;justify-content:center;gap:16px;z-index:3}
+.q24fc{width:200px;height:250px;border:5px solid #fff;border-radius:28px;background:rgba(255,255,255,.88);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:6px;box-shadow:0 5px 0 rgba(0,0,0,.14)}
+.q24fc img{max-width:178px;max-height:228px}
+html.calm .q24bug.hop,html.lite .q24bug.hop,html.calm .q24bal.pop,html.lite .q24bal.pop{animation:none}
+html.calm .q24zin,html.lite .q24zin{transition:none}
+</style>`);
+
+/* ===== anim13 (v23.54): scrapbook polish. Polaroid cards with washi tape, glossy page buttons, ribbon title, one-shot page-in. ===== */
+document.head.insertAdjacentHTML('beforeend', `<style>
+.sbscr .sbpaper{background-color:#FCF3DA;background-image:radial-gradient(circle at 12% 18%,rgba(255,255,255,.5) 0,rgba(255,255,255,0) 40%),radial-gradient(circle at 88% 82%,rgba(214,170,98,.25) 0,rgba(214,170,98,0) 45%),url(art/paper.jpg);background-size:auto,auto,cover;background-position:center;background-blend-mode:normal,normal,multiply}
+.sbscr .hdr h2{text-shadow:0 2px 0 rgba(255,255,255,.8)}
+.sbscr .hdr .sub{text-shadow:0 1px 0 rgba(255,255,255,.7)}
+.sbscr .sbslot{position:relative;transition:transform .18s cubic-bezier(.3,1.5,.5,1),box-shadow .18s}
+.sbscr .sbslot:not(.sbfull){background:repeating-linear-gradient(45deg,rgba(255,255,255,.5) 0 12px,rgba(255,248,230,.5) 12px 24px);border:4px dashed #D9BF8C;box-shadow:inset 0 3px 8px rgba(120,80,20,.12),0 1px 0 #fff}
+.sbscr .sbempty{opacity:.7;text-shadow:0 2px 0 #fff;font-size:46px}
+.sbscr .sbslot.sbfull{border:0;padding:12px 12px 10px;border-radius:12px;background:linear-gradient(180deg,#fff,#FFFBF2);box-shadow:0 2px 0 rgba(80,50,10,.12),0 10px 16px rgba(80,50,10,.22),inset 0 1px 0 #fff}
+.sbscr .sbslot.sbfull::before{content:'';position:absolute;left:50%;top:-14px;width:86px;height:26px;margin-left:-43px;background:repeating-linear-gradient(135deg,rgba(255,214,242,.85) 0 8px,rgba(255,240,250,.85) 8px 16px);border-radius:3px;box-shadow:0 2px 3px rgba(80,50,10,.18);transform:rotate(-3deg);z-index:2;pointer-events:none}
+.sbscr .sbslot.sbfull:nth-child(3n+2)::before{background:repeating-linear-gradient(135deg,rgba(190,243,255,.85) 0 8px,rgba(236,252,255,.85) 8px 16px);transform:rotate(2deg)}
+.sbscr .sbslot.sbfull:nth-child(3n)::before{background:repeating-linear-gradient(135deg,rgba(255,243,176,.9) 0 8px,rgba(255,250,215,.9) 8px 16px);transform:rotate(-1deg)}
+.sbscr .sbslot.sbfull::after{content:'';position:absolute;left:0;top:0;right:0;height:46%;border-radius:12px 12px 60% 60%/12px 12px 20% 20%;background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0));pointer-events:none}
+.sbscr .sbslot.sbfull small{font-family:'Baloo 2',sans-serif;font-size:17px;line-height:1.1;margin-top:2px}
+.sbscr .sbslot:active{transform:rotate(var(--r)) scale(.96)}
+.sbscr .sbslot.sel{outline:0;transform:rotate(0deg) scale(1.07) translateY(-6px);box-shadow:0 0 0 5px #F4A300,0 0 22px 6px rgba(255,200,70,.7),0 16px 22px rgba(80,50,10,.3);z-index:5}
+.sbscr .sbgrid{animation:a13page .45s cubic-bezier(.3,1.3,.5,1) both}
+@keyframes a13page{0%{transform:translateX(-50%) translateY(22px) scale(.96);opacity:0}100%{transform:translateX(-50%) translateY(0) scale(1);opacity:1}}
+.sbscr .sbnav .big{background-image:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0) 55%);box-shadow:0 4px 0 rgba(0,0,0,.12),0 8px 12px rgba(80,50,10,.14),inset 0 2px 0 #fff}
+.sbscr .sbpg{background:#FFF6DD;border:3px solid #E8C98E;border-radius:999px;padding:4px 16px 2px;font-family:'Baloo 2',sans-serif;box-shadow:inset 0 2px 0 #fff}
+.sbscr .sbtip{text-shadow:0 1px 0 rgba(255,255,255,.8)}
+html.calm .sbscr .sbgrid,html.lite .sbscr .sbgrid{animation:none}
+html.calm .sbscr .sbslot,html.lite .sbscr .sbslot{transition:none}
+html.lite .sbscr .sbslot.sbfull{box-shadow:0 4px 6px rgba(80,50,10,.2)}
+</style>`);
+
+/* v23.56: the page-texture overlay greyed every screen; lighten it so colours are brighter (still a little paper grain) */
+document.head.insertAdjacentHTML('beforeend', `<style>.paper{opacity:.45!important}</style>`);
+
+/* v23.57: long game titles wrapped to two lines and ran into the puzzle below (Who lives where?). Shrink long titles to fit on one line. */
+document.head.insertAdjacentHTML('beforeend', `<style>.mg-title{width:max-content}
+/* v23.58: the round counter / hint chip sat over the puzzle in ~12 games; park it on the title row at the right (it drops back down only if a wide hint would touch the title) */
+.screen:has(.mg-title) .counter{top:80px!important}</style>`);
+{ const fit = ()=>{ document.querySelectorAll('.mg-title:not([data-a13])').forEach(t=>{ t.dataset.a13 = '1';
+    let fs = 26; while(t.scrollHeight > 52 && fs > 17){ fs -= 1.5; t.style.fontSize = fs + 'px'; }
+    setTimeout(()=>{ const c = t.closest('.screen') && t.closest('.screen').querySelector('.counter'); if(!c) return;
+      const a = t.getBoundingClientRect(), b = c.getBoundingClientRect(); if(a.right > b.left - 6 && a.left < b.right && a.bottom > b.top && a.top < b.bottom) c.style.setProperty('top', '150px', 'important'); }, 60); }); };
+  const st = document.getElementById('stage'); if(st) new MutationObserver(fit).observe(st, {childList:true, subtree:true}); }
+
 /* ---------- hook music + wipes into the screens ---------- */
 {
   const THEMES = ['roman','tower','fire','palace','bigben'];
