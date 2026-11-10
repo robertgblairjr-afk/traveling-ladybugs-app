@@ -8861,6 +8861,45 @@ html.calm .a7stars,html.lite .a7stars{display:none}
 @media (prefers-reduced-motion:reduce){.modal>.card{animation:none}.a7stars{display:none}}
 </style>`);
 
+/* ===== anim8.js (v23.42): Play Room polish. Lisa and Lucas wave from the corners, balloons and butterflies drift, the four doors are colourful and glossy
+  , sticker pictures / tray / dress-up tray / band bars get a glossy finish. Calm and Light mode keep it still. ===== */
+(function(){
+  const base = showPlayRoom;
+  showPlayRoom = function(){ const r = base.apply(this, arguments);
+    const scr = document.querySelector('.screen.plroom'); if(!scr || scr.querySelector('.a8deco')) return r;
+    const d = document.createElement('div'); d.className = 'a8deco'; d.setAttribute('aria-hidden','true');
+    d.innerHTML = `<img class="a8f l" src="art/lisa.webp" alt=""><img class="a8f r" src="art/lucas.webp" alt="">`
+      + ['🎈','🎈','🦋','🎈','🦋'].map((e,i)=>`<i class="a8fl" style="left:${12+i*19}%;animation-delay:${i*-1.7}s;animation-duration:${7+i}s">${e}</i>`).join('');
+    scr.insertBefore(d, scr.querySelector('.pldoors')); return r; };
+})();
+document.head.insertAdjacentHTML('beforeend', `<style>
+.plbg{filter:saturate(1.3) brightness(1.03)}
+.a8deco{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.a8f{position:absolute;bottom:-6px;height:300px;width:auto;filter:drop-shadow(0 8px 10px rgba(30,20,60,.3));transform-origin:50% 100%;animation:a8sway 3.4s ease-in-out infinite}
+.a8f.l{left:2px}.a8f.r{right:2px;animation-delay:-1.7s}
+@keyframes a8sway{0%,100%{transform:rotate(-1.5deg)}50%{transform:rotate(1.8deg) translateY(-4px)}}
+.a8fl{position:absolute;bottom:-60px;font-style:normal;font-size:44px;animation:a8float linear infinite;opacity:.95;filter:drop-shadow(0 3px 3px rgba(0,0,0,.2))}
+@keyframes a8float{0%{transform:translate(0,0) rotate(-6deg)}50%{transform:translate(26px,-420px) rotate(6deg)}100%{transform:translate(-12px,-820px) rotate(-4deg)}}
+.pldoor{position:relative;overflow:hidden;border-width:4px;background-image:linear-gradient(180deg,#fff 0,var(--dc,#FFF8E6) 100%);box-shadow:0 8px 0 #1D1D2B,0 16px 26px rgba(30,20,60,.25),inset 0 2px 0 #fff;animation:pldoor .4s ease both}
+.pldoor::after{content:'';position:absolute;left:0;right:0;top:0;height:42%;background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0));pointer-events:none}
+.pldoor span{filter:drop-shadow(0 3px 3px rgba(0,0,0,.25));font-size:64px}
+.pldoor[data-k=scene]{--dc:#FFE0B8}.pldoor[data-k=dress]{--dc:#E3D4FF}.pldoor[data-k=band]{--dc:#C9F0E3}.pldoor[data-k=race]{--dc:#FFD0DC}
+.pldoor:nth-child(2){animation-delay:.08s}.pldoor:nth-child(3){animation-delay:.16s}.pldoor:nth-child(4){animation-delay:.24s}
+.plpk{position:relative;border-width:5px;box-shadow:0 6px 0 #1D1D2B,0 12px 18px rgba(30,20,60,.25);transition:transform .15s}
+.plpk::after{content:'';position:absolute;inset:0;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 45%);pointer-events:none}
+.plpk:active{transform:translateY(3px) scale(.97)}
+.plpick{gap:24px;top:140px}.plpk{height:132px}
+.pltray,.pldtray{background-image:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,248,230,.95))}
+.plts,.pldi{background-image:linear-gradient(180deg,#fff,#F6EEDB);box-shadow:0 3px 0 rgba(0,0,0,.14),inset 0 2px 0 #fff;transition:transform .12s}
+.plts:active,.pldi:active{transform:scale(.92)}
+.plclear,.pltools button{background-image:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0) 60%);box-shadow:0 4px 0 #1D1D2B}
+.plbell{box-shadow:inset 0 3px 0 rgba(255,255,255,.55),0 6px 0 rgba(0,0,0,.25)}
+.plpc,.plsong{background-image:linear-gradient(180deg,#fff,#F2EAD6);box-shadow:0 5px 0 #1D1D2B,inset 0 2px 0 #fff}
+.plrk{background-image:linear-gradient(180deg,#fff,#F2EAD6);box-shadow:0 4px 0 #1D1D2B,inset 0 2px 0 #fff}
+html.calm .a8f,html.calm .a8fl,html.calm .pldoor,html.lite .a8f,html.lite .a8fl,html.lite .pldoor{animation:none}
+html.calm .a8fl,html.lite .a8fl{display:none}
+</style>`);
+
 /* ---------- hook music + wipes into the screens ---------- */
 {
   const THEMES = ['roman','tower','fire','palace','bigben'];
