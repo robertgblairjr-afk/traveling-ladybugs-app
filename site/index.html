@@ -9349,6 +9349,29 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .gmjkp{position:absolute;left:22px;bottom:78px;z-index:4;background:linear-gradient(180deg,#FFF6D8,#FFE08A)!important;border:3px solid #C8901A;color:#5A3A00;font-weight:800}
 </style>`);
 
+/* ===== prart (v23.62): Grok's Play Room art (CLAUDE_011 / GROK_048). Prefix pr. Folder pr/.
+   Play Room + two-player backgrounds, painted drum/shaker/tambourine (tambourine is a new button), painted garden flowers on the start screen. ===== */
+const PR_FL = ['flower_01','flower_02','flower_03','flower_04','flower_05','flower_06'];
+{ const base = showPlayRoom; showPlayRoom = function(){ const r = base.apply(this, arguments); const bg = document.querySelector('.plroom .plbg'); if(bg) bg.src = 'pr/bg_playroom.webp'; return r; }; }
+if(typeof pl2Pick === 'function'){ const base = pl2Pick; pl2Pick = function(){ const r = base.apply(this, arguments); const bg = document.querySelector('.plroom .plbg'); if(bg) bg.src = 'pr/bg_race.webp'; return r; }; plRace = pl2Pick; }
+if(typeof window.plMazeRace === 'function'){ const base = window.plMazeRace; window.plMazeRace = function(){ const r = base.apply(this, arguments); const bg = document.querySelector('.plrace .plbg'); if(bg) bg.src = 'pr/bg_race.webp'; return r; }; }
+{ const base = plBand; plBand = function(){ const r = base.apply(this, arguments); const pc = document.querySelector('.plband .plperc'); if(!pc) return r;
+  const set = (p,img,lab)=>{ const b = pc.querySelector(`.plpc[data-p="${p}"]`); if(b){ b.innerHTML = `<img src="pr/${img}.webp" alt="">`; b.classList.add('prpc'); b.setAttribute('aria-label', lab); } };
+  set('drum','band_drum','Drum'); set('shake','band_shaker','Shaker');
+  const t = document.createElement('button'); t.className = 'plpc prpc'; t.dataset.p = 'tamb'; t.setAttribute('aria-label','Tambourine'); t.innerHTML = '<img src="pr/band_tambourine.webp" alt="">';
+  const clap = pc.querySelector('.plpc[data-p="clap"]'); pc.insertBefore(t, clap);
+  t.addEventListener('pointerdown', ()=>{ try{ a2Go('shake'); }catch(e){} [2093,2637,2349].forEach((f,j)=>tone(f,.06,'triangle',.05,j*.05));
+    document.querySelectorAll('.plbfigs img').forEach(im=>{ im.classList.remove('bop'); void im.offsetWidth; im.classList.add('bop'); }); t.classList.remove('ring'); void t.offsetWidth; t.classList.add('ring'); });
+  return r; }; }
+{ const base = plHome; plHome = function(scr){ const r = base.apply(this, arguments); const g = scr && scr.querySelector('.plgarden'); if(g && !g.dataset.pr){ g.dataset.pr = '1';
+    const fs = g.querySelectorAll('.plfl'); fs.forEach((b,i)=>{ const sprout = fs.length===1 && /🌱/.test(b.textContent); b.innerHTML = `<img src="pr/${sprout ? 'flower_sprout' : PR_FL[(i*5+2)%PR_FL.length]}.webp" alt="">`; b.classList.add('prfl'); }); }
+  return r; }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.plpc.prpc{display:flex;align-items:center;justify-content:center;padding:4px;overflow:visible}
+.plpc.prpc img{width:76px;height:76px;object-fit:contain;pointer-events:none;filter:drop-shadow(0 3px 2px rgba(0,0,0,.2))}
+.plfl.prfl{height:46px;bottom:-6px}.plfl.prfl img{height:46px;width:46px;display:block;pointer-events:none}
+</style>`);
+
 /* ===== anim13 (v23.54): scrapbook polish. Polaroid cards with washi tape, glossy page buttons, ribbon title, one-shot page-in. ===== */
 document.head.insertAdjacentHTML('beforeend', `<style>
 .sbscr .sbpaper{background-color:#FCF3DA;background-image:radial-gradient(circle at 12% 18%,rgba(255,255,255,.5) 0,rgba(255,255,255,0) 40%),radial-gradient(circle at 88% 82%,rgba(214,170,98,.25) 0,rgba(214,170,98,0) 45%),url(art/paper.jpg);background-size:auto,auto,cover;background-position:center;background-blend-mode:normal,normal,multiply}
