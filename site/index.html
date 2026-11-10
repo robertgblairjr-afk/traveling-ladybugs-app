@@ -8824,6 +8824,43 @@ html.calm .rzany::before,html.lite .rzany::before{animation:none}
 .rzfish svg{filter:saturate(1.15) brightness(1.04)}
 </style>`);
 
+/* ===== anim7.js (v23.41): kid polish. Pop-up cards spring in, a win lights up with a shower of stars, the speech bubbles / counters / cards get a soft glass finish,
+   and every game's tiles, pots, bands and pads get a glossy look. Calm and Light mode keep it still. ===== */
+(function(){
+  const calm = ()=> (typeof TLB_CALM!=='undefined' && TLB_CALM) || (typeof TLB_LITE!=='undefined' && TLB_LITE);
+  const mark = new WeakSet();
+  const mo = new MutationObserver(()=>{ const st = document.getElementById('stage'); if(!st) return;
+    st.querySelectorAll(':scope > .modal').forEach(m=>{ if(mark.has(m)) return; mark.add(m);
+      if(calm() || !m.querySelector('.rzwin')) return;
+      const box = document.createElement('div'); box.className = 'a7stars'; box.setAttribute('aria-hidden','true');
+      const em = ['⭐','✨','🌟','💛','🌈'];
+      for(let i=0;i<16;i++){ const s = document.createElement('i'); s.textContent = em[i%em.length];
+        s.style.cssText = `left:${(i*6.3+Math.random()*4).toFixed(1)}%;animation-delay:${(Math.random()*.9).toFixed(2)}s;animation-duration:${(1.8+Math.random()*1.4).toFixed(2)}s;font-size:${20+Math.floor(Math.random()*20)}px`; box.appendChild(s); }
+      m.appendChild(box); setTimeout(()=>box.remove(), 4200); }); });
+  const st = document.getElementById('stage'); if(st) mo.observe(st, {childList:true});
+})();
+document.head.insertAdjacentHTML('beforeend', `<style>
+@keyframes a7pop{0%{opacity:0;transform:scale(.82) translateY(24px)}60%{opacity:1;transform:scale(1.03)}100%{transform:none}}
+.modal>.card{animation:a7pop .5s cubic-bezier(.2,.9,.3,1.2) both}
+.modal{backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.card{background-image:linear-gradient(180deg,#fff 0,#FFFBF1 100%);border:3px solid rgba(255,255,255,.95);box-shadow:0 14px 0 rgba(0,0,0,.15),0 24px 40px rgba(30,20,60,.25),inset 0 2px 0 #fff}
+.bubble{background-image:linear-gradient(180deg,#fff,#FBF6EA);box-shadow:0 4px 0 rgba(0,0,0,.12),0 10px 18px rgba(30,20,60,.14),inset 0 2px 0 #fff}
+.counter{background-image:linear-gradient(180deg,#fff,#F6EFDD);box-shadow:0 3px 0 rgba(0,0,0,.12),0 8px 14px rgba(30,20,60,.14),inset 0 2px 0 #fff}
+.rzfoot .big,.rzfoot button,.rzfoot .iconbtn{box-shadow:0 5px 0 rgba(0,0,0,.14),0 10px 16px rgba(30,20,60,.16)}
+/* more glossy game pieces */
+.q20band,.rzpbpot,.q20pad i{background-image:radial-gradient(circle at 35% 28%,rgba(255,255,255,.65),rgba(255,255,255,0) 52%)}
+.q20bug,.rzbcard{background-image:linear-gradient(180deg,#fff,#FBF3E0);box-shadow:0 6px 0 rgba(0,0,0,.16),0 12px 20px rgba(30,20,60,.16),inset 0 2px 0 #fff}
+.rztile{box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 3px 6px rgba(0,0,0,.25)}
+.plpk,.plwear,.plbtn{background-image:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0) 60%)}
+/* win star shower */
+.a7stars{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:30}
+.a7stars i{position:absolute;top:-50px;font-style:normal;animation:a7fall linear both;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
+@keyframes a7fall{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(780px) rotate(300deg)}}
+html.calm .modal>.card,html.lite .modal>.card{animation:none}
+html.calm .a7stars,html.lite .a7stars{display:none}
+@media (prefers-reduced-motion:reduce){.modal>.card{animation:none}.a7stars{display:none}}
+</style>`);
+
 /* ---------- hook music + wipes into the screens ---------- */
 {
   const THEMES = ['roman','tower','fire','palace','bigben'];
