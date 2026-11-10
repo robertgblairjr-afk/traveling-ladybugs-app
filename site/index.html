@@ -8943,6 +8943,21 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzltg{box-shadow:0 8px 0 rgba(0,0,0,.3),0 18px 28px rgba(30,20,60,.3)}
 </style>`);
 
+/* ===== anim11.js (v23.45): map polish. The butterfly counter no longer sits on top of the header buttons on the world map, world pins glow and pulse softly,
+   solved pins get a gold shine, and the city-map stops are glossier. Calm and Light mode keep the glow still. ===== */
+document.head.insertAdjacentHTML('beforeend', `<style>
+.screen:has(.wmap) .bflychip{top:auto!important;bottom:26px!important;right:20px!important;left:auto!important;transform:none!important}
+.wpin{background-image:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0) 55%);box-shadow:0 5px 0 rgba(0,0,0,.2),0 10px 16px rgba(30,20,60,.25),0 0 0 3px #E5383B}
+.wpin:not(.wdone)::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:3px solid rgba(229,56,59,.55);animation:a11ring 2.6s ease-out infinite;pointer-events:none}
+.wpin:nth-child(3n)::after{animation-delay:-.9s}.wpin:nth-child(3n+1)::after{animation-delay:-1.8s}
+@keyframes a11ring{0%{transform:scale(.92);opacity:.9}100%{transform:scale(1.35);opacity:0}}
+.wpin.wdone{box-shadow:0 5px 0 rgba(0,0,0,.2),0 0 0 3px #FFD23F,0 0 16px 4px rgba(255,210,63,.7)}
+.wpin b{box-shadow:0 2px 0 rgba(0,0,0,.14)}
+.wpin:active{transform:scale(.94)}
+.wmap{filter:saturate(1.12)}
+html.calm .wpin::after,html.lite .wpin::after{animation:none;opacity:.5}
+</style>`);
+
 /* ---------- hook music + wipes into the screens ---------- */
 {
   const THEMES = ['roman','tower','fire','palace','bigben'];
