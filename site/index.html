@@ -8744,6 +8744,36 @@ function bkPanel(){
 }
 document.head.insertAdjacentHTML('beforeend', `<style>html.lite .a3life,html.lite .a4fx,html.lite .bfly:not(.hidbfly){display:none!important}html.lite .hsfx,html.lite .a2life{display:none!important}</style>`);
 
+/* ===== anim5.js (v23.38): polish. Every new screen eases in (soft fade + zoom + the title and buttons rising in turn), a gentle vignette and warm light glow
+   frame the paintings, gold buttons shimmer now and then, and buttons squish when pressed. All of it is off in Calm and Light mode. ===== */
+(function(){
+  const calm = ()=> (typeof TLB_CALM!=='undefined' && TLB_CALM) || (typeof TLB_LITE!=='undefined' && TLB_LITE);
+  const seen = new WeakSet();
+  const mo = new MutationObserver(()=>{ const app = document.getElementById('app'); if(!app) return;
+    app.querySelectorAll(':scope > .screen').forEach(s=>{ if(seen.has(s)) return; seen.add(s); if(calm()) return;
+      s.classList.add('a5in');
+      s.querySelectorAll('.hdr, .corner, .wt-head, .counter, .rzfoot, .row, .rzhub').forEach((e,i)=>{ if(i>7) return; e.style.setProperty('--a5d', (60 + i*55)+'ms'); e.classList.add('a5rise'); });
+      setTimeout(()=>{ if(s.isConnected){ s.classList.remove('a5in'); s.querySelectorAll('.a5rise').forEach(e=>e.classList.remove('a5rise')); } }, 1100); }); });
+  const a = document.getElementById('app'); if(a) mo.observe(a, {childList:true});
+})();
+document.head.insertAdjacentHTML('beforeend', `<style>
+@keyframes a5in{from{opacity:0;transform:scale(1.035);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+@keyframes a5rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.screen.a5in{animation:a5in .55s cubic-bezier(.22,.8,.3,1) both}
+.a5rise{animation:a5rise .5s cubic-bezier(.22,.8,.3,1) both;animation-delay:var(--a5d,0ms)}
+#stage::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:40;background:radial-gradient(ellipse at 50% 45%,transparent 58%,rgba(20,10,30,.22) 100%),linear-gradient(180deg,rgba(255,236,190,.10),transparent 30%)}
+@keyframes a5shine{0%,70%{transform:translateX(-130%) skewX(-20deg)}100%{transform:translateX(230%) skewX(-20deg)}}
+.big.gold{position:relative;overflow:hidden}
+.big.gold::after{content:'';position:absolute;top:0;bottom:0;left:0;width:38%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:a5shine 4.2s ease-in-out infinite;pointer-events:none}
+.big,.iconbtn,.cornerbtn{transition:transform .12s ease,box-shadow .12s ease}
+.big:active,.iconbtn:active,.cornerbtn:active{transform:translateY(3px) scale(.97)!important}
+.big:active{box-shadow:0 2px 0 rgba(0,0,0,.25)!important}
+html.calm .screen.a5in,html.calm .a5rise,html.lite .screen.a5in,html.lite .a5rise{animation:none}
+html.calm #stage::after,html.lite #stage::after{background:radial-gradient(ellipse at 50% 45%,transparent 62%,rgba(20,10,30,.15) 100%)}
+html.calm .big.gold::after,html.lite .big.gold::after{display:none}
+@media (prefers-reduced-motion:reduce){.screen.a5in,.a5rise{animation:none}.big.gold::after{display:none}}
+</style>`);
+
 /* ---------- hook music + wipes into the screens ---------- */
 {
   const THEMES = ['roman','tower','fire','palace','bigben'];
