@@ -4455,7 +4455,7 @@ function rzRig(cls, h){ const src = 'rz/razzle.webp';
   return `<div class="rzrig rzhost ${cls||''}" style="height:${h}px" role="img" aria-label="Razzle the rainbow beetle">
     <img class="rzp rzbody" src="${src}" alt="" draggable="false"><img class="rzp rzant" src="${src}" alt="" draggable="false">
     <img class="rzp rzarmL" src="${src}" alt="" draggable="false"><img class="rzp rzarmR" src="${src}" alt="" draggable="false">
-    <i class="rzlid rzlidL"></i><i class="rzlid rzlidR"></i><i class="rzshine"></i></div>`; }
+    <i class="rzmic"><svg viewBox="0 0 40 100" aria-hidden="true"><defs><linearGradient id="rzmg" x1="0" x2="1"><stop offset="0" stop-color="#8a8f98"/><stop offset=".45" stop-color="#f4f6f8"/><stop offset="1" stop-color="#6f747d"/></linearGradient><radialGradient id="rzmh" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fafafa"/><stop offset=".6" stop-color="#b9bec6"/><stop offset="1" stop-color="#6b7079"/></radialGradient></defs><rect x="15" y="46" width="10" height="46" rx="5" fill="url(#rzmg)" stroke="#1D1D2B" stroke-width="2.4"/><rect x="12" y="52" width="16" height="12" rx="3" fill="#E5383B" stroke="#1D1D2B" stroke-width="2.4"/><rect x="11" y="43" width="18" height="6" rx="3" fill="#FFD23F" stroke="#1D1D2B" stroke-width="2.4"/><circle cx="20" cy="24" r="19" fill="url(#rzmh)" stroke="#1D1D2B" stroke-width="2.8"/><path d="M8 18 Q20 10 32 18 M6 26 Q20 18 34 26 M9 34 Q20 27 31 34" fill="none" stroke="#1D1D2B" stroke-opacity=".28" stroke-width="1.6"/><circle cx="13" cy="15" r="4" fill="#fff" fill-opacity=".7"/></svg></i><i class="rzlid rzlidL"></i><i class="rzlid rzlidR"></i><i class="rzshine"></i></div>`; }
 
 
 /* ---------- pools gathered from the real game ---------- */
@@ -8772,6 +8772,10 @@ html.calm .screen.a5in,html.calm .a5rise,html.lite .screen.a5in,html.lite .a5ris
 html.calm #stage::after,html.lite #stage::after{background:radial-gradient(ellipse at 50% 45%,transparent 62%,rgba(20,10,30,.15) 100%)}
 html.calm .big.gold::after,html.lite .big.gold::after{display:none}
 @media (prefers-reduced-motion:reduce){.screen.a5in,.a5rise{animation:none}.big.gold::after{display:none}}
+.rzmic{position:absolute;inset:0;pointer-events:none;transform-origin:75.3% 45.8%;animation:rzarmR 2.3s ease-in-out infinite;z-index:3}
+.rzmic svg{position:absolute;left:84%;top:21%;width:15%;height:29%;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
+.rzrig.rztalk .rzmic{animation-duration:.9s}
+html.calm .rzmic,html.lite .rzmic{animation:none}
 </style>`);
 
 /* ---------- hook music + wipes into the screens ---------- */
