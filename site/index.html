@@ -8793,6 +8793,37 @@ html.calm .rzrig::before,html.lite .rzrig::before{animation:none;opacity:.7}
 html.calm .rzrig::after,html.lite .rzrig::after{animation:none;opacity:.6}
 </style>`);
 
+/* ===== anim6.js (v23.40): gloss. Glassy highlights on buttons and the Challenge cards, colour-coded categories, a rainbow shimmer on "Surprise me!",
+   cards that pop in one after another, and a soft glass header. Off or toned down in Calm and Light mode. ===== */
+document.head.insertAdjacentHTML('beforeend', `<style>
+.big{background-image:linear-gradient(180deg,rgba(255,255,255,.38) 0,rgba(255,255,255,.12) 46%,rgba(0,0,0,.06) 52%,rgba(0,0,0,.10) 100%);text-shadow:0 1px 0 rgba(0,0,0,.18)}
+.big.gold{text-shadow:0 1px 0 rgba(255,255,255,.5)}
+.big.ghost{background-image:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0) 60%)}
+.iconbtn,.cornerbtn{background-image:linear-gradient(180deg,rgba(255,255,255,.9),rgba(245,238,225,.55))}
+.hdr{background-image:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0) 70%);box-shadow:0 4px 18px rgba(30,20,60,.18)}
+.hdr h2{text-shadow:0 1px 0 rgba(255,255,255,.7)}
+.rzcat{position:relative;overflow:hidden;border:2px solid rgba(255,255,255,.9);background-image:linear-gradient(180deg,#fff 0,#FBF6EA 100%);box-shadow:0 6px 0 rgba(0,0,0,.14),0 12px 22px rgba(30,20,60,.16),inset 0 2px 0 #fff;animation:a5rise .5s cubic-bezier(.22,.8,.3,1) both}
+.rzcat::before{content:'';position:absolute;left:0;top:0;bottom:0;width:9px;background:var(--cc,#E5383B)}
+.rzcat::after{content:'';position:absolute;left:0;right:0;top:0;height:46%;background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0));pointer-events:none}
+.rzcat span{filter:drop-shadow(0 2px 2px rgba(0,0,0,.2));font-size:1.15em}
+.rzcat[data-c=maze]{--cc:#2A9D8F}.rzcat[data-c=slide]{--cc:#9B5DE5}.rzcat[data-c=detect]{--cc:#E76F51}.rzcat[data-c=abc]{--cc:#3A86FF}.rzcat[data-c=num]{--cc:#43AA8B}.rzcat[data-c=play]{--cc:#F72585}
+.rzcat:nth-child(1){animation-delay:.05s}.rzcat:nth-child(2){animation-delay:.1s}.rzcat:nth-child(3){animation-delay:.15s}.rzcat:nth-child(4){animation-delay:.2s}.rzcat:nth-child(5){animation-delay:.25s}.rzcat:nth-child(6){animation-delay:.3s}.rzcat:nth-child(7){animation-delay:.35s}
+.rzcat:active{transform:translateY(3px) scale(.985);box-shadow:0 2px 0 rgba(0,0,0,.14)}
+.rzany{overflow:hidden}
+.rzany::before{width:100%!important;background:linear-gradient(105deg,rgba(255,255,255,0) 35%,rgba(255,255,255,.45) 50%,rgba(255,255,255,0) 65%) -120% 0/250% 100% no-repeat;animation:a6sweep 3.6s ease-in-out infinite}
+@keyframes a6sweep{0%,55%{background-position:-120% 0}100%{background-position:220% 0}}
+.rzany::after{height:50%}
+html.calm .rzcat,html.lite .rzcat{animation:none}
+html.calm .rzany::before,html.lite .rzany::before{animation:none}
+/* ABC / number games: glossy tiles, train cars and fish */
+.rzopts>button,.rzopts>.rzo{background-image:linear-gradient(180deg,#fff 0,#F4EEDD 100%);border:3px solid rgba(255,255,255,.95);box-shadow:0 6px 0 rgba(0,0,0,.16),0 12px 20px rgba(30,20,60,.18),inset 0 2px 0 #fff;position:relative;overflow:hidden;transition:transform .12s}
+.rzopts>button::after{content:'';position:absolute;left:0;right:0;top:0;height:45%;background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,0));pointer-events:none}
+.rzopts>button:active{transform:translateY(3px) scale(.97)}
+.rzcar{background-image:linear-gradient(180deg,rgba(255,255,255,.4) 0,rgba(255,255,255,.08) 48%,rgba(0,0,0,.12) 100%);box-shadow:0 6px 0 rgba(0,0,0,.22),inset 0 2px 0 rgba(255,255,255,.5);text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.rzfish{filter:drop-shadow(0 6px 5px rgba(0,30,60,.3))}
+.rzfish svg{filter:saturate(1.15) brightness(1.04)}
+</style>`);
+
 /* ---------- hook music + wipes into the screens ---------- */
 {
   const THEMES = ['roman','tower','fire','palace','bigben'];
