@@ -6266,7 +6266,7 @@ function rzDrumPlay(g){
     <div class="rzdrumw"><div class="rzbeats" id="rzbt">${g.R.map((d,k)=>`<i class="${d===2?'long':''}" data-k="${k}"></i>`).join('')}</div>
     <button class="rzdrum" id="rzdr" aria-label="Drum"><span>🥁</span></button><button class="big ghost" id="rzdl">&#127925; Listen again</button></div>`);
   let k = 0, busy = true, last = 0; const scr = app.querySelector('.screen'), dr = document.getElementById('rzdr'), dots = [...document.querySelectorAll('#rzbt i')];
-  const boom = ()=>{ tone(110,.25,'sine',.7); tone(220,.06,'square',.12); dr.classList.remove('hit'); void dr.offsetWidth; dr.classList.add('hit'); };
+  const boom = ()=>{ a2Go('drum'); dr.classList.remove('hit'); void dr.offsetWidth; dr.classList.add('hit'); };
   function demo(){ busy = true; k = 0; dots.forEach(d=>d.classList.remove('on','ok')); document.getElementById('cnt').textContent = 'Listen...'; let t = 500;
     g.R.forEach((d,j)=>{ setTimeout(()=>{ if(!G.live || !scr.isConnected) return; boom(); dots[j].classList.add('on'); }, t); t += d===2 ? 900 : 450; });
     setTimeout(()=>{ if(!G.live || !scr.isConnected) return; dots.forEach(d=>d.classList.remove('on')); busy = false; last = 0; document.getElementById('cnt').textContent = 'Your turn! Tap the drum.'; armHint(()=>dr); }, t + 200); }
@@ -8393,10 +8393,10 @@ function plBand(){
     <div class="plsongs">${PL_SONGS.map((s,i)=>`<button class="plsong" data-s="${i}">&#9654; ${s[0]}</button>`).join('')}</div><div class="plnotes" id="plnotes"></div></div>`;
   plBind(showPlayRoom);
   const bop = ()=>{ app.querySelectorAll('.plbfigs img').forEach(im=>{ im.classList.remove('bop'); void im.offsetWidth; im.classList.add('bop'); }); };
-  const note = (i, fromSong)=>{ tone(PL_NOTES[i], .45, 'triangle', .16); tone(PL_NOTES[i]*2, .3, 'sine', .04); const b = app.querySelector(`.plbell[data-i="${i}"]`); if(b){ b.classList.remove('ring'); void b.offsetWidth; b.classList.add('ring'); }
+  const note = (i, fromSong)=>{ a2Go('bar', PL_NOTES[i]*2); const b = app.querySelector(`.plbell[data-i="${i}"]`); if(b){ b.classList.remove('ring'); void b.offsetWidth; b.classList.add('ring'); }
     bop(); const n = document.createElement('i'); n.textContent = ['♪','♫','♬'][i%3]; n.style.left = (300 + i*60)+'px'; n.style.color = PL_NC[i]; const box = document.getElementById('plnotes'); if(box){ box.appendChild(n); setTimeout(()=>n.remove(), 1400); } };
   app.querySelectorAll('.plbell').forEach(b=>b.addEventListener('pointerdown', ()=>note(+b.dataset.i)));
-  const perc = {drum:()=>{ sfx.drum(); }, shake:()=>{ for(let k=0;k<3;k++) tone(5000+Math.random()*2000,.04,'square',.02,k*.05); }, clap:()=>{ tone(1800,.05,'square',.06); tone(1200,.05,'square',.05,.02); }};
+  const perc = {drum:()=>{ sfx.drum(); }, shake:()=>{ a2Go('shake'); }, clap:()=>{ a2Go('clap'); }};
   app.querySelectorAll('.plpc').forEach(b=>b.addEventListener('pointerdown', ()=>{ perc[b.dataset.p](); bop(); b.classList.remove('ring'); void b.offsetWidth; b.classList.add('ring'); }));
   let songT = [];
   app.querySelectorAll('.plsong').forEach(b=>b.onclick=()=>{ songT.forEach(clearTimeout); songT = []; const seq = PL_SONGS[+b.dataset.s][1], scr = app.querySelector('.plband');
@@ -8957,6 +8957,40 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .wmap{filter:saturate(1.12)}
 html.calm .wpin::after,html.lite .wpin::after{animation:none;opacity:.5}
 </style>`);
+
+/* ===== audio2.js (v23.46): a better sound for the Music Room (Ladybug band) and the Drum game.
+   Real synthesized instruments instead of bare beeps: a round tom drum (pitch-dropping body + stick click), a soft shaker (filtered noise), a clap (layered noise bursts),
+   and warm xylophone bars (bright strike + soft body). Everything goes through a gentle compressor so loud taps never crackle. ===== */
+let A2_OUT = null, A2_NOISE = null;
+function a2Out(c){ if(A2_OUT && A2_OUT.ctx===c) return A2_OUT.node;
+  const comp = c.createDynamicsCompressor(); comp.threshold.value = -14; comp.knee.value = 18; comp.ratio.value = 5; comp.attack.value = .003; comp.release.value = .18;
+  const g = c.createGain(); g.gain.value = .9; comp.connect(g); g.connect(c.destination); A2_OUT = {ctx:c, node:comp}; return comp; }
+function a2NoiseBuf(c){ if(A2_NOISE && A2_NOISE.sampleRate===c.sampleRate) return A2_NOISE; const n = c.sampleRate, b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0); for(let i=0;i<n;i++) d[i] = Math.random()*2-1; A2_NOISE = b; return b; }
+function a2Noise(c, out, t, dur, type, freq, q, vol, attack){ const s = c.createBufferSource(); s.buffer = a2NoiseBuf(c); s.loop = true;
+  const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q||.7; const g = c.createGain(); attack = attack||.002;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  s.connect(f); f.connect(g); g.connect(out); s.start(t, Math.random()*.5); s.stop(t + dur + .02); }
+function a2Osc(c, out, t, type, f0, f1, dur, vol, attack){ const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t);
+  if(f1 && f1!==f0) o.frequency.exponentialRampToValueAtTime(f1, t + Math.min(dur, .12)); attack = attack||.003;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(.001, t + dur); o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + .03); }
+/* kind: 'drum' | 'shake' | 'clap' | 'bar' (freq = pitch of the bar) ; c/out/t let a test render offline */
+function a2Play(kind, freq, c, out, t){
+  if(kind==='drum'){ const j = 1 + (Math.random()-.5)*.08;
+    a2Osc(c, out, t, 'sine', 190*j, 82*j, .42, .95, .002);          // the round body, pitch drops as the skin settles
+    a2Osc(c, out, t, 'triangle', 120*j, 70*j, .22, .35, .002);      // a little woody warmth
+    a2Noise(c, out, t, .05, 'highpass', 1800, .7, .32, .001);        // the stick click
+    a2Noise(c, out, t, .14, 'lowpass', 700, .7, .22, .002); }        // skin thump
+  else if(kind==='shake'){ [0, .045].forEach((d,i)=>{ a2Noise(c, out, t + d, .09 + i*.03, 'bandpass', 6500 + i*500, 1.4, .95 - i*.3, .006); }); }
+  else if(kind==='clap'){ [0,.011,.023].forEach(d=>a2Noise(c, out, t + d, .03, 'bandpass', 1500 + Math.random()*300, 1.1, 1.5, .001)); a2Noise(c, out, t + .03, .16, 'bandpass', 1300, .9, .9, .002); }
+  else { // xylophone bar: bright strike, warm body, a soft octave shimmer
+    a2Osc(c, out, t, 'sine', freq, 0, .75, .5, .002);
+    a2Osc(c, out, t, 'sine', freq*3, 0, .16, .16, .001);
+    a2Osc(c, out, t, 'sine', freq*6.1, 0, .07, .07, .001);
+    a2Osc(c, out, t, 'triangle', freq*2, 0, .3, .1, .002);
+    a2Noise(c, out, t, .02, 'highpass', 4000, .7, .08, .001); } }
+function a2Go(kind, freq){ if(typeof soundOn!=='undefined' && !soundOn) return; const c = ctx(); if(!c) return; try{ if(c.state==='suspended') c.resume(); }catch(e){} a2Play(kind, freq, c, a2Out(c), c.currentTime + .005); }
+/* wire it in */
+sfx.drum = function(){ a2Go('drum'); };
 
 /* ---------- hook music + wipes into the screens ---------- */
 {
