@@ -3657,7 +3657,7 @@ const FXA = {
   rain:(n)=>Array.from({length:n},(_,k)=>`<path class="fxrain" style="--t:${fxRand(.8,1.3).toFixed(2)}s;animation-delay:-${fxRand(0,1.3).toFixed(2)}s" d="M${fxRand(0,1024).toFixed(0)} -30 l-6 22" stroke="rgba(220,240,255,.75)" stroke-width="2.5" stroke-linecap="round"/>`).join(''),
   motes:(n, c, y0, y1)=>Array.from({length:n},(_,k)=>`<circle class="fxmote" style="--t:${fxRand(6,10).toFixed(1)}s;animation-delay:-${fxRand(0,10).toFixed(1)}s" cx="${fxRand(30,1000).toFixed(0)}" cy="${fxRand(y0||200,y1||520).toFixed(0)}" r="${fxRand(2,3.6).toFixed(1)}" fill="${c||'#FFF6C8'}"/>`).join(''),
   fireflies:(n, y0, y1)=>Array.from({length:n},(_,k)=>`<g class="fxmote" style="--t:${fxRand(5,9).toFixed(1)}s;animation-delay:-${fxRand(0,9).toFixed(1)}s"><circle cx="${fxRand(30,1000).toFixed(0)}" cy="${fxRand(y0||380,y1||640).toFixed(0)}" r="6" fill="#FFF59D" class="fxtw" style="--t:${fxRand(1.2,2.4).toFixed(1)}s"/></g>`).join(''),
-  bfly:(c, s)=>`<g transform="scale(${s||1})"><g class="fxwingL"><path d="M0 0 Q-16 -18 -20 -4 Q-18 8 0 2 Z" fill="${c}"/><path d="M0 2 Q-14 10 -10 18 Q-2 18 0 4 Z" fill="${c}" opacity=".85"/></g><g class="fxwingR"><path d="M0 0 Q16 -18 20 -4 Q18 8 0 2 Z" fill="${c}"/><path d="M0 2 Q14 10 10 18 Q2 18 0 4 Z" fill="${c}" opacity=".85"/></g><rect x="-1.6" y="-6" width="3.2" height="16" rx="1.6" fill="#1D1D2B"/></g>`,
+  bfly:(c, s)=>`<g transform="scale(${s||1})"><g class="fxwingL"><path d="M0 0 Q-10 -26 -23 -17 Q-27 -4 -14 5 Q-6 7 0 3 Z" fill="${c}" stroke="#1D1D2B" stroke-opacity=".7" stroke-width=".9" stroke-linejoin="round"/><path d="M0 3 Q-13 5 -16 18 Q-9 25 -3 13 Q0 9 0 5 Z" fill="${c}" stroke="#1D1D2B" stroke-opacity=".7" stroke-width=".9" stroke-linejoin="round"/><path d="M0 1 Q-10 -18 -20 -14 Q-15 -4 -6 3 Z" fill="#fff" opacity=".32"/><path d="M-14 5 Q-21 -4 -23 -17 Q-27 -4 -14 5Z" fill="#1D1D2B" opacity=".22"/><path d="M1 2 L-17 -12 M1 3 L-21 -4 M1 4 L-12 14" stroke="#1D1D2B" stroke-opacity=".28" stroke-width=".7" fill="none"/><circle cx="-17" cy="-10" r="3" fill="#fff" opacity=".9"/><circle cx="-17" cy="-10" r="1.4" fill="#1D1D2B" opacity=".55"/><circle cx="-9" cy="15" r="2.2" fill="#fff" opacity=".85"/></g><g class="fxwingR"><path d="M0 0 Q10 -26 23 -17 Q27 -4 14 5 Q6 7 0 3 Z" fill="${c}" stroke="#1D1D2B" stroke-opacity=".7" stroke-width=".9" stroke-linejoin="round"/><path d="M0 3 Q13 5 16 18 Q9 25 3 13 Q0 9 0 5 Z" fill="${c}" stroke="#1D1D2B" stroke-opacity=".7" stroke-width=".9" stroke-linejoin="round"/><path d="M0 1 Q10 -18 20 -14 Q15 -4 6 3 Z" fill="#fff" opacity=".32"/><path d="M14 5 Q21 -4 23 -17 Q27 -4 14 5Z" fill="#1D1D2B" opacity=".22"/><path d="M1 2 L17 -12 M1 3 L21 -4 M1 4 L12 14" stroke="#1D1D2B" stroke-opacity=".28" stroke-width=".7" fill="none"/><circle cx="17" cy="-10" r="3" fill="#fff" opacity=".9"/><circle cx="17" cy="-10" r="1.4" fill="#1D1D2B" opacity=".55"/><circle cx="9" cy="15" r="2.2" fill="#fff" opacity=".85"/></g><ellipse cx="0" cy="4" rx="2.3" ry="9.5" fill="#2A2233"/><path d="M-2 1 H2 M-2.2 5 H2.2 M-1.8 9 H1.8" stroke="#6B5A7A" stroke-width=".7"/><circle cx="0" cy="-6.5" r="2.6" fill="#2A2233"/><circle cx="-.9" cy="-7.2" r=".7" fill="#fff"/></g>`,
   flutter:(c, y, dur, begin, s)=>fxMove(`M-60 ${y} C200 ${y-90} 300 ${y+80} 520 ${y-10} S860 ${y-80} 1100 ${y+20}`, dur, begin, FXA.bfly(c, s||1)),
   boat:(c, sail)=>`<g class="fxbob"><path d="M-46 0 H46 L34 18 H-34 Z" fill="${c||'#8B5A33'}"/>${sail===false?'':`<path d="M0 0 V-62" stroke="#5A3B22" stroke-width="4"/><path d="M3 -58 L36 -6 H3 Z" fill="${sail||'#fff'}"/>`}</g>`,
   ferry:(c)=>`<g class="fxbob"><path d="M-70 0 H70 L58 20 H-58 Z" fill="${c||'#F4F1E1'}" stroke="#3A5A7A" stroke-width="3"/><rect x="-46" y="-22" width="80" height="22" rx="4" fill="#F4F1E1" stroke="#3A5A7A" stroke-width="3"/>${[-36,-18,0,18].map(x=>`<rect x="${x}" y="-16" width="11" height="9" rx="2" fill="#7CC3E8"/>`).join('')}<rect x="20" y="-38" width="10" height="16" fill="#E5383B"/></g>`,
@@ -3785,7 +3785,7 @@ const BFLY = [
 ];
 function bflyGot(){ try{ return new Set(JSON.parse(localStorage.getItem('tlb_bfly')||'[]')); }catch(e){ return new Set(); } }
 function bflySave(s){ try{ localStorage.setItem('tlb_bfly', JSON.stringify([...s])); }catch(e){} }
-function bflySVG(c, w){ return `<svg viewBox="-24 -22 48 44" width="${w}" height="${w}">${FXA.bfly(c,1)}<path d="M-1 -6 Q-5 -16 -8 -18 M1 -6 Q5 -16 8 -18" stroke="#1D1D2B" stroke-width="1.6" fill="none"/></svg>`; }
+function bflySVG(c, w){ return `<svg viewBox="-24 -22 48 44" width="${w}" height="${w}">${FXA.bfly(c,1)}<path d="M-1 -8 Q-4 -15 -8 -19 M1 -8 Q4 -15 8 -19" stroke="#2A2233" stroke-width="1.2" fill="none" stroke-linecap="round"/><circle cx="-8" cy="-19" r="1.3" fill="#2A2233"/><circle cx="8" cy="-19" r="1.3" fill="#2A2233"/></svg>`; }
 function bflyPlace(screen, key){
   const b = BFLY.find(z=>z.key===key); if(!b) return; const got = bflyGot(); if(got.has(b.place)) return;
   const el = document.createElement('button'); el.className = 'hidbfly'; el.style.left = b.x+'px'; el.style.top = b.y+'px'; el.setAttribute('aria-label','A hidden butterfly');
@@ -8163,12 +8163,15 @@ html.calm .flypill img{animation:none}
    - Start screen: a little ladybug crawls along the grass (tap her and she opens her wings and flies off, then comes back),
      and a bee loops across the sky.
    - City maps: soft clouds drift over Grok's painted maps, and now and then a flock of birds flies past. ===== */
-const A2_BUG = `<svg viewBox="-34 -28 70 56" width="58" height="46"><g class="a2wings"><ellipse class="a2wl" cx="-4" cy="-10" rx="18" ry="9" fill="#fff8" stroke="#1D1D2B" stroke-width="1.5"/><ellipse class="a2wr" cx="-4" cy="10" rx="18" ry="9" fill="#fff8" stroke="#1D1D2B" stroke-width="1.5"/></g>
+const A2_BUG = `<svg viewBox="-34 -28 80 56" width="73" height="51"><defs><radialGradient id="a2sh" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="#FF8A7A"/><stop offset=".45" stop-color="#E5383B"/><stop offset="1" stop-color="#A8141C"/></radialGradient></defs>
+  <ellipse cx="2" cy="22" rx="22" ry="4" fill="#000" opacity=".16"/>
+  <g class="a2wings"><ellipse class="a2wl" cx="-4" cy="-10" rx="18" ry="9" fill="#fff8" stroke="#1D1D2B" stroke-width="1.5"/><ellipse class="a2wr" cx="-4" cy="10" rx="18" ry="9" fill="#fff8" stroke="#1D1D2B" stroke-width="1.5"/></g>
   <g class="a2legs" stroke="#1D1D2B" stroke-width="3" stroke-linecap="round"><path d="M-8 -14 l-4 -10 M4 -14 l4 -10 M-8 14 l-4 10 M4 14 l4 10"/></g>
-  <circle cx="22" cy="0" r="10" fill="#1D1D2B"/><circle cx="26" cy="-4" r="2.6" fill="#fff"/><circle cx="26" cy="4" r="2.6" fill="#fff"/>
-  <path d="M28 -8 q8 -10 14 -8 M28 8 q8 10 14 8" stroke="#1D1D2B" stroke-width="2.5" fill="none"/>
-  <circle r="20" fill="#E5383B" stroke="#1D1D2B" stroke-width="3.5"/><line x1="-20" y1="0" x2="20" y2="0" stroke="#1D1D2B" stroke-width="2.5"/>
-  <circle cx="-8" cy="-8" r="4.5" fill="#1D1D2B"/><circle cx="6" cy="-10" r="3.5" fill="#1D1D2B"/><circle cx="-8" cy="8" r="4.5" fill="#1D1D2B"/><circle cx="6" cy="10" r="3.5" fill="#1D1D2B"/></svg>`;
+  <circle cx="22" cy="0" r="11" fill="#1D1D2B"/><ellipse cx="24" cy="-5" rx="3.6" ry="3.8" fill="#fff"/><ellipse cx="24" cy="5" rx="3.6" ry="3.8" fill="#fff"/><circle cx="25.2" cy="-5" r="1.7" fill="#1D1D2B"/><circle cx="25.2" cy="5" r="1.7" fill="#1D1D2B"/><circle cx="25.8" cy="-5.7" r=".6" fill="#fff"/><circle cx="25.8" cy="4.3" r=".6" fill="#fff"/><path d="M29 -2 q2 2 0 4" stroke="#fff" stroke-width="1" fill="none" stroke-linecap="round"/>
+  <path d="M28 -9 q8 -10 14 -8 M28 9 q8 10 14 8" stroke="#1D1D2B" stroke-width="2.2" fill="none" stroke-linecap="round"/><circle cx="42" cy="-17" r="2" fill="#1D1D2B"/><circle cx="42" cy="17" r="2" fill="#1D1D2B"/>
+  <circle r="20" fill="url(#a2sh)" stroke="#1D1D2B" stroke-width="3.2"/><line x1="-20" y1="0" x2="19" y2="0" stroke="#1D1D2B" stroke-width="2.2"/>
+  <circle cx="-9" cy="-8" r="4.6" fill="#1D1D2B"/><circle cx="6" cy="-10" r="3.6" fill="#1D1D2B"/><circle cx="-9" cy="8" r="4.6" fill="#1D1D2B"/><circle cx="6" cy="10" r="3.6" fill="#1D1D2B"/><circle cx="-2" cy="-3.5" r="2" fill="#1D1D2B"/><circle cx="-2" cy="3.5" r="2" fill="#1D1D2B"/>
+  <ellipse cx="-5" cy="-14" rx="8" ry="3" fill="#fff" opacity=".5" transform="rotate(-18 -5 -14)"/></svg>`;
 const A2_BEE = `<svg viewBox="-20 -16 40 32" width="40" height="32"><ellipse class="a2bw" cx="-2" cy="-10" rx="7" ry="9" fill="#fffc" stroke="#1D1D2B" stroke-width="1.5"/><ellipse cx="0" cy="0" rx="13" ry="9" fill="#FFC93C" stroke="#1D1D2B" stroke-width="2.5"/><path d="M-4 -8 v16 M3 -8 v16" stroke="#1D1D2B" stroke-width="3"/><circle cx="11" cy="-2" r="2" fill="#1D1D2B"/></svg>`;
 function a2Calm(){ return typeof TLB_CALM!=='undefined' && TLB_CALM; }
 
@@ -9435,13 +9438,13 @@ function gbApply(){ const G = gbGet(), on = G.n >= GB_MAX; ['lisa','lucas','razz
 const GB_SVG = `<i class="gbimg" aria-hidden="true"></i>`;
 let gbLive = null;
 function gbCalm(){ const c = document.documentElement.classList; return c.contains('calm') || c.contains('lite'); }
-function gbSpawn(){ if(gbLive || document.hidden) return; const G = gbGet(); if(G.n >= GB_MAX) return;
+function gbSpawn(){ if(gbLive || document.hidden || document.querySelector('.modal, .bflyall')) return; const G = gbGet(); if(G.n >= GB_MAX) return;
   const W = innerWidth, H = innerHeight, el = document.createElement('div'); el.className = 'gbf'; el.innerHTML = GB_SVG; el.setAttribute('role','button'); el.setAttribute('aria-label','Golden butterfly'); document.body.appendChild(el); gbLive = el;
   const done = ()=>{ if(gbLive===el) gbLive = null; el.remove(); };
   if(gbCalm()){ el.style.left = (W*.15 + Math.random()*W*.7)+'px'; el.style.top = (H*.15 + Math.random()*H*.6)+'px'; el.classList.add('still'); setTimeout(done, 4500); }
-  else { const ltr = Math.random()<.5, y0 = H*(.12+Math.random()*.6), amp = 40+Math.random()*60, kf = [];
-    for(let i=0;i<=10;i++){ const t = i/10, x = ltr ? -100 + t*(W+200) : W+100 - t*(W+200), y = y0 + Math.sin(t*Math.PI*3)*amp - t*40; kf.push({transform:`translate(${x}px,${y}px) rotate(${(ltr?1:-1)*Math.cos(t*Math.PI*3)*14}deg)`}); }
-    el.style.left = '0px'; el.style.top = '0px'; const an = el.animate(kf, {duration:2600+Math.random()*900, easing:'linear'}); an.onfinish = done; el._an = an; }
+  else { const ltr = Math.random()<.5, y0 = H*(.2+Math.random()*.5), amp = 30+Math.random()*40, kf = [];
+    for(let i=0;i<=10;i++){ const t = i/10, x = ltr ? -50 + t*(W+100) : W+50 - t*(W+100), y = y0 + Math.sin(t*Math.PI*3)*amp - t*40; kf.push({transform:`translate(${x}px,${y}px) rotate(${(ltr?1:-1)*Math.cos(t*Math.PI*3)*14}deg)`}); }
+    el.style.left = '0px'; el.style.top = '0px'; const an = el.animate(kf, {duration:3600+Math.random()*800, easing:'linear'}); an.onfinish = done; el._an = an; }
   el.addEventListener('pointerdown', ev=>{ ev.preventDefault(); ev.stopPropagation(); if(el.dataset.got) return; el.dataset.got = 1; if(el._an) el._an.pause();
     const r = el.getBoundingClientRect(); gbCatch(r.left+r.width/2, r.top+r.height/2); el.classList.add('got'); setTimeout(done, 450); }, true);
   ['click','pointerup','touchstart'].forEach(t=>el.addEventListener(t, ev=>ev.stopPropagation(), true)); }
@@ -9452,7 +9455,7 @@ function gbCatch(x, y){ const G = gbGet(); G.n = Math.min(GB_MAX, G.n+1); gbSet(
   const t = document.createElement('div'); t.className = 'gbtoast';
   t.innerHTML = G.n >= GB_MAX ? `&#129419; You caught <b>100 golden butterflies!</b><br>&#10024; The <b>Golden look</b> is open in the Changing Room!` : `&#129419; Golden butterfly! <b>${G.n} / ${GB_MAX}</b>`;
   document.body.appendChild(t); setTimeout(()=>t.classList.add('out'), G.n>=GB_MAX ? 5200 : 1900); setTimeout(()=>t.remove(), G.n>=GB_MAX ? 5800 : 2500); }
-setTimeout(()=>{ gbApply(); setInterval(()=>{ if(Math.random() < .22) gbSpawn(); }, 16000); setTimeout(()=>{ if(Math.random()<.5) gbSpawn(); }, 25000); }, 0);
+setTimeout(()=>{ gbApply(); setInterval(()=>{ if(Math.random() < .10) gbSpawn(); }, 20000); setTimeout(()=>{ if(Math.random()<.3) gbSpawn(); }, 45000); }, 0);
 window.gbSpawn = gbSpawn;
 document.head.insertAdjacentHTML('beforeend', `<style>
 .bprow{margin:6px 0 8px;padding:6px 10px;border-radius:14px;background:#FFF1C9;font-size:15px;color:#4A3500;line-height:1.3}.bprow span{display:block;font-size:12px;opacity:.75}
@@ -9506,7 +9509,7 @@ setTimeout(()=>{ ccxLoad().then(()=>{ document.querySelectorAll('.pup .ccov, .rz
     const scr = app.querySelector('.screen'); if(scr && scr.querySelector('.hsimg')){ scr.querySelectorAll('.pl2wear').forEach(e=>e.remove()); try{ pl2Outfit(scr); }catch(_){} } }); }, 4100);
 PL_HOME_SPOT.lisa.body = [122,520,80]; PL_HOME_SPOT.lucas.body = [356,522,80];
 document.head.insertAdjacentHTML('beforeend', `<style>
-.gbf{height:58px}
+.gbf{width:54px;height:36px}
 .gbf .gbimg{display:block;width:100%;height:100%;background:url(gb/golden_butterfly_1.webp) center/contain no-repeat;animation:gbfr .36s infinite;pointer-events:none}
 @keyframes gbfr{0%{background-image:url(gb/golden_butterfly_1.webp)}17%{background-image:url(gb/golden_butterfly_2.webp)}34%{background-image:url(gb/golden_butterfly_3.webp)}50%{background-image:url(gb/golden_butterfly_2.webp)}67%{background-image:url(gb/golden_butterfly_1.webp)}84%{background-image:url(gb/golden_butterfly_4.webp)}100%{background-image:url(gb/golden_butterfly_1.webp)}}
 .gbf.still .gbimg,html.calm .gbf .gbimg,html.lite .gbf .gbimg{animation:none}
