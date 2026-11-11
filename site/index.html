@@ -8525,7 +8525,7 @@ html.calm .plfl,html.calm .plstar,html.calm .plff{animation:none}
 const PL_HOME_SPOT = {lisa:{hat:[132,346,62], eyes:[137,410,46], neck:[140,472,40]}, lucas:{hat:[340,342,62], eyes:[336,418,46], neck:[345,482,40]}};
 function pl2Outfit(scr){
   if(!scr.querySelector('.hsimg') || scr.querySelector('.pl2wear')) return; const P = plGet(); if(!P.dr) return;
-  ['lisa','lucas'].forEach(w=>{ const o = P.dr[w] || {}; ['hat','eyes','neck'].forEach(sl=>{ if(o[sl]==null || !PL_WEAR[o[sl]]) return; const [x,y,s] = PL_HOME_SPOT[w][sl];
+  ['lisa','lucas'].forEach(w=>{ const o = P.dr[w] || {}; ['body','hat','eyes','neck'].forEach(sl=>{ if(o[sl]==null || !PL_WEAR[o[sl]] || !PL_HOME_SPOT[w][sl]) return; const [x,y,s] = PL_HOME_SPOT[w][sl];
     const e = document.createElement('i'); e.className = 'hsfx pl2wear'; e.textContent = PL_WEAR[o[sl]][0]; e.style.cssText = `left:${x}px;top:${y}px;font-size:${s}px`; const aw = PL_WEAR[o[sl]][3]; if(aw){ const im = new Image(); im.alt = ''; im.style.cssText = `width:${Math.round(s*1.5)}px;display:block`; im.onload = ()=>{ e.textContent = ''; e.appendChild(im); }; im.src = ccUrl('pr/'+aw+'.webp'); } scr.appendChild(e); }); });
 }
 { const base = showTitle; showTitle = function(){ const r = base.apply(this, arguments); const scr = app.querySelector('.screen'); if(scr) pl2Outfit(scr); return r; }; }
@@ -9190,7 +9190,7 @@ html.calm .q24zin,html.lite .q24zin{transition:none}
    Saved in tlb_play.cc = {id:{slot:itemIndex}} (Lisa/Lucas keep tlb_play.dr, so the start screen still shows their outfit).
    An item can have art: cc/<id>_<slug>.webp (transparent piece); if the file is missing the emoji is shown instead. ===== */
 function ccUrl(p){ const k = p.replace('pr/../',''); return (window.CCX && window.CCX[k]) || p; }
-function ccxLoad(){ if(window.__ccx) return window.__ccx; window.__ccx = Promise.all(['ccx/xp1.js','ccx/xp2.js'].map(src=>new Promise(r=>{ const sc = document.createElement('script'); sc.src = src; sc.onload = sc.onerror = ()=>r(); document.head.appendChild(sc); })))
+function ccxLoad(){ if(window.__ccx) return window.__ccx; window.__ccx = Promise.all(['ccx/xp1.js','ccx/xp2.js','ccx/xp3.js'].map(src=>new Promise(r=>{ const sc = document.createElement('script'); sc.src = src; sc.onload = sc.onerror = ()=>r(); document.head.appendChild(sc); })))
   .then(()=>{ try{ ['lisa','lucas','razzle'].concat(Object.keys(CC)).forEach(id=>{ if(ccWorn(id).length) ccBuild(id); }); }catch(e){} }); return window.__ccx; }
 setTimeout(ccxLoad, 4000);
 const CC_SLOT = {body:['Jacket',1.5,1.75], hat:['Hats',1.0], eyes:['Eyes',.8], neck:['Neck',.72]};
@@ -9228,12 +9228,12 @@ function ccRoom(){
   const P = plGet(), solved = (typeof hsSolved==='function' ? hsSolved().length : 0), openLL = Math.min(PL_WEAR.length, 4 + solved);
   P.cc = P.cc || {}; P.dr = P.dr || {lisa:{}, lucas:{}};
   const all = ccWho(); let who = 'lisa';
-  const items = id=> (id==='lisa'||id==='lucas') ? PL_WEAR.map((e,i)=>({e:e[0],s:e[1],n:e[2],i,art:e[3]?ccUrl('pr/'+e[3]+'.webp'):null,city:e[4]||null,bonus:e[5]?e[3].split('/').pop():null,lock:e[5] ? (e[6]!==id || !bpHas(e[3].split('/').pop())) : e[4] ? !(typeof hsSolved==='function' && hsSolved().includes(e[4])) : (i<PL_BASE ? i>=openLL : false)})) : CC[id].i.map((e,i)=>({e:e[0],s:e[1],n:e[2],i,art:ccUrl('cc/'+id+'_'+e[3]+'.webp'),need:e[4]||0,bonus:e[5]?id+'_'+e[3]:null,lock:e[5] ? !bpHas(id+'_'+e[3]) : !!(e[4] && (RZ.n||0)<e[4])}));
+  const items = id=> (id==='lisa'||id==='lucas') ? PL_WEAR.map((e,i)=>({e:e[0],s:e[1],n:e[2],i,sc:e[7],gold:e[5]===2,art:e[3]?ccUrl('pr/'+e[3]+'.webp'):null,city:e[4]||null,bonus:e[5]===1?e[3].split('/').pop():null,hide:e[5]===2&&e[6]!==id,lock:e[5]===2 ? (e[6]!==id || gbGet().n<GB_MAX) : e[5] ? (e[6]!==id || !bpHas(e[3].split('/').pop())) : e[4] ? !(typeof hsSolved==='function' && hsSolved().includes(e[4])) : (i<PL_BASE ? i>=openLL : false)})) : CC[id].i.map((e,i)=>({e:e[0],s:e[1],n:e[2],i,sc:e[7],gold:e[5]===2,art:ccUrl('cc/'+id+'_'+e[3]+'.webp'),need:e[4]||0,bonus:e[5]===1?id+'_'+e[3]:null,lock:e[5]===2 ? gbGet().n<GB_MAX : e[5] ? !bpHas(id+'_'+e[3]) : !!(e[4] && (RZ.n||0)<e[4])}));
   const sel = id=> ((id==='lisa'||id==='lucas') ? P.dr[id] : P.cc[id]) || {};
   const setSel = (id,o)=>{ if(id==='lisa'||id==='lucas') P.dr[id] = o; else P.cc[id] = o; plSet(P); ccBuild(id); };
   const spot = (c,sl)=>{ const k = {hat:0,eyes:2,neck:4,body:6}[sl]; return [c.a[k],c.a[k+1]]; };
   const piece = (c,it,sl,W)=>{ const [x,y] = spot(c,sl), fs = Math.round(c.hw*W*CC_SLOT[sl][1]*((c.id==='lisa'||c.id==='lucas')?1.2:1.1));
-    return `<i class="ccw ${sl}" style="left:${(x*W).toFixed(0)}px;top:${(y*c.H).toFixed(0)}px;font-size:${fs}px">${it.art?`<img src="${it.art}" alt="" style="width:${(c.hw*W*(CC_SLOT[sl][2]||1.3)).toFixed(0)}px" onerror="this.replaceWith(document.createTextNode('${it.e}'))">`:it.e}</i>`; };
+    return `<i class="ccw ${sl}" style="left:${(x*W).toFixed(0)}px;top:${(y*c.H).toFixed(0)}px;font-size:${fs}px">${it.art?`<img src="${it.art}" alt="" style="width:${(c.hw*W*(it.sc||CC_SLOT[sl][2]||1.3)).toFixed(0)}px" onerror="this.replaceWith(document.createTextNode('${it.e}'))">`:it.e}</i>`; };
   const draw = ()=>{
     const c = all.find(a=>a.id===who), its = items(who), o = sel(who), H = 330, bw = 420;
     const stage = app.querySelector('.ccstage'), img = new Image();
@@ -9241,12 +9241,12 @@ function ccRoom(){
       stage.innerHTML = `<div class="ccfig" data-who="${c.id}" style="width:${W.toFixed(0)}px;height:${c.H.toFixed(0)}px"><img src="${c.img}" alt="${c.name}" style="width:${W.toFixed(0)}px">${['body','hat','eyes','neck'].map(sl=>o[sl]!=null&&its[o[sl]]?piece(c,its[o[sl]],sl,W):'').join('')}</div><div class="ccname">${c.name}</div>`; };
     img.onload = fin; img.onerror = fin; img.src = c.img; if(img.complete && img.naturalWidth) fin();
     const tray = app.querySelector('.cctray');
-    tray.innerHTML = ['body','hat','eyes','neck','souv'].map(sl=>{ const row = its.filter(t=>!(t.bonus && t.lock) && (sl==='souv' ? t.city : (t.s===sl && !t.city))); if(!row.length) return '';
-      return `<div class="ccrow${sl==='souv'?' ccsouv':''}"><b>${sl==='souv'?'Trips':CC_SLOT[sl][0]}</b>${row.map(t=>`<button class="pldi${t.lock?' lock':''}${o[sl]===t.i?' on':''}" data-i="${t.i}" aria-label="${t.lock?(t.need?'Locked: win '+t.need+' Razzle puzzles':(t.city?'Locked: finish '+((CITIES[t.city]||{}).city||t.city):'Locked: solve more places')):t.n}" title="${t.n}">${t.lock?(t.need?'&#128142;<small>&#128274; '+Math.min(RZ.n||0,t.need)+'/'+t.need+'</small>':(t.city&&t.art?`<img class="ccti cclk" src="${t.art}" alt=""><u class="cclku">&#128274;</u>`:'&#128274;')):(t.art?`<img class="ccti" src="${t.art}" alt="" onerror="this.replaceWith(document.createTextNode('${t.e}'))">`:t.e)}</button>`).join('')}</div>`; }).join('') + bpRow(who)
+    tray.innerHTML = ['body','hat','eyes','neck','souv'].map(sl=>{ const row = its.filter(t=>!(t.bonus && t.lock) && !t.hide && (sl==='souv' ? t.city : (t.s===sl && !t.city))); if(!row.length) return '';
+      return `<div class="ccrow${sl==='souv'?' ccsouv':''}"><b>${sl==='souv'?'Trips':CC_SLOT[sl][0]}</b>${row.map(t=>`<button class="pldi${t.lock?' lock':''}${o[sl]===t.i?' on':''}" data-i="${t.i}" aria-label="${t.lock?(t.gold?'Locked: catch '+GB_MAX+' golden butterflies':t.need?'Locked: win '+t.need+' Razzle puzzles':(t.city?'Locked: finish '+((CITIES[t.city]||{}).city||t.city):'Locked: solve more places')):t.n}" title="${t.n}">${t.lock?(t.gold?`<img class="ccti cclk" src="${t.art}" alt=""><u class="cclku gblk">&#129419;${gbGet().n}/${GB_MAX}</u>`:t.need?'&#128142;<small>&#128274; '+Math.min(RZ.n||0,t.need)+'/'+t.need+'</small>':(t.city&&t.art?`<img class="ccti cclk" src="${t.art}" alt=""><u class="cclku">&#128274;</u>`:'&#128274;')):(t.art?`<img class="ccti" src="${t.art}" alt="" onerror="this.replaceWith(document.createTextNode('${t.e}'))">`:t.e)}</button>`).join('')}</div>`; }).join('') + bpRow(who)
       + `<button class="ccoff" data-i="off">Take it all off &#10006;</button>`;
     app.querySelectorAll('.ccpick').forEach(b=>b.classList.toggle('sel', b.dataset.id===who));
     tray.querySelectorAll('button').forEach(b=>b.onclick=()=>{ const i = b.dataset.i; if(i==='off'){ setSel(who,{}); sfx.pop(); draw(); return; }
-      const t = its[+i]; if(t.lock){ if(t.city){ const tp = app.querySelector('.cctip'); if(tp) tp.textContent = `Finish ${(CITIES[t.city]||{}).city||t.city} to bring home the ${t.n}!`; } if(t.need){ const tp = app.querySelector('.cctip'); if(tp) tp.textContent = `Win ${t.need} of Razzle's puzzles to earn the ${t.n}! You have ${Math.min(RZ.n||0,t.need)}.`; } sfx.oops(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); return; }
+      const t = its[+i]; if(t.lock){ if(t.gold){ const tp = app.querySelector('.cctip'); if(tp) tp.textContent = `Catch ${GB_MAX} golden butterflies to unlock the ${t.n}! You have ${gbGet().n}.`; } if(t.city){ const tp = app.querySelector('.cctip'); if(tp) tp.textContent = `Finish ${(CITIES[t.city]||{}).city||t.city} to bring home the ${t.n}!`; } if(t.need){ const tp = app.querySelector('.cctip'); if(tp) tp.textContent = `Win ${t.need} of Razzle's puzzles to earn the ${t.n}! You have ${Math.min(RZ.n||0,t.need)}.`; } sfx.oops(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); return; }
       const cur = Object.assign({}, sel(who)); cur[t.s] = cur[t.s]===t.i ? null : t.i; setSel(who,cur);
       [784,988,1175].forEach((f,j)=>tone(f,.1,'triangle',.1,j*.07)); draw();
       const f = app.querySelector('.ccfig'); if(f){ f.classList.remove('hop'); void f.offsetWidth; f.classList.add('hop'); } });
@@ -9267,9 +9267,9 @@ function ccRoom(){
 const CC_SKIN = {}; // id -> loaded Image of the dressed picture
 function ccGeo(id){ if(id==='lisa'||id==='lucas'){ const c = CC_ART[id]; return {a:c[3],hw:c[4],src:c[0],k:1.2}; } const d = CC[id]; return d ? {a:d.a,hw:d.hw,src:id==='razzle'?'rz/razzle.webp':'friends/img/'+id+'.webp',k:1.1} : null; }
 function ccWorn(id){ const P = plGet(), out = [];
-  if(id==='lisa'||id==='lucas'){ const o = (P.dr||{})[id]||{}; ['body','hat','eyes','neck'].forEach(sl=>{ if(o[sl]!=null && PL_WEAR[o[sl]]){ const w = PL_WEAR[o[sl]]; out.push({sl,e:w[0],art:w[3]?ccUrl('pr/'+w[3]+'.webp'):null}); } }); return out; }
+  if(id==='lisa'||id==='lucas'){ const o = (P.dr||{})[id]||{}; ['body','hat','eyes','neck'].forEach(sl=>{ if(o[sl]!=null && PL_WEAR[o[sl]]){ const w = PL_WEAR[o[sl]]; out.push({sl,e:w[0],art:w[3]?ccUrl('pr/'+w[3]+'.webp'):null,sc:w[7]}); } }); return out; }
   const o = (P.cc||{})[id]||{}, d = CC[id]; if(!d) return out;
-  ['body','hat','eyes','neck'].forEach(sl=>{ if(o[sl]!=null && d.i[o[sl]]){ const t = d.i[o[sl]]; out.push({sl,e:t[0],art:ccUrl('cc/'+id+'_'+t[3]+'.webp')}); } }); return out; }
+  ['body','hat','eyes','neck'].forEach(sl=>{ if(o[sl]!=null && d.i[o[sl]]){ const t = d.i[o[sl]]; out.push({sl,e:t[0],art:ccUrl('cc/'+id+'_'+t[3]+'.webp'),sc:t[7]}); } }); return out; }
 function ccBuild(id){ const g = ccGeo(id); if(!g) return Promise.resolve(); const worn = ccWorn(id);
   if(!worn.length){ delete CC_SKIN[id]; return Promise.resolve(); }
   return new Promise(res=>{ const im = new Image(); im.onload = ()=>{ try{
@@ -9277,12 +9277,12 @@ function ccBuild(id){ const g = ccGeo(id); if(!g) return Promise.resolve(); cons
       const jobs = worn.map(w=>new Promise(r2=>{ if(!w.art) return r2(null); const a = new Image(); a.onload = ()=>r2(a); a.onerror = ()=>r2(null); a.src = w.art; }));
       Promise.all(jobs).then(arts=>{ try{ worn.forEach((w,i)=>{ const j = {hat:0,eyes:2,neck:4,body:6}[w.sl], fs = g.hw*W*CC_SLOT[w.sl][1]*g.k;
           let px = g.a[j]*W, py = g.a[j+1]*H; px = Math.max(fs/2, Math.min(W-fs/2, px)); py = Math.max(fs/2, py);
-          if(arts[i]){ const aw = g.hw*W*(CC_SLOT[w.sl][2]||1.3), ah = aw*arts[i].naturalHeight/arts[i].naturalWidth; x.drawImage(arts[i], px-aw/2, py-ah/2, aw, ah); }
+          if(arts[i]){ const aw = g.hw*W*(w.sc||CC_SLOT[w.sl][2]||1.3), ah = aw*arts[i].naturalHeight/arts[i].naturalWidth; x.drawImage(arts[i], px-aw/2, py-ah/2, aw, ah); }
           else { x.font = Math.round(fs)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(w.e, px, py); } });
         const sk = new Image(); sk.onload = ()=>{ CC_SKIN[id] = sk; ccSwapAll(); res(); }; sk.onerror = ()=>res(); sk.src = cv.toDataURL('image/png'); }catch(e){ res(); } });
     }catch(e){ res(); } }; im.onerror = ()=>res(); im.src = g.src; }); }
 const CC_IMG_RE = /(?:friends\/img\/(\w+)|art\/(lisa|lucas)|rz\/(razzle))\.webp$/;
-function ccSwapImg(img){ if(img.dataset.ccs || !img.getAttribute) return; const src = img.getAttribute('src')||''; const m = CC_IMG_RE.exec(src); if(!m) return;
+function ccSwapImg(img){ if(!img.getAttribute) return; if(img.dataset.ccs){ const sk0 = CC_SKIN[img.dataset.ccs]; if(sk0 && img.src!==sk0.src) img.src = sk0.src; return; } const src = img.getAttribute('src')||''; const m = CC_IMG_RE.exec(src); if(!m) return;
   if(img.closest('.fr, .rzrig, .pup')) return; const id = m[1]||m[2]||m[3], sk = CC_SKIN[id]; if(!sk) return; img.dataset.ccs = id; img.src = sk.src; }
 function ccSwapAll(){ document.querySelectorAll('img').forEach(ccSwapImg); }
 { const base = frBuild; frBuild = function(id, img, a, b){ const sk = CC_SKIN[id]; return base.call(this, id, (sk && sk.complete && sk.naturalWidth===img.naturalWidth) ? sk : img, a, b); }; }
@@ -9290,10 +9290,10 @@ function ccSwapAll(){ document.querySelectorAll('img').forEach(ccSwapImg); }
 function ccOverlay(el){
   if(el.querySelector && el.querySelector(':scope .ccov')) return;
   if(el.classList.contains('pup')){ const id = el.dataset.who, w = ccWorn(id); if(!w.length) return; const h = el.querySelector('.p-head'), r = RIG[id]; const hp = r && r.parts.find(p=>p.id==='head'); if(!h||!hp) return;
-    const sp = PL_SPOT[id]; w.forEach(o=>{ const s = sp[o.sl]; const i = document.createElement('i'); i.className = 'ccw ccov '+o.sl; i.textContent = o.e; i.style.cssText = `left:${(s[0]-hp.x).toFixed(0)}px;top:${(s[1]-hp.y).toFixed(0)}px;font-size:${s[2]}px;animation:none;z-index:9`; if(o.art){ const im = new Image(); im.alt = ''; im.style.width = Math.round(s[2]*1.45)+'px'; im.onload = ()=>{ i.textContent = ''; i.appendChild(im); }; im.src = o.art; } h.appendChild(i); }); }
+    const sp = PL_SPOT[id]; w.forEach(o=>{ const s = sp[o.sl]; if(!s) return; const bd = o.sl==='body' ? r.parts.find(p=>p.id==='body') : null, par = bd ? el.querySelector('.p-body') : h, hq = bd || hp; if(!par) return; const i = document.createElement('i'); i.className = 'ccw ccov '+o.sl; i.textContent = o.e; i.style.cssText = `left:${(s[0]-hq.x).toFixed(0)}px;top:${(s[1]-hq.y).toFixed(0)}px;font-size:${s[2]}px;animation:none;z-index:9`; if(o.art){ const im = new Image(); im.alt = ''; im.style.width = Math.round(s[2]*1.45)+'px'; im.onload = ()=>{ i.textContent = ''; i.appendChild(im); }; im.src = o.art; } par.appendChild(i); }); }
   else if(el.classList.contains('rzrig')){ const w = ccWorn('razzle'); if(!w.length) return; const g = ccGeo('razzle'), ht = el.clientHeight || parseFloat(el.style.height) || 300, W = ht*356/520; const box = document.createElement('div'); box.className = 'ccov ccrzbox'; box.style.cssText = `position:absolute;left:0;top:0;width:${W}px;height:${ht}px;pointer-events:none;z-index:9`;
     w.forEach(o=>{ const j = {hat:0,eyes:2,neck:4,body:6}[o.sl]; const i = document.createElement('i'); i.className = 'ccw'; i.textContent = o.e; i.style.cssText = `left:${(g.a[j]*100).toFixed(1)}%;top:${(g.a[j+1]*100).toFixed(1)}%;font-size:${Math.round(g.hw*W*CC_SLOT[o.sl][1]*1.1)}px;animation:none`;
-      if(o.art){ const im = new Image(); im.alt = ''; im.style.width = Math.round(g.hw*W*(CC_SLOT[o.sl][2]||1.3))+'px'; im.onload = ()=>{ i.textContent = ''; i.appendChild(im); }; im.src = o.art; } box.appendChild(i); }); el.appendChild(box); } }
+      if(o.art){ const im = new Image(); im.alt = ''; im.style.width = Math.round(g.hw*W*(o.sc||CC_SLOT[o.sl][2]||1.3))+'px'; im.onload = ()=>{ i.textContent = ''; i.appendChild(im); }; im.src = o.art; } box.appendChild(i); }); el.appendChild(box); } }
 function ccScan(n){ if(!n || n.nodeType!==1) return; if(n.tagName==='IMG') ccSwapImg(n); else if(n.querySelectorAll){ n.querySelectorAll('img').forEach(ccSwapImg); } const t = []; if(n.matches && n.matches('.pup,.rzrig')) t.push(n); if(n.querySelectorAll) n.querySelectorAll('.pup,.rzrig').forEach(e=>t.push(e)); t.forEach(ccOverlay); }
 new MutationObserver(ms=>{ ms.forEach(m=>m.addedNodes.forEach(ccScan)); }).observe(document.body, {childList:true, subtree:true});
 ['lisa','lucas','razzle',...Object.keys(CC).filter(k=>k!=='razzle')].forEach(id=>ccBuild(id));
@@ -9406,14 +9406,14 @@ Object.keys(BP_ADD).forEach(id=>{ if(CC[id]) BP_ADD[id].forEach(r=>CC[id].i.push
 [["🎩", "hat", "Detective beret", "../cc/lisa_beret", null, 1, "lisa"], ["🎀", "neck", "Pink bow", "../cc/lisa_bow", null, 1, "lisa"], ["🎀", "neck", "Camera", "../cc/lisa_camera", null, 1, "lisa"], ["🎀", "neck", "Compass necklace", "../cc/lisa_compassnecklace", null, 1, "lisa"], ["🎩", "hat", "Ladybug explorer hat", "../cc/lisa_explorerhat", null, 1, "lisa"], ["🕶️", "eyes", "Round glasses", "../cc/lisa_glasses", null, 1, "lisa"], ["🎀", "neck", "Magnifier charm", "../cc/lisa_magnifier", null, 1, "lisa"], ["🎀", "neck", "Map scarf", "../cc/lisa_mapscarf", null, 1, "lisa"], ["🎀", "neck", "Passport charm", "../cc/lisa_passport", null, 1, "lisa"], ["🎀", "neck", "Polka-dot scarf", "../cc/lisa_scarf", null, 1, "lisa"], ["🕶️", "eyes", "Star glasses", "../cc/lisa_shades", null, 1, "lisa"], ["🎀", "neck", "Suitcase charm", "../cc/lisa_suitcase", null, 1, "lisa"], ["🎩", "hat", "Sun hat", "../cc/lisa_sunhat", null, 1, "lisa"], ["🕶️", "eyes", "Binoculars", "../cc/lucas_binoculars", null, 1, "lucas"], ["🎀", "neck", "Plaid bow tie", "../cc/lucas_bowtie", null, 1, "lucas"], ["🎩", "hat", "Detective cap", "../cc/lucas_cap", null, 1, "lucas"], ["🎀", "neck", "Detective cape", "../cc/lucas_capecollar", null, 1, "lucas"], ["🎀", "neck", "Compass", "../cc/lucas_compass", null, 1, "lucas"], ["🎩", "hat", "Detective hat", "../cc/lucas_deerstalker", null, 1, "lucas"], ["🎩", "hat", "Flat cap", "../cc/lucas_flatcap", null, 1, "lucas"], ["🕶️", "eyes", "Round glasses", "../cc/lucas_glasses", null, 1, "lucas"], ["🎀", "neck", "Golden key", "../cc/lucas_key", null, 1, "lucas"], ["🎀", "neck", "Notebook", "../cc/lucas_notebook", null, 1, "lucas"], ["🎀", "neck", "Polka-dot scarf", "../cc/lucas_scarf", null, 1, "lucas"], ["🕶️", "eyes", "Star glasses", "../cc/lucas_shades", null, 1, "lucas"], ["🎀", "neck", "Star badge", "../cc/lucas_starbadge", null, 1, "lucas"]].forEach(r=>PL_WEAR.push(r));
 function bpHas(k){ return !!(RZ.bp && RZ.bp.includes(k)); }
 function bpPool(){ const out = [], open = new Set((typeof ccWho==='function' ? ccWho() : []).filter(c=>c.open).map(c=>c.id));
-  Object.keys(CC).forEach(id=>{ if(id!=='razzle' && !open.has(id)) return; CC[id].i.forEach(r=>{ if(r[5] && !bpHas(id+'_'+r[3])) out.push({k:id+'_'+r[3], id, n:r[2], art:ccUrl('cc/'+id+'_'+r[3]+'.webp')}); }); });
-  PL_WEAR.forEach(r=>{ if(r[5]){ const k = r[3].split('/').pop(); if(!bpHas(k)) out.push({k, id:r[6], n:r[2], art:ccUrl('cc/'+k+'.webp')}); } });
+  Object.keys(CC).forEach(id=>{ if(id!=='razzle' && !open.has(id)) return; CC[id].i.forEach(r=>{ if(r[5]===1 && !bpHas(id+'_'+r[3])) out.push({k:id+'_'+r[3], id, n:r[2], art:ccUrl('cc/'+id+'_'+r[3]+'.webp')}); }); });
+  PL_WEAR.forEach(r=>{ if(r[5]===1){ const k = r[3].split('/').pop(); if(!bpHas(k)) out.push({k, id:r[6], n:r[2], art:ccUrl('cc/'+k+'.webp')}); } });
   return out; }
-function bpTotal(){ let t = 0; Object.keys(CC).forEach(id=>CC[id].i.forEach(r=>{ if(r[5]) t++; })); PL_WEAR.forEach(r=>{ if(r[5]) t++; }); return t; }
+function bpTotal(){ let t = 0; Object.keys(CC).forEach(id=>CC[id].i.forEach(r=>{ if(r[5]===1) t++; })); PL_WEAR.forEach(r=>{ if(r[5]===1) t++; }); return t; }
 function bpWho(id){ if(id==='lisa') return 'Lisa'; if(id==='lucas') return 'Lucas'; if(id==='razzle') return 'Razzle'; return (typeof FR!=='undefined' && FR[id] && FR[id].name) || id; }
 function bpRow(who){ const mine = k=> who==='lisa'||who==='lucas' ? k.startsWith(who+'_') : k.startsWith(who+'_');
-  let tot = 0, got = 0; if(who==='lisa'||who==='lucas') PL_WEAR.forEach(r=>{ if(r[5] && r[6]===who){ tot++; if(bpHas(r[3].split('/').pop())) got++; } });
-  else (CC[who]||{i:[]}).i.forEach(r=>{ if(r[5]){ tot++; if(bpHas(who+'_'+r[3])) got++; } });
+  let tot = 0, got = 0; if(who==='lisa'||who==='lucas') PL_WEAR.forEach(r=>{ if(r[5]===1 && r[6]===who){ tot++; if(bpHas(r[3].split('/').pop())) got++; } });
+  else (CC[who]||{i:[]}).i.forEach(r=>{ if(r[5]===1){ tot++; if(bpHas(who+'_'+r[3])) got++; } });
   let h = tot ? `<div class="bprow">&#127873; Bonus pieces: <b>${got} / ${tot}</b> <span>Win Razzle's puzzles to find more!</span></div>` : '';
   if(who==='lisa'||who==='lucas'||who==='razzle'){ const G = gbGet();
     h += G.n >= GB_MAX ? `<button class="gbtog${G.g[who]?' on':''}" data-gb="${who}">&#10024; Golden look: ${G.g[who]?'ON':'off'}</button>`
@@ -9432,10 +9432,7 @@ const GB_MAX = 100;
 function gbGet(){ try{ const o = JSON.parse(localStorage.getItem('tlb_gb')||'{}'); return {n:o.n||0, g:o.g||{}}; }catch(e){ return {n:0,g:{}}; } }
 function gbSet(o){ try{ localStorage.setItem('tlb_gb', JSON.stringify(o)); }catch(e){} }
 function gbApply(){ const G = gbGet(), on = G.n >= GB_MAX; ['lisa','lucas','razzle'].forEach(id=>document.documentElement.classList.toggle('gold-'+id, on && !!G.g[id])); }
-const GB_SVG = `<svg viewBox="0 0 100 80" aria-hidden="true"><defs><radialGradient id="gbg" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#FFF6C2"/><stop offset=".45" stop-color="#FFD23F"/><stop offset="1" stop-color="#D98E04"/></radialGradient></defs>
-<g class="gbwl"><path d="M48 40 C30 8 4 4 6 24 C8 40 28 44 48 42 Z" fill="url(#gbg)" stroke="#B8740A" stroke-width="2.5"/><path d="M48 44 C30 48 12 58 20 70 C28 78 42 64 48 46 Z" fill="url(#gbg)" stroke="#B8740A" stroke-width="2.5"/><circle cx="22" cy="22" r="4" fill="#FFF8D6"/></g>
-<g class="gbwr"><path d="M52 40 C70 8 96 4 94 24 C92 40 72 44 52 42 Z" fill="url(#gbg)" stroke="#B8740A" stroke-width="2.5"/><path d="M52 44 C70 48 88 58 80 70 C72 78 58 64 52 46 Z" fill="url(#gbg)" stroke="#B8740A" stroke-width="2.5"/><circle cx="78" cy="22" r="4" fill="#FFF8D6"/></g>
-<ellipse cx="50" cy="44" rx="4" ry="16" fill="#7A4B05"/><path d="M48 30 C44 20 40 16 36 14 M52 30 C56 20 60 16 64 14" stroke="#7A4B05" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>`;
+const GB_SVG = `<i class="gbimg" aria-hidden="true"></i>`;
 let gbLive = null;
 function gbCalm(){ const c = document.documentElement.classList; return c.contains('calm') || c.contains('lite'); }
 function gbSpawn(){ if(gbLive || document.hidden) return; const G = gbGet(); if(G.n >= GB_MAX) return;
@@ -9478,6 +9475,43 @@ html.gold-lucas img[src*="art/rig/lucas_"],html.gold-lucas img[src$="art/lucas.w
 html.gold-razzle img[src*="rz/razzle"],html.gold-razzle img[src*="rz/peek"],html.gold-lisa img[data-ccs="lisa"],html.gold-lucas img[data-ccs="lucas"],html.gold-razzle img[data-ccs="razzle"],html.gold-lisa .ccfig[data-who="lisa"]>img,html.gold-lucas .ccfig[data-who="lucas"]>img,html.gold-razzle .ccfig[data-who="razzle"]>img{filter:sepia(.85) saturate(2.8) hue-rotate(-10deg) brightness(1.12) contrast(1.05) drop-shadow(0 0 5px rgba(255,205,50,.85))}
 </style>`);
 
+/* ===== fit (v23.66): Chester: "the boat drives through the island" and "Colette's mouth doesn't move".
+   1) friends' mouths: the voice meter is scaled per speaker, so soft recordings (Colette is the quietest) open the mouth as wide as loud ones.
+   2) old drawn-scene animations that did not fit their paintings get painting versions (FXP): Liberty island, NYC skyline, Greek harbor. ===== */
+(function(){
+  const VO_GAIN = {colette:2.8, skye:2.3, priya:1.95, jabari:1.9, aoife:1.65, sami:1.6, kenta:1.2, mateo:1.2, paco:1.25, lucia:1.1, ruby:1.15, luna:1.1};
+  const base = startTalk; startTalk = function(who, an){ base.apply(this, arguments); const g = VO_GAIN[who]; if(!g || !an) return;
+    const data = new Uint8Array(an.fftSize); const lift = ()=>{ if(analyser!==an) return; an.getByteTimeDomainData(data); let q = 0; for(let i=0;i<data.length;i++){ const v = (data[i]-128)/128; q += v*v; }
+      const rms = Math.sqrt(q/data.length)*g; talkLevel = Math.max(talkLevel, Math.min(1, rms*7)); requestAnimationFrame(lift); }; requestAnimationFrame(lift); };
+})();
+Object.assign(FXP, {
+  /* Statue of Liberty: glints on the harbor around the island and a flicker on the torch (no boat crossing the island) */
+  nl: n=>`${bgGlint(0,150,405,560,10)}${bgGlint(880,1024,400,500,8)}${bgGlint(150,880,548,562,10)}${bgGlint(0,1024,380,394,10,'rgba(255,255,255,.7)')}${FXA.glow(492,50,12,'rgba(255,190,70,.7)',1.1)}`,
+  /* NYC skyline: the blimp only (the old cars drove along the sidewalk under the painted taxis) */
+  ne: n=>`${fxMove('M1200 140 Q512 110 -200 150',50,-20,`<g><ellipse cx="0" cy="0" rx="70" ry="24" fill="#D9DDE3" stroke="#9AA3B5" stroke-width="3"/><rect x="-16" y="22" width="32" height="10" rx="3" fill="#9AA3B5"/><path d="M60 -6 L84 -20 L84 20 L60 6 Z" fill="#9AA3B5"/><text x="-40" y="7" font-size="18" font-weight="800" fill="#E5383B">NYC</text></g>`)}`,
+  /* Greek harbor: water glints and a little ferry far out, behind the rowing boats */
+  gh: n=>`${bgGlint(0,1024,395,525,26)}${fxMove('M1150 420 H-150',70,-25,`<g transform="scale(.42)">${FXA.ferry('#F4F1E1')}</g>`)}`
+});
+/* ===== gold (v23.66): Grok's gold outfits (GROK_050). Every character gets a gold hat + a gold body piece, rows flagged 2 (r[5]===2) and
+   locked until 100 golden butterflies are caught (gbGet().n >= GB_MAX). r[7] = size (x head width). Art packed in ccx/xp3.js. Body anchors a[6],a[7].
+   The golden butterfly now flaps with Grok's 4 frames (gb/golden_butterfly_1-4.webp). ===== */
+(function(){
+  const G = {"pip": [["✨", "hat", "Golden guard hat", "goldhat", 0, 2, 0, 1.0], ["✨", "body", "Golden guard jacket", "goldlook", 0, 2, 0, 1.31]], "priya": [["✨", "hat", "Golden marigold crown", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden paisley vest", "goldlook", 0, 2, 0, 1.0]], "colette": [["✨", "hat", "Golden beret", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden striped vest", "goldlook", 0, 2, 0, 1.12]], "lucia": [["✨", "hat", "Golden laurel", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden scarf vest", "goldlook", 0, 2, 0, 0.941]], "sami": [["✨", "hat", "Golden pharaoh hood", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden scarab tunic", "goldlook", 0, 2, 0, 1.19]], "nikos": [["✨", "hat", "Golden captain hat", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden sailor shirt", "goldlook", 0, 2, 0, 1.184]], "paco": [["✨", "hat", "Golden sombrero", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden fiesta jacket", "goldlook", 0, 2, 0, 1.0]], "mateo": [["✨", "hat", "Golden woolly hat", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden poncho", "goldlook", 0, 2, 0, 0.9]], "kenta": [["✨", "hat", "Golden headband", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden happi coat", "goldlook", 0, 2, 0, 1.105]], "skye": [["✨", "hat", "Golden snow hat", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden puffy vest", "goldlook", 0, 2, 0, 1.067]], "matilda": [["✨", "hat", "Golden bush hat", "goldhat", 0, 2, 0, 0.85], ["✨", "body", "Golden explorer vest", "goldlook", 0, 2, 0, 0.909]], "luna": [["✨", "hat", "Golden flower crown", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden butterfly vest", "goldlook", 0, 2, 0, 1.0]], "aoife": [["✨", "hat", "Golden top hat", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden sweater vest", "goldlook", 0, 2, 0, 1.222]], "ruby": [["✨", "hat", "Golden statue crown", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden city jacket", "goldlook", 0, 2, 0, 0.9]], "jabari": [["✨", "hat", "Golden safari helmet", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden safari vest", "goldlook", 0, 2, 0, 1.143]], "razzle": [["✨", "hat", "Golden sparkle top hat", "goldhat", 0, 2, 0, 1.3], ["✨", "body", "Golden show tuxedo", "goldlook", 0, 2, 0, 1.233]], "lisa": [["✨", "hat", "Golden bow", "../cc/lisa_goldhat", null, 2, "lisa", 1.3], ["✨", "body", "Golden spotted vest", "../cc/lisa_goldlook", null, 2, "lisa", 1.481]], "lucas": [["✨", "hat", "Golden detective cap", "../cc/lucas_goldhat", null, 2, "lucas", 1.3], ["✨", "body", "Golden explorer vest", "../cc/lucas_goldlook", null, 2, "lucas", 1.406]]}, A = {"pip": [0.5, 0.66], "priya": [0.52, 0.62], "colette": [0.5, 0.71], "lucia": [0.38, 0.55], "sami": [0.5, 0.66], "nikos": [0.5, 0.66], "paco": [0.47, 0.72], "mateo": [0.7, 0.5], "kenta": [0.38, 0.7], "skye": [0.46, 0.5], "matilda": [0.5, 0.8], "luna": [0.5, 0.62], "aoife": [0.45, 0.75], "ruby": [0.44, 0.62], "jabari": [0.38, 0.6], "razzle": [0.47, 0.6], "lisa": [0.55, 0.6], "lucas": [0.38, 0.6]}, S = {"lisa": [194, 420, 97], "lucas": [113, 420, 92]};
+  Object.keys(G).forEach(id=>{
+    if(id==='lisa'||id==='lucas'){ G[id].forEach(r=>PL_WEAR.push(r)); const a = CC_ART[id][3]; if(a.length<8) a.push(A[id][0], A[id][1]); PL_SPOT[id].body = S[id]; return; }
+    const d = CC[id]; if(!d) return; G[id].forEach(r=>d.i.push(r)); if(d.a.length<8) d.a.push(A[id][0], A[id][1]); });
+})();
+/* packed art arrives a few seconds after start: redraw the outfit pieces already laid over Lisa, Lucas and Razzle */
+setTimeout(()=>{ ccxLoad().then(()=>{ document.querySelectorAll('.pup .ccov, .rzrig .ccov').forEach(e=>e.remove()); document.querySelectorAll('.pup,.rzrig').forEach(e=>{ try{ ccOverlay(e); }catch(_){} });
+    const scr = app.querySelector('.screen'); if(scr && scr.querySelector('.hsimg')){ scr.querySelectorAll('.pl2wear').forEach(e=>e.remove()); try{ pl2Outfit(scr); }catch(_){} } }); }, 4100);
+PL_HOME_SPOT.lisa.body = [122,520,80]; PL_HOME_SPOT.lucas.body = [356,522,80];
+document.head.insertAdjacentHTML('beforeend', `<style>
+.gbf{height:58px}
+.gbf .gbimg{display:block;width:100%;height:100%;background:url(gb/golden_butterfly_1.webp) center/contain no-repeat;animation:gbfr .36s infinite;pointer-events:none}
+@keyframes gbfr{0%{background-image:url(gb/golden_butterfly_1.webp)}17%{background-image:url(gb/golden_butterfly_2.webp)}34%{background-image:url(gb/golden_butterfly_3.webp)}50%{background-image:url(gb/golden_butterfly_2.webp)}67%{background-image:url(gb/golden_butterfly_1.webp)}84%{background-image:url(gb/golden_butterfly_4.webp)}100%{background-image:url(gb/golden_butterfly_1.webp)}}
+.gbf.still .gbimg,html.calm .gbf .gbimg,html.lite .gbf .gbimg{animation:none}
+.cclku.gblk{font-size:11px;font-weight:800;white-space:nowrap;background:#FFF1C9;border-radius:8px;padding:0 3px;color:#5A3A00}
+</style>`);
 /* ===== anim13 (v23.54): scrapbook polish. Polaroid cards with washi tape, glossy page buttons, ribbon title, one-shot page-in. ===== */
 document.head.insertAdjacentHTML('beforeend', `<style>
 .sbscr .sbpaper{background-color:#FCF3DA;background-image:radial-gradient(circle at 12% 18%,rgba(255,255,255,.5) 0,rgba(255,255,255,0) 40%),radial-gradient(circle at 88% 82%,rgba(214,170,98,.25) 0,rgba(214,170,98,0) 45%),url(art/paper.jpg);background-size:auto,auto,cover;background-position:center;background-blend-mode:normal,normal,multiply}
