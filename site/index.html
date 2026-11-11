@@ -5749,7 +5749,7 @@ function rzFishPlay(g){
     const f = document.createElement('button'); f.className = 'rzfish'; f.dataset.t = t ? '1' : '0'; f.setAttribute('aria-label', 'Fish ' + ch);
     const ltr = Math.random() < .5; lane = (lane + 1 + Math.floor(Math.random()*2)) % lanes.length;
     f.style.top = lanes[lane] + 'px'; f.style.setProperty('--fc', rzOne(cols)); f.style.animationName = ltr ? 'rzswimR' : 'rzswimL'; f.style.animationDuration = ((e ? 9 : 7) + Math.random()*2) + 's';
-    f.innerHTML = `<svg viewBox="0 0 140 80" class="${ltr?'':'flip'}"><path d="M20 40 L0 18 L0 62 Z" fill="var(--fc)"/><ellipse cx="72" cy="40" rx="54" ry="32" fill="var(--fc)"/><circle cx="106" cy="32" r="6" fill="#fff"/><circle cx="108" cy="32" r="3" fill="#1D1D2B"/></svg><b>${ch}</b>`;
+    f.innerHTML = `<img src="rzp/fish.webp" class="${ltr?'flip':''}" alt=""><b>${ch}</b>`;
     f.addEventListener('animationend', ()=>f.remove());
     f.onclick = ()=>{ if(!G.live || f.classList.contains('got')) return;
       if(f.dataset.t==='1'){ poke(); f.classList.add('got'); got++; tone(600+got*80,.14,'triangle',.16); document.getElementById('cnt').innerHTML = `&#127907; ${got} / ${g.need}`; setTimeout(()=>f.remove(), 600);
@@ -6225,7 +6225,7 @@ function rzRacePlay(g){
   cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Roll the dice!</div>
     <div class="rzrace" id="rzrc" style="width:${per*sz}px;height:${rows*sz}px">${sq.map(([c,r],k)=>`<button class="rzsq ${k===g.len?'end':''}" data-k="${k}" style="left:${c*sz}px;top:${r*sz}px;width:${sz-6}px;height:${sz-6}px" aria-label="Square ${k}">${k===g.len?'🌸':k||'🏁'}</button>`).join('')}
     <div class="rzrb" id="rzrb" style="width:${sz-6}px;height:${sz-6}px;font-size:${sz*.55}px">🐞</div></div>
-    <div class="rzdice"><div id="rzdv"></div><button class="big green" id="rzroll">🎲 Roll!</button></div>`);
+    <div class="rzdice"><div id="rzdv"></div><button class="big green" id="rzroll"><img class="rzpico" src="rzp/dice.webp" alt=""> Roll!</button></div>`);
   let pos = 0, left = 0, target = 0; const bug = document.getElementById('rzrb'), roll = document.getElementById('rzroll');
   const place = k=>{ const [c,r] = sq[k]; bug.style.left = (c*sz)+'px'; bug.style.top = (r*sz)+'px'; };
   place(0);
@@ -9519,6 +9519,23 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 @keyframes gbfr{0%{background-image:url(gb/golden_butterfly_1.webp)}17%{background-image:url(gb/golden_butterfly_2.webp)}34%{background-image:url(gb/golden_butterfly_3.webp)}50%{background-image:url(gb/golden_butterfly_2.webp)}67%{background-image:url(gb/golden_butterfly_1.webp)}84%{background-image:url(gb/golden_butterfly_4.webp)}100%{background-image:url(gb/golden_butterfly_1.webp)}}
 .gbf.still .gbimg,html.calm .gbf .gbimg,html.lite .gbf .gbimg{animation:none}
 .cclku.gblk{font-size:11px;font-weight:800;white-space:nowrap;background:#FFF1C9;border-radius:8px;padding:0 3px;color:#5A3A00}
+</style>`);
+/* ===== rzart (v23.69): Grok's painted Razzle pieces (RZ_basket, RZ_drum, RZ_fish, RZ_lilypad, RZ_paint_pot, RZ_dice) in rzp/ ===== */
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzbask{font-size:0!important;width:82px;height:102px;background:url(rzp/basket.webp) center bottom/contain no-repeat;filter:drop-shadow(0 6px 4px rgba(0,0,0,.2))}
+.rzdrum{background:url(rzp/drum.webp) center/contain no-repeat!important;box-shadow:none!important;border-radius:0!important;filter:drop-shadow(0 10px 6px rgba(0,0,0,.22))}
+.rzdrum span{opacity:0}
+.q20pad i{background:url(rzp/lilypad.webp) center/contain no-repeat!important;border:0!important;box-shadow:none!important;border-radius:0!important;inset:-8px -2px -4px!important;filter:drop-shadow(0 4px 3px rgba(0,0,0,.2))}
+.q20pad.yay i{filter:drop-shadow(0 0 12px #FFD23F) saturate(1.35)!important}
+.rzfish{width:150px;height:113px}
+.rzfish img{width:100%;height:100%;display:block;pointer-events:none}.rzfish img.flip{transform:scaleX(-1)}
+.rzfish.shake img{animation:shake .35s}
+.rzfish b{left:27%;width:40%;top:25%;font-size:38px;color:#3A2A14;text-shadow:none}
+.rzpot[data-c] span{width:90px;height:90px;border:0;box-shadow:none;border-radius:0;background:none;position:relative;isolation:isolate}
+.rzpot[data-c] span::before{content:'';position:absolute;inset:0;background:var(--pc);-webkit-mask:url(rzp/paintpot.webp) center/contain no-repeat;mask:url(rzp/paintpot.webp) center/contain no-repeat}
+.rzpot[data-c] span::after{content:'';position:absolute;inset:0;background:url(rzp/paintpot.webp) center/contain no-repeat;mix-blend-mode:multiply}
+.rzpico{height:50px;width:auto;vertical-align:middle;margin:-8px 4px -8px 0}
+.rzpot[data-c]{border:0!important;border-radius:20px!important;background:rgba(255,253,246,.9)!important;width:auto!important;height:auto!important}
 </style>`);
 /* ===== anim13 (v23.54): scrapbook polish. Polaroid cards with washi tape, glossy page buttons, ribbon title, one-shot page-in. ===== */
 document.head.insertAdjacentHTML('beforeend', `<style>
