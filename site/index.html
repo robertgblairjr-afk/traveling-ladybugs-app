@@ -7262,10 +7262,10 @@ RZ_MAKE.pots = function(){ const e = easy(), C = e ? 3 : 4, K = e ? 3 : 4, E = 2
     return {type:'pots', title: e ? 'Paint pots! Pour until each pot is one colour.' : 'Paint pots! Sort every colour into its own pot.', K, T, sig:T.map(t=>t.join('')).join('|')}; }
   return RZ_MAKE.numtrain(); };
 function rzPotsPlay(g){
-  const K = g.K; let T = g.T.map(t=>t.slice()), sel = -1, hist = [], busy = false; const H = 44;
+  const K = g.K; let T = g.T.map(t=>t.slice()), sel = -1, hist = [], busy = false; const H = K>3 ? 34 : 40;
   cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Tap a pot, then where to pour</div><div class="rzpotw" id="rzpotw"></div><button class="big ghost rzpotu" id="rzpotu">&#8630; Undo</button>`);
   const draw = ()=>{ document.getElementById('rzpotw').innerHTML = T.map((t,i)=>`<button class="rzpot${i===sel?' sel':''}${t.length===K && t.every(c=>c===t[0])?' full':''}" data-i="${i}" style="height:${K*H+26}px" aria-label="Paint pot ${i+1}">
-      <span class="rzpotlip"></span>${t.map((c,k)=>`<i style="bottom:${8+k*H}px;height:${H}px;background:${RZ_POTC[c]}"></i>`).join('')}</button>`).join('');
+      <span class="rzpotm">${t.map((c,k)=>`<i style="bottom:${6+k*74/K}%;height:${74/K+.6}%;background:${RZ_POTC[c]}"></i>`).join('')}</span><span class="rzpota"></span></button>`).join('');
     document.querySelectorAll('.rzpot').forEach(b=>b.onclick=()=>tap(+b.dataset.i)); };
   const tap = i=>{ if(!G.live || busy) return;
     if(sel<0){ if(!T[i].length){ miss(); return; } poke(); sel = i; tone(520,.06,'triangle',.1); draw(); return; }
@@ -9536,6 +9536,22 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzpot[data-c] span::after{content:'';position:absolute;inset:0;background:url(rzp/paintpot.webp) center/contain no-repeat;mix-blend-mode:multiply}
 .rzpico{height:50px;width:auto;vertical-align:middle;margin:-8px 4px -8px 0}
 .rzpot[data-c]{border:0!important;border-radius:20px!important;background:rgba(255,253,246,.9)!important;width:auto!important;height:auto!important}
+</style>`);
+/* ===== hubfit (v23.70): Pavilion footer fits at 1024 wide (the solved chip was cut off). ===== */
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzfoot{left:300px;right:32px;gap:10px}
+.rzfoot .wt-prog{white-space:nowrap;flex:0 0 auto;padding:6px 12px;font-size:15px;border-radius:999px}
+.rzfoot .lvl{flex:0 1 auto}
+</style>`);
+/* ===== potart (v23.71): Paint pots sorting game uses Grok's painted pot (rzp/paintpot.webp); paint layers sit inside the pot. ===== */
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rzpotw{gap:18px}
+.rzpot[data-i]{width:118px;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;isolation:isolate;filter:drop-shadow(0 6px 4px rgba(60,40,10,.25))}
+.rzpot[data-i] span{width:auto;height:auto;border:0;border-radius:0;box-shadow:none;animation:none}
+.rzpot[data-i] .rzpotm{position:absolute;inset:0;-webkit-mask:url(rzp/paintpot.webp) 0 0/100% 100% no-repeat;mask:url(rzp/paintpot.webp) 0 0/100% 100% no-repeat;background:#fff}
+.rzpot[data-i] .rzpotm i{left:0;right:0;border-radius:0!important;box-shadow:inset 0 -5px 0 rgba(0,0,0,.12),inset 0 3px 0 rgba(255,255,255,.25)}
+.rzpot[data-i] .rzpota{position:absolute;inset:0;background:url(rzp/paintpot.webp) 0 0/100% 100% no-repeat;mix-blend-mode:multiply;pointer-events:none}
+.rzpot[data-i].full{box-shadow:none!important;filter:drop-shadow(0 0 6px #FFD23F) drop-shadow(0 0 3px #FFB800)}
 </style>`);
 /* ===== anim13 (v23.54): scrapbook polish. Polaroid cards with washi tape, glossy page buttons, ribbon title, one-shot page-in. ===== */
 document.head.insertAdjacentHTML('beforeend', `<style>
