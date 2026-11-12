@@ -4669,7 +4669,7 @@ function rzWin(){
   const k = RZ.n % 7 === 0 ? 'CELEBRATE_002' : rzOne(['CELEBRATE_001','CELEBRATE_003','CELEBRATE_004']);
   const m = document.createElement('div'); m.className = 'modal';
   m.innerHTML = `<div class="card rzwin">${rzRig("rzhop",278)}<div class="rzwtxt"><div class="era">Puzzle solved!</div><h3 id="rzcap">${RZ_TXT[k]}</h3>
-    <p class="rzcount">&#127775; ${RZ.n} ${RZ.n===1?'puzzle':'puzzles'} solved in Challenge Mode</p>
+    <p class="rzcount">${rzPrize(RZ.n)} ${RZ.n} ${RZ.n===1?'puzzle':'puzzles'} solved in Challenge Mode</p>
     <div class="row"><button class="big green pulse" data-next>Next puzzle!</button><button class="big ghost" data-hub>Pavilion</button></div></div></div>`;
   stage.appendChild(m); setTimeout(()=>rzSay(k), 300);
   m.querySelector('[data-next]').onclick = ()=>{ hush(); sfx.pop(); m.remove(); rzNext(); };
@@ -5876,7 +5876,7 @@ function rzPipesPlay(g){
   const S = g.C>3 ? 104 : 124, L = Math.round(512 - g.C*S/2), T = 160 + Math.round((g.R===3 ? 40 : 10));
   cgameShell('rz', 0, CITIES.rz.stops[0].scene(), `<div class="counter" id="cnt">Tap a pipe to turn it</div>
     <div class="rzpipes" id="rzpp" style="left:${L}px;top:${T}px;width:${g.C*S}px;height:${g.R*S}px">${g.cells.map((m,k)=>`<button class="rzpc" data-k="${k}" aria-label="Pipe" style="left:${(k%g.C)*S}px;top:${Math.floor(k/g.C)*S}px;width:${S}px;height:${S}px"><span style="transform:rotate(${g.rot[k]*90}deg)">${rzPipeSVG(m)}</span></button>`).join('')}</div>
-    <div class="rzpsrc" style="left:${L-74}px;top:${T+g.s*S+S/2-36}px">💧</div><div class="rzpdst" id="rzpf" style="left:${L+g.C*S+8}px;top:${T+g.e*S+S/2-40}px">🌱</div>`);
+    <div class="rzpsrc" style="left:${L-74}px;top:${T+g.s*S+S/2-36}px">${rpi('water_drop','💧','height:64px')}</div><div class="rzpdst" id="rzpf" style="left:${L+g.C*S+8}px;top:${T+g.e*S+S/2-40}px">${rpi('sprout','🌱','height:76px')}</div>`);
   const rot = g.rot.slice(), turns = rot.map(r=>r*90); let done = false;
   document.querySelectorAll('.rzpc').forEach(b=>b.onclick=()=>{ if(!G.live || done) return; poke(); const k = +b.dataset.k; rot[k] = (rot[k]+1)%4; turns[k] += 90; b.firstElementChild.style.transform = `rotate(${turns[k]}deg)`; tone(380+Math.random()*80,.06,'square',.06);
     if(rzPipesSolved(g, rot)){ done = true; clearHint(); G.getT = null; document.getElementById('rzpp').classList.add('flow'); tone(523,.2,'triangle',.15); tone(784,.3,'triangle',.15,.2);
@@ -6218,7 +6218,7 @@ function rzTttPlay(g){
 /* ---------- Ladybug race ---------- */
 RZ_MAKE.race = function(){ const e = easy(); return {type:'race', title: e ? 'Roll the dice and hop to the flower!' : 'Roll two dice and hop to the flower!', len:e ? 12 : 20, dice:e ? 1 : 2, sig:'race'+(e?'e':'c')+Math.floor(Math.random()*40)}; };
 const RZ_PIPS = {1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
-function rzDie(n){ return `<span class="rzdie">${Array.from({length:9},(_,k)=>`<i class="${RZ_PIPS[n].includes(k)?'on':''}"></i>`).join('')}</span>`; }
+function rzDie(n){ if(rpu('die_'+n)) return `<span class="rzdie rzdieimg"><img src="${rpu('die_'+n)}" alt="" draggable="false"></span>`; return `<span class="rzdie">${Array.from({length:9},(_,k)=>`<i class="${RZ_PIPS[n].includes(k)?'on':''}"></i>`).join('')}</span>`; }
 function rzRacePlay(g){
   const per = Math.ceil((g.len+1)/2), rows = 2, sz = g.len<=12 ? 104 : 74;
   const sq = Array.from({length:g.len+1},(_,k)=>{ const r = Math.floor(k/per), c0 = k%per; const c = r%2 ? per-1-c0 : c0; return [c, r]; });
@@ -6682,8 +6682,8 @@ function rzKeyMazePlay(g){
   rzMazePlay(g, CITIES.rz); const box = document.getElementById('rzm'); if(!box) return;
   const cs = box.offsetWidth / W, held = new Set();
   const lay = document.createElement('div'); lay.className = 'rzkl'; box.appendChild(lay);
-  const draw = ()=>{ lay.innerHTML = g.keys.map((k,i)=>held.has(i) ? '' : `<i style="left:${(k%W)*cs}px;top:${((k/W)|0)*cs}px;width:${cs}px;height:${cs}px;font-size:${cs*.62}px">${['🔑','🗝️'][i]}</i>`).join('')
-    + g.gates.map((k,i)=>held.has(i) ? '' : `<i class="gate" style="left:${(k%W)*cs}px;top:${((k/W)|0)*cs}px;width:${cs}px;height:${cs}px;font-size:${cs*.62}px">🔒</i>`).join(''); };
+  const draw = ()=>{ lay.innerHTML = g.keys.map((k,i)=>held.has(i) ? '' : `<i style="left:${(k%W)*cs}px;top:${((k/W)|0)*cs}px;width:${cs}px;height:${cs}px;font-size:${cs*.62}px">${rpi('key',['🔑','🗝️'][i],`height:${Math.round(cs*.8)}px;vertical-align:middle`)}</i>`).join('')
+    + g.gates.map((k,i)=>held.has(i) ? '' : `<i class="gate" style="left:${(k%W)*cs}px;top:${((k/W)|0)*cs}px;width:${cs}px;height:${cs}px;font-size:${cs*.62}px">${rpi('gate','🔒',`height:${Math.round(cs*.82)}px;vertical-align:middle`)}</i>`).join(''); };
   draw();
   const bugCell = ()=>{ const b = box.querySelector('.rzbug'); const m = (b.getAttribute('transform')||'').match(/translate\(([\d.]+)[ ,]+([\d.]+)/); return Math.floor(+m[2]/cs)*W + Math.floor(+m[1]/cs); };
   let last = g.start;
@@ -7394,7 +7394,7 @@ function rzRopePlay(g){
       <g transform="translate(774 470)"><ellipse cy="2" rx="30" ry="7" fill="#0002"/><ellipse cx="-11" cy="-2" rx="13" ry="7" fill="#fff" stroke="#1D1D2B" stroke-width="3"/><ellipse cx="11" cy="-2" rx="13" ry="7" fill="#fff" stroke="#1D1D2B" stroke-width="3"/><rect x="-18" y="-92" width="36" height="86" rx="16" fill="#2B7BE4" stroke="#1D1D2B" stroke-width="4"/><ellipse cx="-6" cy="-70" rx="4" ry="14" fill="#fff" opacity=".3"/><circle cy="-114" r="27" fill="#FF7F11" stroke="#1D1D2B" stroke-width="4"/><ellipse cx="-9" cy="-128" rx="8" ry="4" fill="#fff" opacity=".45"/><circle cx="-9" cy="-116" r="4.5" fill="#1D1D2B"/><circle cx="9" cy="-116" r="4.5" fill="#1D1D2B"/><circle cx="-7.5" cy="-117.5" r="1.4" fill="#fff"/><circle cx="10.5" cy="-117.5" r="1.4" fill="#fff"/><ellipse cx="-17" cy="-106" rx="5" ry="3.4" fill="#FF8FA3" opacity=".75"/><ellipse cx="17" cy="-106" rx="5" ry="3.4" fill="#FF8FA3" opacity=".75"/><path d="M-9 -104 q9 10 18 0" stroke="#1D1D2B" stroke-width="3.5" fill="none" stroke-linecap="round"/><circle cx="12" cy="-138" r="8" fill="#FFD23F" stroke="#1D1D2B" stroke-width="3"/><circle cx="-4" cy="-141" r="8" fill="#FFD23F" stroke="#1D1D2B" stroke-width="3"/><circle cx="24" cy="-62" r="9" fill="#FF7F11" stroke="#1D1D2B" stroke-width="3"/></g>
       <ellipse cx="512" cy="562" rx="60" ry="10" fill="#0003" id="rzjrsh"/></svg>
     <div class="rzjrgo" id="rzjrgo">Jump!</div><button class="rzjrtap" id="rzjrtap" aria-label="Jump">Tap to jump!</button></div>`);
-  const f = document.getElementById('rzjrf'), bug = document.getElementById('rzjrbug'), go = document.getElementById('rzjrgo');
+  rzRopeFaces(); const f = document.getElementById('rzjrf'), bug = document.getElementById('rzjrbug'), go = document.getElementById('rzjrgo');
   f.classList.toggle('hard', !!g.fast); const S = window._rzjr = {ph:.25, jt:-1, n:0, per:g.per, pause:0, done:false};
   S.toBottom = ()=>{ const p = S.ph % 1; return ((0.5 - p + 1) % 1) * S.per; };
   const jump = ()=>{ if(!G.live || S.done || S.jt >= 0 || S.pause > 0) return; S.jt = 0; tone(660,.07,'triangle',.1); };
@@ -9553,6 +9553,102 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rzpot[data-i] .rzpota{position:absolute;inset:0;background:url(rzp/paintpot.webp) 0 0/100% 100% no-repeat;mix-blend-mode:multiply;pointer-events:none}
 .rzpot[data-i].full{box-shadow:none!important;filter:drop-shadow(0 0 6px #FFD23F) drop-shadow(0 0 3px #FFB800)}
 </style>`);
+/* ===== ropefaces (v23.72): Jump rope holders use two painted friend faces instead of drawn heads. ===== */
+function rzRopeFaces(){
+  try{
+    const ids = GM_FACES.slice().sort(()=>Math.random()-.5).slice(0,2), NS = 'http://www.w3.org/2000/svg';
+    document.querySelectorAll('#rzjrf .rzjrsv > g[transform^="translate(250 470)"], #rzjrf .rzjrsv > g[transform^="translate(774 470)"]').forEach((g,k)=>{
+      const kids = Array.from(g.children), a = kids.findIndex(e=>e.tagName==='circle' && e.getAttribute('r')==='27'); if(a<0) return;
+      for(let i=a;i<kids.length-1;i++) kids[i].setAttribute('display','none');
+      const im = document.createElementNS(NS,'image'); im.setAttribute('href', q24Face(ids[k])); im.setAttribute('x',-46); im.setAttribute('y',-160); im.setAttribute('width',92); im.setAttribute('height',92);
+      g.insertBefore(im, kids[kids.length-1]);
+    });
+  }catch(e){}
+}
+/* ===== rp2 (v23.73): Grok's CLAUDE_015 pieces (cups, lanterns, nests, blocks, dice, planks, ice, keys) packed in rzp/rp2.js (window.RPX data URIs, RPD sizes). ===== */
+(function(){ try{ const sc = document.createElement('script'); sc.src = 'rzp/rp2.js'; sc.onload = ()=>{ try{ rpCss(); }catch(e){} }; document.head.appendChild(sc); }catch(e){} })();
+function rpu(n){ return (window.RPX && window.RPX[n]) || ''; }
+function rpi(n, fb, st){ const u = rpu(n); return u ? `<img class="rpi" src="${u}" alt="" draggable="false" style="${st||''}">` : fb; }
+function rpCss(){
+  if(!window.RPX || document.getElementById('rpvars')) return;
+  document.head.insertAdjacentHTML('beforeend', `<style id="rpvars">:root{${Object.keys(RPX).map(k=>`--rp-${k}:url(${RPX[k]})`).join(';')}}
+.rpi{display:inline-block;pointer-events:none;-webkit-user-drag:none}
+/* shell game cups */
+.rzcup .cup{width:130px;height:142px;background:var(--rp-cup) center bottom/contain no-repeat!important;clip-path:none!important;box-shadow:none!important;border-radius:0!important;filter:drop-shadow(0 7px 4px rgba(60,30,10,.3))}
+.rzcup .cup:after{display:none}
+/* lanterns */
+.rzlan span{display:block;font-size:0;width:84%;height:84%;margin:auto;background:var(--rp-lantern_off) center/contain no-repeat;filter:none!important}
+.rzlan.on span{background-image:var(--rp-lantern_on);filter:drop-shadow(0 0 10px #FFB830)!important}
+/* nests and eggs */
+.rznst{height:118px}
+.rznst::before{display:none}
+.rznst::after{left:-4px;right:-4px;bottom:0;height:96px;border:0;border-radius:0;background:var(--rp-nest) center bottom/100% 100% no-repeat}
+.rznst.ok::after,.rznst.over::after{box-shadow:none}
+.rznst.ok::after{filter:drop-shadow(0 0 7px #3FA34D) drop-shadow(0 0 3px #3FA34D)}.rznst.over::after{filter:drop-shadow(0 0 7px #E5383B) drop-shadow(0 0 3px #E5383B)}
+.rznsteggs{bottom:30px;z-index:2}
+.rznstegg{width:34px;height:44px;border:0;border-radius:0;background:var(--rp-egg) center/100% 100% no-repeat;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
+.rznstegg.hatch{border:0}
+.rznstbkeggs{background:var(--rp-egg_basket) center/100% 100% no-repeat;border:0;border-radius:0;min-width:250px;min-height:112px;padding:34px 34px 20px;align-content:flex-end}
+.rznstbkeggs i{width:24px;height:31px;border:0;border-radius:0;background:var(--rp-egg) center/100% 100% no-repeat}
+/* tower blocks */
+.rztwb,.rztwbl{border:0!important;border-radius:0!important;box-shadow:none!important;filter:drop-shadow(0 3px 2px rgba(0,0,0,.3))}
+.rztwbl i{display:none}
+/* bridge planks */
+.rzbdpp,.rzbdp{background:var(--rp-plank) 0 0/100% 100% no-repeat!important;border:0!important;border-radius:0!important;height:42px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.3))}
+.rzbdpp i,.rzbdp i{border:0!important}
+/* race board */
+.rzdieimg{width:70px;height:70px;padding:0;border:0;background:none;box-shadow:none;display:block}.rzdieimg img{width:100%;height:100%;display:block;filter:drop-shadow(0 4px 2px rgba(0,0,0,.25))}
+.rzsq{background:var(--rp-tile_leaf) center/contain no-repeat;border:0;box-shadow:none;color:#fff;text-shadow:0 2px 0 rgba(0,60,0,.55)}
+.rzsq.step{background:var(--rp-tile_leaf) center/contain no-repeat;filter:drop-shadow(0 0 9px #FFE066) brightness(1.18)}
+.rzsq.end{background:var(--rp-tile_leaf) center/contain no-repeat;filter:drop-shadow(0 0 9px #FF8FB1)}
+/* ice maze */
+.rzice{background:var(--rp-ice_tile) 0 0/110px 110px}
+.rzice > i.rk{font-size:0;background:var(--rp-ice_rock) center 60%/92% no-repeat;border-color:transparent}
+html.calm .rzcup .cup,html.lite .rzcup .cup{transition:none}
+</style>`);
+  try{ const cols = ['block_red','block_blue','block_yellow','block_green'].map(n=>`var(--rp-${n}) 0 0/100% 100% no-repeat`); RZ_TWC.splice(0, RZ_TWC.length, ...cols); }catch(e){}
+}
+/* ===== ev1 (v23.74): Grok's everyday pictures replace emoji inside Challenge games (rzp/ev1.js -> window.EVX) ===== */
+(function(){
+  try{ const sc = document.createElement('script'); sc.src = 'rzp/ev1.js'; sc.onload = ()=>{ try{ evScan(); }catch(e){} }; document.head.appendChild(sc); }catch(e){}
+  const M = {'🍎':'apple_red','🍏':'apple_green','🍌':'banana','🍒':'cherry','🍇':'grape','🍋':'lemon','🍊':'orange','🍐':'pear','🍓':'strawberry','🍉':'watermelon','🥕':'carrot','🌽':'corn','🥦':'broccoli','🫑':'pepper',
+  '🐶':'dog','🐕':'dog','🐱':'cat','🐈':'cat','🐰':'rabbit','🐇':'rabbit','🐻':'bear','🦁':'lion','🐘':'elephant','🦒':'giraffe','🐭':'mouse','🐁':'mouse','🐢':'turtle','🐸':'frog','🐟':'fish','🐠':'fish','🐳':'whale','🐋':'whale','🐙':'octopus','🦀':'crab','🐥':'duck_chick','🐤':'duck_chick','🐣':'duck_chick','🦉':'owl',
+  '🐝':'bee','🦋':'butterfly','🐦':'bird','🕊':'dove','🦅':'eagle','🐞':'ladybug_side','🚗':'car','🚂':'train','⛵':'sailboat','✈':'plane','🚒':'fire_truck','🚌':'bus','🚲':'bike',
+  '☀':'sun','🌙':'moon','⭐':'star','☁':'cloud','🌧':'rain_cloud','❄':'snowflake','🔥':'flame','🌊':'wave','🏜':'dry','😀':'happy','😢':'sad','⬆':'up_arrow','⬇':'down_arrow','🔊':'loud','🔇':'quiet','🏁':'flag_finish','🧀':'cheese','🏮':'lantern_small','🧺':'basket_small','⚖':'scale','🔨':'hammer'};
+  window.EV_MAP = M;
+  function key(t){ return (t||'').replace(/[︎️\s]/g,''); }
+  function undo(el){ el.style.fontSize = el.dataset.evFs || ''; el.style.width = el.dataset.evW || ''; el.style.height = el.dataset.evH || ''; el.style.backgroundImage = ''; el.style.backgroundSize = ''; el.style.backgroundRepeat = ''; el.style.backgroundPosition = ''; el.style.color = el.dataset.evC || ''; el.style.display = el.dataset.evD || ''; delete el.dataset.ev; delete el.dataset.evE; }
+  function swap(el){
+    if(!(el instanceof HTMLElement) || el.children.length || el.closest('svg,script,style,textarea,input')) return;
+    const raw = el.textContent, k = key(raw);
+    if(el.dataset.ev){ if(el.dataset.evE === raw) return; undo(el); }
+    if(!k) return;
+    const n = M[k], u = n && window.EVX && window.EVX['EV_'+n]; if(!u) return;
+    const cs = getComputedStyle(el), w = el.offsetWidth, h = el.offsetHeight, fs = parseFloat(cs.fontSize) || 24;
+    if(!w || !h) return;
+    el.dataset.evFs = el.style.fontSize; el.dataset.evW = el.style.width; el.dataset.evH = el.style.height; el.dataset.evC = el.style.color; el.dataset.evD = el.style.display;
+    el.dataset.ev = n; el.dataset.evE = raw;
+    if(cs.display === 'inline') el.style.display = 'inline-block';
+    const px = Math.max(10, Math.min(Math.max(w, h), fs * 1.3));
+    el.style.width = w + 'px'; el.style.height = h + 'px'; el.style.fontSize = '0'; el.style.color = 'transparent';
+    el.style.backgroundImage = 'url(' + u + ')'; el.style.backgroundRepeat = 'no-repeat'; el.style.backgroundPosition = 'center'; el.style.backgroundSize = px + 'px ' + px + 'px';
+  }
+  window.evScan = function(root){
+    if(typeof CUR === 'undefined' || CUR !== 'rz' || !window.EVX) return;
+    const r = root || document.getElementById('app') || document.body;
+    r.querySelectorAll('*').forEach(el=>{ if(!el.children.length && el.textContent && el.textContent.length < 8) swap(el); });
+  };
+  let pend = 0;
+  try{ new MutationObserver(()=>{ if(pend || CUR !== 'rz') return; pend = setTimeout(()=>{ pend = 0; try{ evScan(); }catch(e){} }, 60); }).observe(document.body, {childList:true, subtree:true, characterData:true}); }catch(e){}
+})();
+
+function rzPrize(n){
+  const X = window.EVX || {}, pick = n===1 ? 'GM_ribbon_new' : n%10===0 ? 'GM_trophy_gold' : n%7===0 ? 'GM_crown_small' : n%5===0 ? 'GM_medal_ladybug' : n%3===0 ? 'GM_heart_gold' : 'GM_star_big';
+  const u = X[pick]; if(!u) return '&#127775;';
+  const big = n===1 || n%5===0 || n%7===0;
+  return `<img src="${u}" alt="" draggable="false" style="height:${big?44:28}px;vertical-align:middle;margin-right:4px;${big?'animation:rzprz .9s ease-out':''}">`;
+}
+document.head.insertAdjacentHTML('beforeend','<style>@keyframes rzprz{0%{transform:scale(.2) rotate(-25deg);opacity:0}70%{transform:scale(1.25) rotate(6deg)}100%{transform:none;opacity:1}}html.calm .rzcount img,html.lite .rzcount img{animation:none!important}</style>');
 /* ===== anim13 (v23.54): scrapbook polish. Polaroid cards with washi tape, glossy page buttons, ribbon title, one-shot page-in. ===== */
 document.head.insertAdjacentHTML('beforeend', `<style>
 .sbscr .sbpaper{background-color:#FCF3DA;background-image:radial-gradient(circle at 12% 18%,rgba(255,255,255,.5) 0,rgba(255,255,255,0) 40%),radial-gradient(circle at 88% 82%,rgba(214,170,98,.25) 0,rgba(214,170,98,0) 45%),url(art/paper.jpg);background-size:auto,auto,cover;background-position:center;background-blend-mode:normal,normal,multiply}
