@@ -9649,6 +9649,236 @@ function rzPrize(n){
   return `<img src="${u}" alt="" draggable="false" style="height:${big?44:28}px;vertical-align:middle;margin-right:4px;${big?'animation:rzprz .9s ease-out':''}">`;
 }
 document.head.insertAdjacentHTML('beforeend','<style>@keyframes rzprz{0%{transform:scale(.2) rotate(-25deg);opacity:0}70%{transform:scale(1.25) rotate(6deg)}100%{transform:none;opacity:1}}html.calm .rzcount img,html.lite .rzcount img{animation:none!important}</style>');
+/* ===== zoom (v23.75): "Zoom! Road Trip" Play Room game for vehicle fans: drive, collect stars, dodge cones, unlock vehicles ===== */
+const ZM_VEH = [['car','Red car',0],['bus','School bus',10],['fire_truck','Fire truck',25],['bike','Bike',45],['plane','Plane',70],['train','Train',100]];
+function zmTotal(){ const z = plGet().zs; return +z || 0; }
+function zmImg(n, h){ const u = (window.EVX || {})['EV_'+n]; return u ? `<img src="${u}" alt="" draggable="false" style="height:${h}px;width:${h}px">` : `<span style="font-size:${h*.7}px">${{car:'🚗',bus:'🚌',fire_truck:'🚒',bike:'🚲',plane:'✈️',train:'🚂',star:'⭐',flag_finish:'🏁'}[n]||'⭐'}</span>`; }
+function plZoomPick(){
+  const T = zmTotal(), cur = plGet().zv || 'car';
+  app.innerHTML = `<div class="screen plroom"><img class="plbg" src="bg/001.webp" alt="">${plHdr('Zoom! Road Trip','Pick your ride')}
+    <div class="zmgar">${ZM_VEH.map(([k,t,need])=>{ const ok = T >= need; return `<button class="zmv${ok?'':' lock'}" data-k="${k}" aria-label="${t}">${zmImg(k, 120)}<b>${t}</b><small>${ok ? (k===cur?'Your ride':'Tap to drive') : (need-T)+' more stars to unlock'}</small></button>`; }).join('')}</div>
+    <div class="zmtot">${zmImg('star', 34)} <b>${T}</b> stars collected</div></div>`;
+  plBind(showPlayRoom);
+  app.querySelectorAll('.zmv').forEach(b=>b.onclick=()=>{ if(b.classList.contains('lock')){ tone(220,.12,'sine',.08); b.classList.remove('shk'); void b.offsetWidth; if(!plCalm()) b.classList.add('shk'); return; } sfx.chime(); const P = plGet(); P.zv = b.dataset.k; plSet(P); plZoom(b.dataset.k); });
+}
+function plZoom(veh){
+  const calm = plCalm(), LANES = [405, 505, 605], GOAL = 10, VW = 1024;
+  app.innerHTML = `<div class="screen plzm"><img class="plbg" src="bg/001.webp" alt="">${plHdr('Zoom! Road Trip','Collect 10 stars!')}
+    <div class="zmroad" id="zmroad"></div><div class="zmhud" id="zmhud">${zmImg('star', 34)} <b id="zmn">0</b> / ${GOAL}</div>
+    <div class="zmlay" id="zmlay"></div>
+    <button class="zmbtn up" id="zmup" aria-label="Up">&#9650;</button><button class="zmbtn dn" id="zmdn" aria-label="Down">&#9660;</button>
+    <button class="zmhorn" id="zmhorn" aria-label="Honk">&#128227;<small>Honk</small></button></div>`;
+  plBind(plZoomPick);
+  const lay = document.getElementById('zmlay'), road = document.getElementById('zmroad'), SZ = veh==='bike' ? 120 : 150;
+  const me = document.createElement('div'); me.className = 'zmme'; me.innerHTML = zmImg(veh, SZ); lay.appendChild(me);
+  let lane = 1, y = LANES[1], x = 150, hop = 0, got = 0, items = [], t0 = 0, spawn = 0.8, off = 0, over = false, slow = 0, last = 0, flag = null, flagOn = false;
+  const setLane = l=>{ lane = Math.max(0, Math.min(2, l)); };
+  document.getElementById('zmup').onclick = ()=>{ setLane(lane-1); tone(500,.05,'triangle',.08); };
+  document.getElementById('zmdn').onclick = ()=>{ setLane(lane+1); tone(420,.05,'triangle',.08); };
+  document.getElementById('zmhorn').onclick = ()=>{ tone(330,.18,'square',.07); setTimeout(()=>tone(262,.22,'square',.07),120); };
+  const scr = app.querySelector('.plzm'); const rect = ()=>scr.getBoundingClientRect();
+  const drag = ev=>{ if(ev.target.closest('.hdr,.zmbtn,.zmhorn')) return; const r = rect(), ry = (ev.clientY - r.top) / r.height * 700; setLane(ry < 455 ? 0 : ry < 545 ? 1 : 2); };
+  scr.addEventListener('pointerdown', drag); scr.addEventListener('pointermove', ev=>{ if(ev.buttons) drag(ev); });
+  const mk = (kind, ln)=>{ const el = document.createElement('div'); el.className = 'zmit ' + kind;
+    el.innerHTML = kind==='star' ? zmImg('star', 76) : kind==='cone' ? `<svg viewBox="0 0 60 80" width="62" height="82"><ellipse cx="30" cy="74" rx="26" ry="6" fill="#00000030"/><rect x="6" y="66" width="48" height="9" rx="3" fill="#E87A1A"/><path d="M30 6 L48 66 H12Z" fill="#FF8A1F" stroke="#1D1D2B" stroke-width="3" stroke-linejoin="round"/><path d="M23 30 L37 30 L40 42 L20 42Z" fill="#fff"/></svg>` : `<svg viewBox="0 0 110 40" width="116" height="42"><ellipse cx="55" cy="22" rx="52" ry="16" fill="#6FC3F2" stroke="#2B7BE4" stroke-width="3"/><ellipse cx="42" cy="17" rx="14" ry="4" fill="#fff" opacity=".6"/></svg>`;
+    lay.appendChild(el); const o = {kind, ln, x: VW + 80, el, dead: false}; el.style.top = (LANES[ln] - (kind==='star' ? 100 : kind==='cone' ? 78 : 22)) + 'px'; items.push(o); return o; };
+  const finish = ()=>{ if(over) return; over = true; sfx.win(); if(typeof confetti==='function') confetti();
+    const before = zmTotal(), P = plGet(); P.zs = before + GOAL; plSet(P);
+    const nu = ZM_VEH.filter(v=>v[2] > before && v[2] <= before + GOAL);
+    const m = document.createElement('div'); m.className = 'plrwin';
+    m.innerHTML = `<div class="plrcard"><h2>You made it!</h2><div style="margin:4px 0">${zmImg('flag_finish', 90)}${zmImg('star', 90)}</div><p>${GOAL} stars for your collection!</p>${nu.length ? `<p style="font-weight:900;color:#C8501E">New ride: ${nu.map(v=>v[1]).join(' and ')}!</p><div>${nu.map(v=>zmImg(v[0], 96)).join('')}</div>` : ''}
+      <div class="row"><button class="big green" id="zmagain">Drive again</button><button class="big ghost" id="zmout">Garage</button></div></div>`;
+    scr.appendChild(m); document.getElementById('zmagain').onclick = ()=>{ sfx.pop(); plZoom(veh); }; document.getElementById('zmout').onclick = ()=>{ sfx.pop(); plZoomPick(); }; };
+  const frame = ts=>{
+    if(!document.getElementById('zmlay')) return; if(!last) last = ts; const dt = Math.min(.05, (ts - last)/1000); last = ts;
+    if(!over){
+      const sp = (calm ? 170 : 270) * (slow > 0 ? .45 : 1); slow = Math.max(0, slow - dt);
+      off = (off + sp*dt) % 120; road.style.backgroundPosition = `${-off}px 0, 0 0`;
+      y += (LANES[lane] - y) * Math.min(1, dt*12); hop = Math.max(0, hop - dt*3);
+      const hy = (hop>0 && !calm) ? -Math.sin(hop*Math.PI/1)*34 : 0;
+      me.style.transform = `translate(${x}px, ${y - SZ + 14 + hy}px) scaleX(-1)`;
+      if(got < GOAL){ spawn -= dt; if(spawn <= 0){ spawn = .85 + Math.random()*.5; const r = Math.random(), ln = Math.floor(Math.random()*3); mk(r < .62 ? 'star' : r < .9 ? 'cone' : 'puddle', ln); } }
+      else if(!flagOn){ flagOn = true; flag = document.createElement('div'); flag.className = 'zmflag'; flag.innerHTML = zmImg('flag_finish', 150); flag.style.top = (LANES[1] - 210) + 'px'; flag.dataset.x = VW + 60; lay.appendChild(flag); }
+      items.forEach(o=>{ o.x -= sp*dt; o.el.style.transform = `translateX(${o.x}px)`; if(!o.dead && Math.abs(o.x - (x + 30)) < 70 && o.ln === lane){
+          if(o.kind==='star'){ o.dead = true; got = Math.min(GOAL, got+1); document.getElementById('zmn').textContent = got; o.el.remove(); tone(700 + got*60,.1,'triangle',.1); setTimeout(()=>tone(990+got*60,.12,'triangle',.08),80); }
+          else if(o.kind==='cone'){ o.dead = true; hop = 1; slow = .6; tone(160,.15,'sawtooth',.07); setTimeout(()=>tone(120,.2,'sawtooth',.06),90); o.el.style.opacity = '.0'; }
+          else { o.dead = true; slow = 1; tone(300,.12,'sine',.07); setTimeout(()=>tone(380,.1,'sine',.06),90); } }
+        if(o.x < -140){ o.dead = true; o.el.remove(); } });
+      items = items.filter(o=>!(o.dead && !o.el.isConnected) && o.x > -160);
+      if(flag){ let fx = +flag.dataset.x - sp*dt; flag.dataset.x = fx; flag.style.transform = `translateX(${fx}px)`; if(fx < x + 120) finish(); }
+    }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+{ const base = showPlayRoom;
+  showPlayRoom = function(){ const r = base.apply(this, arguments); const box = document.querySelector('.pldoors'); if(box && !box.querySelector('[data-k="zoom"]')){
+      const b = document.createElement('button'); b.className = 'pldoor'; b.dataset.k = 'zoom'; b.style.setProperty('--dc', '#DDEEFF'); b.style.animationDelay = '.4s';
+      b.innerHTML = `<span>${zmImg('fire_truck', 58)}</span><b>Zoom! Road Trip</b><small>Drive, dodge cones, win rides</small>`;
+      b.onclick = ()=>{ unlockAudio(); sfx.chime(); plZoomPick(); }; box.appendChild(b); box.classList.add('zm5'); }
+    return r; }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.pldoors.zm5,.pldoors:has([data-k=fire]){grid-template-columns:repeat(3,290px);gap:20px;top:150px}
+.zmgar{position:absolute;left:0;right:0;top:170px;display:grid;grid-template-columns:repeat(3,250px);gap:22px;justify-content:center;z-index:2}
+.zmv{display:flex;flex-direction:column;align-items:center;gap:0;padding:12px 8px;background:#FFF8E6;border:4px solid #1D1D2B;border-radius:26px;box-shadow:0 7px 0 #1D1D2B;cursor:pointer;font-family:inherit}
+.zmv b{font-size:22px;color:#1D1D2B}.zmv small{font-size:15px;font-weight:800;color:#7A6640}
+.zmv.lock img{filter:grayscale(1) brightness(.55)}.zmv.lock{background:#E9E4D6}
+.zmv.shk{animation:zmshk .35s}@keyframes zmshk{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.zmtot{position:absolute;left:0;right:0;bottom:26px;text-align:center;font-size:26px;font-weight:900;color:#1D1D2B;z-index:2;display:flex;justify-content:center;align-items:center;gap:8px}
+.plzm .zmroad{position:absolute;left:0;right:0;top:350px;height:300px;background:repeating-linear-gradient(90deg,transparent 0 60px,#FFF3B0 60px 120px) 0 0/100% 8px no-repeat,linear-gradient(#5B5F6B,#474B57);border-top:8px solid #2F323B;border-bottom:8px solid #2F323B;z-index:1}
+.plzm .zmroad::before,.plzm .zmroad::after{content:"";position:absolute;left:0;right:0;height:6px;background:repeating-linear-gradient(90deg,#FFF3B0 0 60px,transparent 60px 120px);background-position:inherit}
+.plzm .zmroad::before{top:96px}.plzm .zmroad::after{top:196px}
+.zmlay{position:absolute;inset:0;z-index:3;overflow:hidden;pointer-events:none}
+.zmme,.zmit,.zmflag{position:absolute;left:0;top:0}.zmit{will-change:transform}.zmflag{will-change:transform}
+.zmhud{position:absolute;left:50%;transform:translateX(-50%);top:86px;z-index:5;display:flex;align-items:center;gap:8px;background:#FFF8E6;border:4px solid #1D1D2B;border-radius:30px;padding:2px 18px 2px 8px;font-size:30px;font-weight:900;width:max-content}
+.zmbtn{position:absolute;right:26px;z-index:6;width:92px;height:92px;border-radius:50%;border:4px solid #1D1D2B;background:#FFF8E6;font-size:38px;box-shadow:0 6px 0 #1D1D2B;cursor:pointer;color:#1D1D2B}.zmbtn.up{bottom:150px}.zmbtn.dn{bottom:40px}
+.zmhorn{position:absolute;left:26px;bottom:40px;z-index:6;width:100px;height:100px;border-radius:50%;border:4px solid #1D1D2B;background:#FFD23F;font-size:38px;box-shadow:0 6px 0 #1D1D2B;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}.zmhorn small{font-size:14px;font-weight:900}
+html.calm .zmv.shk,html.lite .zmv.shk{animation:none}
+</style>`);
+
+/* ===== fire (v23.76): "Fire Truck Rescue" Play Room game: tap the flames, the truck sprays them out ===== */
+function plFire(){
+  const calm = plCalm(), HC = ['#E86A5C','#5BA9E0','#F2B84B'], HX = [60, 390, 720], HY = 250;
+  const flames = []; const houses = HX.map((x,i)=>`<svg class="frh" style="left:${x}px;top:${HY}px" viewBox="0 0 240 280" width="240" height="280"><rect x="20" y="90" width="200" height="180" rx="10" fill="${HC[i]}" stroke="#1D1D2B" stroke-width="5"/><path d="M6 96 L120 18 L234 96Z" fill="#8A5A3C" stroke="#1D1D2B" stroke-width="5" stroke-linejoin="round"/><rect x="100" y="180" width="42" height="90" rx="6" fill="#6B4226" stroke="#1D1D2B" stroke-width="4"/><rect x="40" y="120" width="46" height="46" rx="5" fill="#CDEBFF" stroke="#1D1D2B" stroke-width="4"/><rect x="156" y="120" width="46" height="46" rx="5" fill="#CDEBFF" stroke="#1D1D2B" stroke-width="4"/></svg>`).join('');
+  app.innerHTML = `<div class="screen plfr"><div class="frsky"></div>${plHdr('Fire Truck Rescue','Tap the flames!')}${houses}<div class="frgrnd"></div><div class="frlay" id="frlay"></div><div class="zmhud" id="frhud">${zmImg('flame', 34)} <b id="frn">0 / 0</b></div></div>`;
+  plBind(showPlayRoom);
+  const lay = document.getElementById('frlay'); let over = false, tx = 420;
+  const truck = document.createElement('div'); truck.className = 'frtruck'; truck.innerHTML = zmImg('fire_truck', 190); truck.style.left = tx + 'px'; lay.appendChild(truck);
+  HX.forEach((x,i)=>{ [[40,115,92],[156,115,92],[98,10,110]].slice(0, i===1 ? 3 : 2).forEach(([fx,fy,sz])=>{ const el = document.createElement('button'); el.className = 'frfl'; el.setAttribute('aria-label','Flame'); el.innerHTML = zmImg('flame', sz); el.style.left = (x+fx-8)+'px'; el.style.top = (HY+fy-24)+'px'; lay.appendChild(el); const f = {el, hp:3, x:x+fx+30, y:HY+fy+20}; flames.push(f); el.addEventListener('pointerdown', ev=>{ ev.preventDefault(); spray(f); }); }); });
+  const tot = flames.length, upd = ()=>{ document.getElementById('frn').textContent = (tot - flames.filter(f=>f.hp>0).length) + ' / ' + tot; }; upd();
+  function spray(f){ if(over || f.hp<=0 || f.busy) return; f.busy = true; sfx.pop();
+    const from = tx + 130; truck.style.left = Math.max(10, Math.min(820, f.x - 140)) + 'px'; tx = f.x - 140 + 0;
+    const sx = (parseFloat(truck.style.left) || 0) + 150, sy = 560;
+    for(let k=0;k<5;k++){ const d = document.createElement('div'); d.className = 'frdrop'; d.innerHTML = rpi('water_drop','💧','height:34px'); d.style.left = sx+'px'; d.style.top = sy+'px'; lay.appendChild(d);
+      setTimeout(()=>{ d.style.transition = calm ? 'none' : 'transform .45s ease-out,opacity .45s'; d.style.transform = `translate(${f.x - sx + (k-2)*10}px,${f.y - sy}px)`; d.style.opacity = '.9'; }, 220 + k*70);
+      setTimeout(()=>d.remove(), 900 + k*70); }
+    setTimeout(()=>{ f.hp--; f.busy = false; tone(520,.08,'triangle',.08); if(f.hp>0){ f.el.style.transform = `scale(${.45 + f.hp*.18})`; }
+      else { f.el.style.transform = 'scale(.2)'; f.el.style.opacity = '0'; f.el.style.pointerEvents = 'none'; tone(880,.1,'triangle',.09); setTimeout(()=>tone(1170,.14,'triangle',.08),90); }
+      upd(); if(flames.every(q=>q.hp<=0)) win(); }, 760);
+  }
+  function win(){ if(over) return; over = true; sfx.win(); if(typeof confetti==='function') confetti(); const P = plGet(); P.zs = (+P.zs||0) + 5; plSet(P);
+    const m = document.createElement('div'); m.className = 'plrwin'; m.innerHTML = `<div class="plrcard"><h2>Everyone is safe!</h2><div style="margin:4px 0">${zmImg('fire_truck', 130)}${zmImg('star', 90)}</div><p>Great rescue! 5 stars for your garage.</p><div class="row"><button class="big green" id="frag">Again</button><button class="big ghost" id="frout">Play Room</button></div></div>`;
+    app.querySelector('.plfr').appendChild(m); document.getElementById('frag').onclick = ()=>{ sfx.pop(); plFire(); }; document.getElementById('frout').onclick = ()=>{ sfx.pop(); showPlayRoom(); }; }
+}
+{ const base = showPlayRoom;
+  showPlayRoom = function(){ const r = base.apply(this, arguments); const box = document.querySelector('.pldoors'); if(box && !box.querySelector('[data-k="fire"]')){
+      const b = document.createElement('button'); b.className = 'pldoor'; b.dataset.k = 'fire'; b.style.setProperty('--dc', '#FFE3DD'); b.style.animationDelay = '.5s';
+      b.innerHTML = `<span>${zmImg('flame', 58)}</span><b>Fire Truck Rescue</b><small>Put out the flames</small>`;
+      b.onclick = ()=>{ unlockAudio(); sfx.chime(); plFire(); }; box.appendChild(b); }
+    return r; }; }
+document.head.insertAdjacentHTML('beforeend', `<style>
+.plfr .frsky{position:absolute;inset:0;background:linear-gradient(#9ED8FF 0,#DDF1FF 55%,#BFE3A0 55%,#8CC66E 100%)}
+.plfr .frgrnd{position:absolute;left:0;right:0;top:520px;bottom:0;background:linear-gradient(#6F7480,#565A66);border-top:8px solid #43464F}
+.plfr .frh{position:absolute;z-index:1}.frlay{position:absolute;inset:0;z-index:3;overflow:hidden}
+.frfl{position:absolute;background:none;border:0;padding:0;cursor:pointer;transition:transform .3s,opacity .4s;z-index:4}
+.frtruck{position:absolute;top:500px;transition:left .7s ease-in-out;z-index:2}
+.frdrop{position:absolute;opacity:0;pointer-events:none}
+html.calm .frtruck,html.lite .frtruck{transition:none}
+</style>`);
+
+/* ===== boss (v23.77): Mr. Wobble tablet-call cutscene before each world ===== */
+const BO_W = {london:['B','LON'],india:['B','IND'],paris:['B','PAR'],rome:['B','ROM'],egypt:['B','EGY'],greece:['B','GRE'],mexico:['B','MEX'],peru:['B','PER'],japan:['C','JAP'],alaska:['C','ALA'],australia:['C','AUS'],costarica:['C','COS'],ireland:['C','IRE'],ny:['C','NYC'],nyc:['C','NYC'],kenya:['C','KEN']};
+const BO_ROOM = {london:'office',india:'kitchen',paris:'garden',rome:'snackbar',egypt:'office',greece:'kitchen',mexico:'snackbar',peru:'closet',japan:'spa',alaska:'closet',australia:'garden',costarica:'bathtub',ireland:'garden',ny:'office',nyc:'office',kenya:'nap'};
+const BO_X = {LON_1:['confused'],LON_2:['oops'],LON_3:['proud','magnifier'],IND_1:['happy','sandwich'],IND_2:['oops'],IND_3:['happy','sandwich'],PAR_1:['confused'],PAR_2:['laugh'],PAR_3:['glasses_off'],ROM_1:['happy','sandwich'],ROM_2:['laugh'],ROM_3:['happy'],EGY_1:['confused','map'],EGY_2:['oops','map'],EGY_3:['surprised'],GRE_1:['happy','sandwich'],GRE_2:['confused'],GRE_3:['proud'],MEX_1:['confused'],MEX_2:['laugh'],MEX_3:['oops'],PER_1:['proud'],PER_2:['sleepy','coffee'],PER_3:['proud'],JAP_1:['surprised'],JAP_2:['sleepy'],JAP_3:['proud','coffee'],ALA_1:['happy'],ALA_2:['laugh'],ALA_3:['happy'],AUS_1:['confused'],AUS_2:['sleepy'],AUS_3:['proud'],COS_1:['surprised'],COS_2:['proud'],COS_3:['sleepy'],IRE_1:['happy'],IRE_2:['proud'],IRE_3:['glasses_off'],NYC_1:['surprised','sandwich'],NYC_2:['laugh'],NYC_3:['proud'],KEN_1:['confused'],KEN_2:['proud'],KEN_3:['laugh'],A1:['confused'],A2:['oops'],A3:['oops'],A4:['proud'],A5:['normal'],A6:['confused'],A7:['surprised','sneeze'],A8:['happy'],A9:['sleepy'],A10:['laugh']};
+let boLoad = null, boBuf = {}, boSrc = null, boTok = 0;
+function boSeen(){ try{ return JSON.parse(localStorage.getItem('tlb_boss')||'{}'); }catch(e){ return {}; } }
+function boMark(id){ try{ const s = boSeen(); s[id] = 1; localStorage.setItem('tlb_boss', JSON.stringify(s)); }catch(e){} }
+function boLoadAssets(){ if(boLoad) return boLoad; const ld = u => new Promise(r=>{ const s = document.createElement('script'); s.src = u; s.onload = ()=>r(true); s.onerror = ()=>r(false); document.head.appendChild(s); }); boLoad = Promise.all([ld('bo/bo1.js'), ld('bo/bo2.js')]).then(a=>a[0]&&a[1]&&window.BOX&&window.BOL); return boLoad; }
+async function boSheet(k){ if(boBuf[k]) return boBuf[k]; boBuf[k] = (async()=>{ try{ const r = await fetch('bo/'+k+'.mp3'); return await decode(await r.arrayBuffer()); }catch(e){ boBuf[k] = null; return null; } })(); return boBuf[k]; }
+const boFx = {}; let boFxSrc = {};
+async function boSfx(n){ if(n in boFx) return boFx[n]; boFx[n] = (async()=>{ try{ const r = await fetch('bo/'+n+'.mp3'); if(!r.ok) return null; return await decode(await r.arrayBuffer()); }catch(e){ return null; } })(); return boFx[n]; }
+async function boFxPlay(n, vol, loop){ const b = await boSfx(n), cx = ctx(); if(!b || !cx || !soundOn) return false; try{ boFxStop(n); const s = cx.createBufferSource(); s.buffer = b; s.loop = !!loop; const g = cx.createGain(); g.gain.value = vol; s.connect(g); g.connect(cx.destination); s.start(); boFxSrc[n] = s; return true; }catch(e){ return false; } }
+function boFxStop(n){ try{ if(boFxSrc[n]) boFxSrc[n].stop(); }catch(e){} boFxSrc[n] = null; }
+async function boSlice(k, i){ const o = window.BOL[k][i], sh = await boSheet(k); if(!sh) return null; const c = ctx(), sr = sh.sampleRate, s0 = Math.max(0, Math.floor((o[2]-0.03)*sr)), n = Math.min(sh.length - s0, Math.ceil((o[3]-o[2]+0.1)*sr)); const b = c.createBuffer(1, n, sr); b.copyToChannel(sh.getChannelData(0).subarray(s0, s0+n), 0); return b; }
+document.head.insertAdjacentHTML('beforeend','<style>.bocall{position:absolute;inset:0;z-index:60;overflow:hidden;background:#2a3a22;-webkit-user-select:none;user-select:none}.bocall .bobg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(.8)}.bocall .botab{position:absolute;left:50%;top:44%;width:min(80vw,calc(70vh*1.333));aspect-ratio:4/3;transform:translate(-50%,-50%);filter:drop-shadow(0 12px 22px rgba(0,0,0,.45))}.bocall .bosc{position:absolute;left:11.2%;top:13.5%;width:77.5%;height:70.5%;overflow:hidden;border-radius:10px;background-size:cover;background-position:center}.bocall .bofr{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.bocall .bof{position:absolute;left:50%;bottom:-4%;height:96%;translate:-50% 0;transform-origin:50% 100%;transform:scale(calc(1 + var(--lv,0)*.035),calc(1 - var(--lv,0)*.03))}.bocall .bop{position:absolute;left:0;top:0;height:30%;transform-origin:50% 60%}.bocall .bol{position:absolute;bottom:2%;height:30vh;max-height:240px;transform-origin:50% 100%}.bocall .bol.talk{animation:bobob .3s ease-in-out infinite alternate}.bocall .bol{transform:scale(calc(1 + var(--lv,0)*.05),calc(1 - var(--lv,0)*.03))}.bocall .bocap{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:min(60vw,620px);background:#fffaf0;border:4px solid #e8b04a;border-radius:20px;padding:10px 16px;font-size:clamp(15px,3vh,21px);line-height:1.3;text-align:center;box-shadow:0 6px 16px rgba(0,0,0,.35);z-index:3}.bocall .bocap b{color:#b7410e}.bocall .bosk{position:absolute;right:14px;top:12px;z-index:4;font-size:20px;padding:8px 16px}.bocall .botap{position:absolute;right:16px;bottom:96px;font-size:13px;color:#fff;opacity:.85;z-index:3}@keyframes bobob{from{rotate:-2deg}to{rotate:2deg}}@keyframes bowob{from{rotate:-2.5deg}to{rotate:2.5deg}}.bocall .bof{animation:bowob 1.9s ease-in-out infinite alternate}@keyframes bopop{0%{scale:.82 .9}45%{scale:1.08 .95}70%{scale:.97 1.03}100%{scale:1}}.bocall .bof.pop{animation:bopop .45s ease-out,bowob 1.9s .45s ease-in-out infinite alternate}@keyframes boshk{0%,100%{translate:-50% 0}20%{translate:-54% 0}40%{translate:-46% 0}60%{translate:-53% 0}80%{translate:-47% 0}}.bocall .bof.shake{animation:boshk .5s ease-in-out 2}@keyframes bojmp{0%,100%{translate:-50% 0}35%{translate:-50% -9%}60%{translate:-50% 0}78%{translate:-50% -3%}}.bocall .bof.jump{animation:bojmp .6s ease-out}@keyframes bolaf{0%,100%{translate:-50% 0;rotate:0deg}25%{translate:-50% -3%;rotate:-3deg}75%{translate:-50% -3%;rotate:3deg}}.bocall .bof.laugh{animation:bolaf .32s ease-in-out infinite}@keyframes bosnr{from{scale:1 1}to{scale:1.04 .96}}.bocall .bof.snore{animation:bosnr 1.6s ease-in-out infinite alternate}@keyframes botilt{0%{rotate:0deg}40%{rotate:-8deg}100%{rotate:-6deg}}.bocall .bof.tilt{animation:botilt .6s ease-out forwards}@keyframes bospin{0%{rotate:180deg;scale:.5}100%{rotate:0deg;scale:1}}.bocall .bof.spin{animation:bospin .8s cubic-bezier(.3,1.4,.5,1)}@keyframes boprp{0%{scale:0;rotate:-30deg}60%{scale:1.2;rotate:8deg}100%{scale:1;rotate:0deg}}.bocall .bop.in{animation:boprp .5s ease-out}@keyframes bozz{0%{opacity:0;transform:translate(0,0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translate(24px,-70px) scale(1.3)}}.bocall .bozz{position:absolute;left:62%;top:22%;font-size:clamp(22px,5vh,40px);font-weight:900;color:#fff;text-shadow:0 2px 4px #0006;animation:bozz 1.6s ease-out infinite;display:none}.bocall .bozz:nth-of-type(2){animation-delay:.55s;left:68%}@keyframes botin{0%{transform:translate(-50%,-160%) rotate(-6deg)}55%{transform:translate(-50%,-46%) rotate(2deg)}75%{transform:translate(-50%,-54%) rotate(-1deg)}100%{transform:translate(-50%,-50%) rotate(0)}}.bocall .botab.in{animation:botin .8s ease-out}@keyframes boring{0%,100%{transform:translate(-50%,-50%) rotate(0)}15%{transform:translate(-50%,-50%) rotate(-3deg)}30%{transform:translate(-50%,-50%) rotate(3deg)}45%{transform:translate(-50%,-50%) rotate(-3deg)}60%{transform:translate(-50%,-50%) rotate(2deg)}}.bocall .botab.ring{animation:botin .8s ease-out,boring .9s .8s ease-in-out infinite}.bocall .bocall-ring{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;pointer-events:none}.bocall .boans{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);z-index:5;background:#fffaf0;border:4px solid #e8b04a;border-radius:24px;padding:14px 26px;font-size:clamp(20px,4.4vh,32px);font-weight:800;color:#b7410e;box-shadow:0 8px 20px #0006;text-align:center}@keyframes bohop{0%,100%{translate:0 0}40%{translate:0 -7%}}.bocall .bol.hop{animation:bohop .4s ease-out 2}@keyframes bonod{from{rotate:-2deg}to{rotate:2deg}}.bocall .bol.listen{animation:bonod 1.2s ease-in-out infinite alternate}@keyframes bopuff{0%{scale:.3;opacity:0}30%{scale:1.4;opacity:1}100%{scale:2.6;opacity:0}}.bocall .bop.puff{animation:bopuff 1s ease-out forwards}html.calm .bocall *,html.lite .bocall *{animation:none!important;transition:none!important;transform:none!important}html.calm .bocall .botab,html.lite .bocall .botab{transform:translate(-50%,-50%)!important}html.calm .bocall .bof,html.lite .bocall .bof{translate:-50% 0}</style>'); 
+document.head.insertAdjacentHTML('beforeend',`<style>
+.bocall .botw{position:absolute;inset:0;animation:bodrift 7s ease-in-out infinite alternate}
+@keyframes bodrift{0%{transform:translate(-4px,2px) rotate(-.35deg)}35%{transform:translate(5px,-3px) rotate(.3deg)}70%{transform:translate(-2px,-5px) rotate(-.2deg)}100%{transform:translate(4px,3px) rotate(.4deg)}}
+.bocall .bobg{animation:bocam 22s ease-in-out infinite alternate;transform-origin:50% 60%}
+@keyframes bocam{from{transform:scale(1.02) translateX(-1%)}to{transform:scale(1.12) translateX(1.5%)}}
+.bocall .bosc{animation:bopan 14s ease-in-out infinite alternate}
+@keyframes bopan{from{background-position:44% 50%}to{background-position:58% 50%}}
+.bocall .bosc::after{content:'';position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.35) 48%,transparent 60%);transform:translateX(-120%);pointer-events:none}
+.bocall .bosc.glare::after{animation:boglare .9s ease-out}
+@keyframes boglare{from{transform:translateX(-120%)}to{transform:translateX(120%)}}
+.bocall .botab{transition:transform .9s cubic-bezier(.4,1.5,.5,1)}
+.bocall .botab.flip{transform:translate(-50%,-50%) rotate(180deg)}
+.bocall .botab.out{animation:boout .5s ease-in forwards}
+@keyframes boout{to{transform:translate(-50%,160%) rotate(8deg)}}
+.bocall.bye .bol,.bocall.bye .bocap{opacity:0;transition:opacity .4s}
+@keyframes borise{0%{translate:-50% 45%;scale:.8}70%{translate:-50% -3%;scale:1.04}100%{translate:-50% 0;scale:1}}
+.bocall .bof.rise{animation:borise .6s cubic-bezier(.3,1.3,.5,1)}
+.bocall .bol{animation:bobreath 2.6s ease-in-out infinite alternate}
+@keyframes bobreath{from{rotate:-.6deg}to{rotate:.6deg}}
+#bolisa.talk{translate:3% 0;transition:translate .25s}#bolucas.talk{translate:-3% 0;transition:translate .25s}
+.bocall .boem{position:absolute;z-index:6;font-size:clamp(28px,6vh,52px);pointer-events:none;animation:boemf 1.3s ease-out forwards;filter:drop-shadow(0 2px 3px #0006)}
+@keyframes boemf{0%{opacity:0;transform:translateY(10px) scale(.3)}25%{opacity:1;transform:translateY(-6px) scale(1.25)}70%{opacity:1;transform:translateY(-28px) scale(1)}100%{opacity:0;transform:translateY(-52px) scale(.9)}}
+.bocall .bocap .w{opacity:0;transition:opacity .15s}.bocall .bocap .w.on{opacity:1}
+.bocall .bocap .nm{font-weight:900}
+@keyframes bopunch{0%{scale:1}35%{scale:1.07}100%{scale:1}}.bocall .botw.punch{animation:bodrift 7s ease-in-out infinite alternate,bopunch .5s ease-out}
+@keyframes bospk{0%{opacity:0;transform:translate(0,0) scale(.3)}20%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.1) rotate(120deg)}}.bocall .bospk{position:absolute;left:50%;top:38%;z-index:6;font-size:clamp(18px,3.6vh,30px);pointer-events:none;animation:bospk 1.1s ease-out forwards}
+</style>`);
+function boSeq(id){
+  const w = BO_W[id]; if(!w) return null; const P = w[0], T = w[1], seq = [];
+  const bl = window.BOL, bi = (bl['BOSS_'+P]||[]).findIndex(x=>x[0]===T+'_1'), li = (bl['LISA_'+P]||[]).findIndex(x=>x[0]===T), ui = (bl['LUCAS_'+P]||[]).findIndex(x=>x[0]===T);
+  if(bi<0||li<0||ui<0) return null;
+  if(!boSeen().intro){ seq.push(['BOSS_A',0],['LISA_A',0],['BOSS_A',1],['LUCAS_A',0]); }
+  seq.push(['BOSS_'+P,bi],['LISA_'+P,li],['BOSS_'+P,bi+1],['LUCAS_'+P,ui],['BOSS_'+P,bi+2]);
+  return seq;
+}
+async function bossCall(id, done){
+  const ok = await boLoadAssets(), seq = ok && boSeq(id);
+  if(!seq){ done && done(); return; }
+  hush(); const tok = ++boTok, X = window.BOX, c = CITIES[id];
+  let finished = false; const fin = ()=>{ if(finished) return; finished = true; boTok++; clearInterval(tw); boFxStop('ring'); boFxStop('theme'); try{ if(boSrc){ boSrc.stop(); } }catch(e){} boSrc = null; cancelAnimationFrame(boRAF); boMark(id); boMark('intro'); const el = document.getElementById('bocall'); const lt = document.documentElement.classList.contains('calm') || document.documentElement.classList.contains('lite'); if(el && !lt && el.querySelector('#botab')){ el.classList.add('bye'); el.querySelector('#botab').className = 'botab out'; try{ const cx = ctx(); if(soundOn && cx){ const o = cx.createOscillator(), g = cx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(660, cx.currentTime); o.frequency.exponentialRampToValueAtTime(330, cx.currentTime+0.25); g.gain.setValueAtTime(0.1, cx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, cx.currentTime+0.3); o.connect(g); g.connect(cx.destination); o.start(); o.stop(cx.currentTime+0.32); } }catch(e){} setTimeout(()=>{ if(el.parentNode) el.remove(); done && done(); }, 480); } else { if(el) el.remove(); done && done(); } };
+  let tw = 0;
+  let boRAF = 0;
+  const wrap = document.createElement('div'); wrap.className = 'bocall'; wrap.id = 'bocall';
+  const room = BO_ROOM[id]||'office';
+  wrap.innerHTML = `<div class="bobg" id="bobg"></div><div class="botw"><div class="botab in ring" id="botab"><div class="bosc" id="bosc" style="background-image:url(${X['bg_'+room]})"><img class="bof idle" id="bof" alt="" src="${X.face_normal}"><img class="bop" id="bop" alt="" style="display:none"><span class="bozz" id="bozz1">Z</span><span class="bozz" id="bozz2">z</span></div><img class="bofr" src="${X.tablet}" alt=""></div></div><img class="bol" id="bolisa" src="${X.lisa}" style="left:2%" alt=""><img class="bol" id="bolucas" src="${X.lucas}" style="right:2%" alt=""><div class="bocap" id="bocap"></div><div class="botap">tap = next</div><div class="boans" id="boans">📞 Mr. Wobble is calling!<br><small style="font-size:.6em;color:#555">tap to answer</small></div><button class="big bosk" id="bosk">Skip</button>`;
+  const host = document.querySelector('#app .screen') || app; (app).appendChild(wrap);
+  try{ const bg = document.getElementById('bobg'); const sc = c && c.stops && c.stops[0] && c.stops[0].scene ? c.stops[0].scene() : ''; bg.innerHTML = sc; }catch(e){}
+  document.getElementById('bosk').onclick = e=>{ e.stopPropagation(); fin(); };
+  const zz1 = document.getElementById('bozz1'), zz2 = document.getElementById('bozz2'), bof = document.getElementById('bof'), bop = document.getElementById('bop'), cap = document.getElementById('bocap'), lisa = document.getElementById('bolisa'), lucas = document.getElementById('bolucas');
+  let step = null, idx = 0; const lite = document.documentElement.classList.contains('calm') || document.documentElement.classList.contains('lite');
+  const play = async ()=>{
+    if(finished || tok!==boTok) return;
+    if(idx>=seq.length){ fin(); return; }
+    const [k, i] = seq[idx++], who = k.split('_')[0], line = window.BOL[k][i], lid = line[0], dur = line[3]-line[2];
+    const key = (k.startsWith('BOSS') ? (BO_X[lid]||[])[0] || (lid.endsWith('_1')?'confused':lid.endsWith('_2')?'oops':'happy') : null);
+    const talking = (who==='BOSS'); let base = key || 'normal';
+    const setFace = (open, wide)=>{ const n = (open && ['normal','happy','proud'].includes(base)) ? (wide ? 'face_surprised' : 'face_talk') : (base==='glasses_off'||base==='upside_down' ? base : 'face_'+base); bof.src = X[n]||X.face_normal; };
+    if(talking){ base = key; setFace(false); const pr = (BO_X[lid]||[])[1]; if(pr&&X['p_'+pr]){ bop.src = X['p_'+pr]; bop.style.display = ''; } else bop.style.display = 'none'; bof.style.transform = ''; bof.style.setProperty('--lv',0); bof.className = 'bof'; void bof.offsetWidth; const fx = (idx===1 && lid!=='A1' && false)?'rise':base==='oops'?'shake':base==='surprised'?'jump':base==='laugh'?'laugh':base==='sleepy'?'snore':base==='confused'?'tilt':base==='upside_down'?'spin':'pop'; if(!lite && idx===1) bof.classList.add('rise'); else if(!lite) bof.classList.add(fx==='tilt'?'pop':fx, ...(fx==='tilt'?['tilt']:[])); bof.style.height = lid==='A1' ? '120%' : ''; zz1.style.display = zz2.style.display = (base==='sleepy'&&!lite) ? 'block' : 'none'; if(pr==='sneeze'||lid==='A7'){ setTimeout(()=>{ if(tok!==boTok||finished) return; bop.classList.remove('in'); bop.classList.add('puff'); bof.classList.add('shake'); }, 900); } else bop.classList.remove('puff'); if(pr&&!lite){ bop.classList.remove('in','puff'); void bop.offsetWidth; bop.classList.add('in'); } }
+    const nmS = who==='BOSS'?'Mr. Wobble':who==='LISA'?'Lisa':'Lucas'; const words = line[1].split(' '); cap.innerHTML = `<span class="nm" style="color:#b7410e">${nmS}:</span> ` + words.map(w=>`<span class="w">${w}</span>`).join(' '); clearInterval(tw); const ws = cap.querySelectorAll('.w'); let wi = 0; const per = Math.max(60, Math.min(260, (dur*1000*0.85)/Math.max(1,words.length))); if(lite){ ws.forEach(x=>x.classList.add('on')); } else { tw = setInterval(()=>{ if(wi<ws.length) ws[wi++].classList.add('on'); else clearInterval(tw); }, per); }
+    const botw = wrap.querySelector('.botw'); if(!lite && talking && ['surprised','laugh','oops'].includes(base)){ botw.classList.remove('punch'); void botw.offsetWidth; botw.classList.add('punch'); }
+    if(!lite && talking && (base==='proud'||base==='happy'||base==='laugh')){ setTimeout(()=>{ if(tok!==boTok||finished) return; for(let q=0;q<9;q++){ const sp = document.createElement('div'); sp.className = 'bospk'; sp.textContent = ['✨','⭐','💛'][q%3]; const a = q/9*6.283; sp.style.setProperty('--dx', Math.round(Math.cos(a)*190)+'px'); sp.style.setProperty('--dy', Math.round(Math.sin(a)*130)+'px'); sp.style.left = '50%'; wrap.appendChild(sp); setTimeout(()=>sp.remove(), 1200); } }, 500); }
+    const scr = document.getElementById('bosc'); if(!lite){ scr.classList.remove('glare'); void scr.offsetWidth; scr.classList.add('glare'); }
+    const emo = (who2, ch)=>{ if(lite) return; const e = document.createElement('div'); e.className = 'boem'; e.textContent = ch; if(who2==='boss'){ e.style.left = (56+Math.random()*12)+'%'; e.style.top = '22%'; } else if(who2==='lisa'){ e.style.left = '9%'; e.style.bottom = '34vh'; } else { e.style.right = '9%'; e.style.bottom = '34vh'; } wrap.appendChild(e); setTimeout(()=>e.remove(), 1400); };
+    const EM = {confused:'❓',oops:'💦',surprised:'❗',laugh:'😂',sleepy:'💤',proud:'✨',happy:'💛',glasses_off:'👓'};
+    if(talking && EM[base]) setTimeout(()=>{ if(tok===boTok&&!finished) emo('boss', EM[base]); }, 250);
+    if(who==='LISA') setTimeout(()=>{ if(tok===boTok&&!finished) emo('lisa','💛'); }, 300); if(who==='LUCAS') setTimeout(()=>{ if(tok===boTok&&!finished) emo('lucas','⭐'); }, 300);
+    if(talking && ['laugh','oops','surprised'].includes(base)){ setTimeout(()=>{ if(tok===boTok&&!finished){ emo('lisa', base==='laugh'?'😄':'😮'); emo('lucas', base==='laugh'?'😂':'😯'); } }, 700); }
+    const tabEl = document.getElementById('botab'); if(!lite && tabEl && id==='egypt'){ if(lid==='EGY_2'){ tabEl.classList.add('flip'); } if(lid==='EGY_3'){ setTimeout(()=>tabEl.classList.remove('flip'), 500); } }
+    lisa.className = 'bol'; lucas.className = 'bol'; lisa.style.setProperty('--lv',0); lucas.style.setProperty('--lv',0); lisa.style.left='2%'; lucas.style.right='2%'; if(!lite){ if(who==='LISA'){ lisa.classList.add('talk'); lucas.classList.add('listen'); } else if(who==='LUCAS'){ lucas.classList.add('talk'); lisa.classList.add('listen'); } else { const ex = ['laugh','oops','surprised'].includes(base); lisa.classList.add(ex?'hop':'listen'); lucas.classList.add(ex?'hop':'listen'); } }
+    let next = ()=>{}, adv = false; step = ()=>{ if(adv) return; adv = true; try{ if(boSrc){ boSrc.onended = null; boSrc.stop(); } }catch(e){} boSrc = null; cancelAnimationFrame(boRAF); setTimeout(play, 60); };
+    const go = ()=>{ if(adv) return; setTimeout(()=>{ if(!adv && tok===boTok && !finished){ adv = true; cancelAnimationFrame(boRAF); setTimeout(play, 0); } }, 450); };
+    if(!soundOn){ setTimeout(go, Math.max(1800, dur*1000*0.8)); return; }
+    const b = await boSlice(k, i); if(finished || tok!==boTok || adv) return; if(!b){ setTimeout(go, 1800); return; }
+    const cx = ctx(); if(!cx){ setTimeout(go, 1800); return; }
+    try{ const s = cx.createBufferSource(); s.buffer = b; const an = cx.createAnalyser(); an.fftSize = 512; s.connect(an); an.connect(cx.destination); const data = new Uint8Array(an.fftSize);
+      s.onended = ()=>{ if(boSrc===s) boSrc = null; cancelAnimationFrame(boRAF); if(talking) setFace(false); go(); }; s.start(); boSrc = s;
+      if(!lite){ let open = false, bw = false, last = 0, lv = 0; const tgt = talking ? bof : (who==='LISA' ? lisa : lucas); const loop = (t)=>{ an.getByteTimeDomainData(data); let sum = 0; for(let q=0;q<data.length;q++){ const v=(data[q]-128)/128; sum+=v*v; } const rms = Math.sqrt(sum/data.length); lv += (Math.min(1, rms*7) - lv)*0.35; tgt.style.setProperty('--lv', lv.toFixed(3)); if(talking){ const want = open ? rms>0.02 : rms>0.04; const wide = rms>0.16; if((want!==open || wide!==bw) && t-last>80){ open = want; bw = wide; last = t; setFace(open, wide); } } boRAF = requestAnimationFrame(loop); }; boRAF = requestAnimationFrame(loop); }
+    }catch(e){ setTimeout(go, 1800); }
+  };
+  const propLoop = ()=>{ if(finished) return; try{ if(bop.style.display!=='none'){ const sc = document.getElementById('bosc').getBoundingClientRect(), fr = bof.getBoundingClientRect(), ph = fr.height*0.30, snz = bop.src===X.p_sneeze; bop.style.height = ph+'px'; const fx = snz ? 0.30 : 0.47, fy = snz ? 0.42 : 0.80; const cx0 = fr.left + fr.width*fx - sc.left, cy0 = fr.top + fr.height*fy - sc.top; bop.style.transform = `translate(${cx0 - ph/2}px,${cy0 - ph/2}px)`; } }catch(e){} requestAnimationFrame(propLoop); };
+  requestAnimationFrame(propLoop);
+  let answered = false; const tab = document.getElementById('botab'), ans = document.getElementById('boans');
+  const answer = ()=>{ if(answered || finished) return; answered = true; tab.classList.remove('ring','in'); ans.remove(); boFxStop('ring'); boFxPlay('theme', 0.12, true); cap.style.visibility = ''; play(); };
+  wrap.addEventListener('click', ()=>{ if(!answered) answer(); else if(step) step(); });
+  cap.style.visibility = 'hidden'; bof.classList.remove('idle'); if(lite){ answer(); } else { boFxPlay('ring', 0.8, true).then(ok=>{ if(!ok){ try{ const cx = ctx(); if(soundOn && cx){ const ring = ()=>{ if(answered||finished) return; const o = cx.createOscillator(), g = cx.createGain(); o.type = 'sine'; o.frequency.value = 880; g.gain.setValueAtTime(0.0001, cx.currentTime); g.gain.exponentialRampToValueAtTime(0.12, cx.currentTime+0.03); g.gain.exponentialRampToValueAtTime(0.0001, cx.currentTime+0.25); o.connect(g); g.connect(cx.destination); o.start(); o.stop(cx.currentTime+0.27); }; ring(); setTimeout(ring,300); setTimeout(ring,1000); setTimeout(ring,1300); } }catch(e){} } }); setTimeout(answer, 2600); }
+}
+{ const _oc = openCity; openCity = function(id){ const st = cst(id); const seen = boSeen(); if(!st.done.length && !seen[id] && BO_W[id]){ CUR = id; bossCall(id, ()=>_oc(id)); } else _oc(id); }; }
+
 /* ===== anim13 (v23.54): scrapbook polish. Polaroid cards with washi tape, glossy page buttons, ribbon title, one-shot page-in. ===== */
 document.head.insertAdjacentHTML('beforeend', `<style>
 .sbscr .sbpaper{background-color:#FCF3DA;background-image:radial-gradient(circle at 12% 18%,rgba(255,255,255,.5) 0,rgba(255,255,255,0) 40%),radial-gradient(circle at 88% 82%,rgba(214,170,98,.25) 0,rgba(214,170,98,0) 45%),url(art/paper.jpg);background-size:auto,auto,cover;background-position:center;background-blend-mode:normal,normal,multiply}
