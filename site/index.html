@@ -9848,7 +9848,7 @@ const BO_X = {LON_1:['confused'],LON_2:['oops'],LON_3:['proud','magnifier'],IND_
 let boLoad = null, boBuf = {}, boSrc = null, boTok = 0;
 function boSeen(){ try{ return JSON.parse(localStorage.getItem('tlb_boss')||'{}'); }catch(e){ return {}; } }
 function boMark(id){ try{ const s = boSeen(); s[id] = 1; localStorage.setItem('tlb_boss', JSON.stringify(s)); }catch(e){} }
-function boLoadAssets(){ if(boLoad) return boLoad; const ld = u => new Promise(r=>{ const s = document.createElement('script'); s.src = u; s.onload = ()=>r(true); s.onerror = ()=>r(false); document.head.appendChild(s); }); boLoad = Promise.all([ld('bo/bo1.js'), ld('bo/bo2.js'), ld('bo/bo3.js')]).then(a=>a[0]&&a[1]&&window.BOX&&window.BOL); return boLoad; }
+function boLoadAssets(){ if(boLoad) return boLoad; const ld = u => new Promise(r=>{ const s = document.createElement('script'); s.src = u; s.onload = ()=>r(true); s.onerror = ()=>r(false); document.head.appendChild(s); }); boLoad = Promise.all([ld('bo/bo1.js'), ld('bo/bo2.js')]).then(a=>a[0]&&a[1]&&window.BOX&&window.BOL); return boLoad; }
 async function boSheet(k){ if(boBuf[k]) return boBuf[k]; boBuf[k] = (async()=>{ try{ const r = await fetch('bo/'+k+'.mp3'); return await decode(await r.arrayBuffer()); }catch(e){ boBuf[k] = null; return null; } })(); return boBuf[k]; }
 const boFx = {}; let boFxSrc = {};
 async function boSfx(n){ if(n in boFx) return boFx[n]; boFx[n] = (async()=>{ try{ const r = await fetch('bo/'+n+'.mp3'); if(!r.ok) return null; return await decode(await r.arrayBuffer()); }catch(e){ return null; } })(); return boFx[n]; }
@@ -10116,7 +10116,7 @@ async function tkBossCall(id, done){
   wrap.onclick = ()=>{ if(!started) go(); };
   return true;
 }
-{ const _bc = bossCall; bossCall = async function(id, done){ let ok = false; try{ ok = await tkBossCall(id, done); }catch(e){ ok = false; } if(!ok) return _bc(id, done); }; }
+{ const _bc = bossCall; bossCall = async function(id, done){ let ok = false; try{ ok = await tkBossCall(id, done); }catch(e){ ok = false; } if(!ok){ try{ done && done(); }catch(e){} } }; } /* v23.97: old v23.91 fallback call removed (its art was dropped to save app space); if Grok's kit can't load, the call is skipped */
 
 /* ---- Zook after-trip scene (BO72G) + Boss well-done ---- */
 const TK_CODE2ID = {}; for(const k in BO_W){ if(!TK_CODE2ID[BO_W[k][1]]) TK_CODE2ID[BO_W[k][1]] = k; }
@@ -10269,6 +10269,129 @@ function zkMem(A){ const lite = tkLite(); const w = zkShell(A, A.u.bg_mem, '🔴
   round = 0; seq = []; next(); }
 /* Saucer door on the world tour once any world is finished */
 { const _sc2 = showCities; showCities = function(){ const r = _sc2.apply(this, arguments); try{ if(!document.getElementById('zkcall') && tkDoneWorlds().length && document.querySelector('#app .cgrid')){ const s = document.querySelector('#app .screen'); if(s && !s.querySelector('.zkdoor')){ const b = document.createElement('button'); b.className = 'big gold zkdoor'; b.style.cssText = 'position:absolute;left:16px;bottom:12px;z-index:6;font-size:20px'; b.innerHTML = '🛸 Zook\'s Saucer'; b.onclick = ()=>{ sfx.pop(); showZookHub(); }; s.appendChild(b); } } }catch(e){} return r; }; }
+
+/* ===== zkb (v23.96): Zook's Rocket Lab = Blueprint Builder + Test Flight (GROK_060/062 art, stats from ZK_blueprint_parts v1/v2).
+   Earned ship parts (tlb_zk.parts, one per saucer mini-game win) unlock parts in ZKB_ORDER; 4 starter parts are free.
+   Tap a slot tab, tap a part to snap it on (tap again to take it off). Launch = 3-light countdown, side-scrolling auto flight,
+   sputter + gentle glide down (never crashes), stars at 120/200/300 m, best distance kept in tlb_zk.bp. Calm/lite: no shake/bob. */
+const ZKB_SLOTS = ['body','nose','wings','engines','cockpit','tail','fuel','exhaust'];
+const ZKB_NAME = {body:'Body', nose:'Nose', wings:'Wings', engines:'Engine', cockpit:'Cockpit', tail:'Tail', fuel:'Fuel', exhaust:'Flame'};
+const ZKB_START = ['aero_body','aero_nose','aero_wings','aero_engines'];
+const ZKB_ORDER = ['aero_cockpit','silly_body','power_engines','bug_wings','aero_exhaust','silly_cockpit','power_exhaust','bug_nose','aero_tail','silly_wings','power_fuel','bug_cockpit','aero_fuel','silly_engines','power_nose','bug_engines','silly_exhaust','power_cockpit','bug_tail','silly_nose','power_wings','bug_body','silly_tail','power_tail','bug_fuel','silly_fuel','power_body','bug_exhaust'];
+const ZKB_STARS = [120, 200, 300];
+const ZKB_FIT = {exhaust:[120,95], tail:[110,115], engines:[125,100], wings:[250,120], fuel:[150,80], body:[220,145], nose:[125,115], cockpit:[120,95]};
+const ZKB_Z = ['exhaust','tail','engines','wings','fuel','body','nose','cockpit'];
+function zkbEarned(z){ z = z || tkZkState(); return ZKB_START.concat(ZKB_ORDER.slice(0, Math.max(0, z.parts|0))); }
+function zkbBP(z){ const b = z.bp || {}; if(!b.lo){ b.lo = {}; ZKB_START.forEach(k=>b.lo[k.split('_')[1]] = k); } b.best = b.best||0; b.n = b.n||0; return b; }
+/* pack: zkg.wasm grew in v23.96, so revalidate it once instead of trusting an old cached copy */
+{ const _p = tkPack; tkPack = function(n){ if(n!=='zkg' || TK.packs[n]) return _p(n); const p = (async()=>{ const r = await fetch('tk/zkg.wasm', {cache:'no-cache'}); if(!r.ok) throw new Error('tkb zkg'); const b = await r.arrayBuffer(); const u8 = new Uint8Array(b, 0, 4); if(String.fromCharCode(u8[0],u8[1],u8[2],u8[3])!=='TKB1') throw new Error('bad tkb'); const hl = new DataView(b).getUint32(4, true); const H = JSON.parse(new TextDecoder().decode(new Uint8Array(b, 8, hl))); return { n, H, buf:b, base:8+hl, cache:{} }; })(); TK.packs[n] = p; p.catch(()=>{ delete TK.packs[n]; }); return p; }; }
+async function zkbArt(){ const G = await tkPack('zkg'); const M = await tkJson(G, 'bp.json'); if(!M) throw new Error('no bp'); const url = n=>{ const k = 'url:'+n; if(G.cache[k]) return G.cache[k]; const e = G.H[n]; return e ? (G.cache[k] = URL.createObjectURL(new Blob([tkRaw(G, n)], {type:e[2]}))) : ''; };
+  const im = {}; await Promise.all(Object.keys(M.parts).map(async k=>{ im[k] = await tkImg(G, 'p/'+k+'.webp'); })); for(const n of ['sky','smoke','flag','medal']) im[n] = await tkImg(G, n+'.webp'); return { M, im, url }; }
+function zkbStats(lo, M){ let W = 0, T = 0, L = 0, F = 0; for(const s of ZKB_SLOTS){ const k = lo[s]; if(!k || !M.parts[k]) continue; const p = M.parts[k]; W += p[0]; T += p[1]; L += p[2]; F += p[3]; }
+  const fuel = Math.max(2, F), mass = Math.max(1, W), a = T/mass, gl = L/mass, br = 1 + 0.3*(T/(T+20)), bt = fuel/br, pw = a*bt*80, gd = gl*45*(1 + 0.15*a);
+  return { W, T, L, F:fuel, pw, gd, d:Math.round(Math.max(50, pw + gd)) }; }
+function zkbPlace(sizes){ const [bw, bh] = sizes.body || [150, 100], P = { body:[0,0] }; let ex = -bw/2;
+  if(sizes.nose){ const [w] = sizes.nose; P.nose = [bw/2 + w/2 - 0.14*w, 0.03*bh]; }
+  if(sizes.cockpit){ const [, h] = sizes.cockpit; P.cockpit = [0.12*bw, -bh/2 - 0.22*h]; }
+  if(sizes.tail){ const [w, h] = sizes.tail; P.tail = [-bw/2 + 0.3*w, -bh/2 - 0.28*h]; }
+  if(sizes.engines){ const [w] = sizes.engines; P.engines = [-bw/2 - 0.3*w, 0.14*bh]; ex = P.engines[0] - w/2; }
+  if(sizes.exhaust){ const [w] = sizes.exhaust; P.exhaust = [ex - 0.38*w, 0.14*bh]; }
+  if(sizes.wings) P.wings = [-0.06*bw, 0.3*bh];
+  if(sizes.fuel){ const [, h] = sizes.fuel; P.fuel = [0.02*bw, bh/2 + 0.12*h]; }
+  return P; }
+/* draw the ship centred on (0,0) of the current transform, 1 unit = 1 layout px; skip: slots not to draw; flame: 0..1 exhaust strength */
+function zkbDraw(g, A, lo, o){ o = o || {}; const sz = {}, im = {}; for(const s of ZKB_SLOTS){ const k = lo[s]; if(!k || !A.im[k]) continue; const I = A.im[k], f = ZKB_FIT[s], kk = Math.min(f[0]/I.width, f[1]/I.height); sz[s] = [I.width*kk, I.height*kk]; im[s] = I; }
+  const P = zkbPlace(sz); let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for(const s in P){ if(!sz[s]) continue; const [w, h] = sz[s], [x, y] = P[s]; x0 = Math.min(x0, x - w/2); x1 = Math.max(x1, x + w/2); y0 = Math.min(y0, y - h/2); y1 = Math.max(y1, y + h/2); }
+  const box = { x0, x1, y0, y1, cx:(x0 + x1)/2, cy:(y0 + y1)/2 }; if(o.measure) return { P, sz, box };
+  if(o.center){ g.translate(-box.cx, -box.cy); }
+  if(o.flame > 0.01 && !im.exhaust && (im.engines || im.body)){ const s0 = im.engines ? 'engines' : 'body', [w, h] = sz[s0], [x, y] = P[s0], fx = x - w/2, L = 60 + (o.flick ? Math.random()*25 : 12); const gr = g.createLinearGradient(fx, 0, fx - L, 0); gr.addColorStop(0, 'rgba(255,240,140,.95)'); gr.addColorStop(0.5, 'rgba(255,140,40,.8)'); gr.addColorStop(1, 'rgba(255,80,20,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(fx + 4, y - h*0.22); g.quadraticCurveTo(fx - L*0.6, y - h*0.18, fx - L, y); g.quadraticCurveTo(fx - L*0.6, y + h*0.18, fx + 4, y + h*0.22); g.fill(); }
+  for(const s of ZKB_Z){ if(!im[s]) continue; let a = 1; if(s==='exhaust' && o.flame !== undefined) a = o.flame; if(a <= 0.01) continue; const [w, h] = sz[s], [x, y] = P[s]; g.globalAlpha = a; let sc = 1; if(s==='exhaust' && o.flick) sc = 0.9 + 0.2*Math.random();
+    g.drawImage(im[s], x - w*sc/2, y - h/2, w*sc, h); if(o.glow === s){ g.globalAlpha = 0.5 + 0.3*Math.sin(performance.now()/120); g.strokeStyle = '#7fffd4'; g.lineWidth = 5; g.setLineDash([10, 8]); g.strokeRect(x - w/2 - 6, y - h/2 - 6, w + 12, h + 12); g.setLineDash([]); } g.globalAlpha = 1; }
+  return { P, sz, box }; }
+
+document.head.insertAdjacentHTML('beforeend','<style>.zkb{position:absolute;inset:0;z-index:40;background:#0b3d8c;background-size:128px 128px;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:none}.zkb .zkback{position:absolute;left:14px;top:12px;z-index:5}.zkb .zkt{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:rgba(255,255,255,.93);border-radius:20px;padding:6px 22px;font-weight:900;font-size:25px;color:#0b3d8c;white-space:nowrap}.zkb .zkbbest{position:absolute;right:14px;top:14px;background:rgba(255,255,255,.93);border-radius:16px;padding:5px 14px;font-weight:900;font-size:19px;color:#5a3b00}.zkb canvas.zkbship{position:absolute;left:17%;top:10%;width:62%;height:56%}.zkb .zkbstat{position:absolute;left:12px;top:17%;display:flex;flex-direction:column;gap:10px;background:rgba(255,255,255,.14);border-radius:18px;padding:10px 12px}.zkb .zkbstat div{display:flex;align-items:center;gap:8px;color:#fff;font-weight:900;font-size:16px}.zkb .zkbstat img{width:34px;height:34px;object-fit:contain}.zkb .zkbstat i{display:block;width:110px;height:14px;border-radius:8px;background:rgba(255,255,255,.25);overflow:hidden}.zkb .zkbstat i b{display:block;height:100%;border-radius:8px;transition:width .35s}.zkb .zkbtabs{position:absolute;left:12px;right:200px;bottom:142px;display:flex;gap:6px}.zkb .zkbtab{flex:1;min-width:0;border:0;border-radius:14px 14px 0 0;background:rgba(255,255,255,.35);color:#fff;font:900 15px Nunito,system-ui,sans-serif;padding:6px 2px;cursor:pointer}.zkb .zkbtab.on{background:#fff;color:#0b3d8c}.zkb .zkbtab.new{box-shadow:inset 0 0 0 3px #ffd54f}.zkb .zkbdraw{position:absolute;left:12px;right:200px;bottom:12px;height:130px;background:#fff;border-radius:0 0 20px 20px;display:flex;gap:10px;align-items:center;padding:0 12px;overflow-x:auto}.zkb .zkbp{flex:0 0 118px;height:108px;border-radius:16px;border:4px solid #dfe9f7;background:#f3f8ff;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;padding:4px}.zkb .zkbp img{max-width:100%;max-height:100%;object-fit:contain}.zkb .zkbp.on{border-color:#43a047;background:#e8f8e9}.zkb .zkbp.lock{cursor:default}.zkb .zkbp.lock img{filter:brightness(0) opacity(.22)}.zkb .zkbp.lock:after{content:"🔒";position:absolute;font-size:30px}.zkb .zkbp.new:before{content:"NEW";position:absolute;top:-8px;right:-6px;background:#ffd54f;color:#5a3b00;font-weight:900;font-size:12px;border-radius:9px;padding:1px 6px}.zkb .zkbgo{position:absolute;right:16px;bottom:16px;width:170px;height:200px;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;font:900 24px Nunito,system-ui,sans-serif;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.35)}.zkb .zkbgo img{width:150px;height:150px;object-fit:contain;filter:drop-shadow(0 6px 0 rgba(0,0,0,.25))}.zkb .zkbgo:active img{transform:translateY(4px)}.zkb .zkbz{position:absolute;right:14px;bottom:225px;height:34%}.zkb .zkbtip{position:absolute;right:150px;top:15%;max-width:260px;background:#fff;border-radius:20px;padding:10px 14px;font-weight:800;font-size:18px;box-shadow:0 4px 0 rgba(0,0,0,.15)}.zkf{position:absolute;inset:0;z-index:45;background:#7cc6f2;overflow:hidden;touch-action:none}.zkf canvas{position:absolute;inset:0;width:100%;height:100%}.zkf .zkback{position:absolute;left:14px;top:12px;z-index:5}.zkf .zkfhud{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:rgba(255,255,255,.93);border-radius:18px;padding:6px 20px;font-weight:900;font-size:24px;white-space:nowrap;z-index:4}.zkf .zkflights{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);display:flex;gap:22px;background:rgba(20,30,50,.75);padding:18px 26px;border-radius:30px;z-index:4}.zkf .zkflights i{width:70px;height:70px;border-radius:50%;background:#333;box-shadow:inset 0 -6px 0 rgba(0,0,0,.3)}.zkf .zkflights i.r{background:#ff5252}.zkf .zkflights i.y{background:#ffd740}.zkf .zkflights i.g{background:#69f0ae}.zkf .zkwin{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4)}.zkf .zkcard{text-align:center;max-width:600px;background:#fff;border-radius:28px;padding:20px 30px;box-shadow:0 10px 0 rgba(0,0,0,.2)}.zkf .zkcard .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}.zkf .zkstars img{width:78px;height:78px;margin:0 4px}.zkf .zkstars img.off{filter:grayscale(1) opacity(.3)}.zkf .zkpb{display:inline-block;background:#ffd54f;color:#5a3b00;border-radius:14px;padding:3px 12px;font-weight:900;margin:4px 0}.zkh .zkg.zkgb{background:#ffd54f}html.calm .zkb .zkbstat i b{transition:none}</style>');
+
+async function showZookLab(focus){
+  let A; try{ A = await zkbArt(); }catch(e){ try{ toast && toast('The rocket lab is still loading. Try again!'); }catch(_){} return; }
+  let ZA = null, zsheet = null; try{ const Z = await tkPack('zk'); ZA = await tkJson(Z, 'BO72G_atlas.json'); zsheet = await tkImg(Z, 'BO72G_sheet_poses.webp'); }catch(e){}
+  hush(); const z = tkZkState(), bp = zkbBP(z), earned = new Set(zkbEarned(z)), seen = new Set(bp.seen || ZKB_START);
+  const lite = tkLite();
+  let slot = focus ? focus.split('_')[1] : 'body';
+  app.innerHTML = `<div class="screen"><div class="zkb" style="background-image:url(${A.url('grid.webp')})"><button class="big ghost zkback">&#8592; Saucer</button><div class="zkt">🚀 Zook's Rocket Lab</div><div class="zkbbest">🏁 Best: ${bp.best} m</div>
+    <canvas class="zkbship"></canvas>
+    <div class="zkbstat"><div><img src="${A.url('ic_t.webp')}" alt="">Speed<i><b style="background:#ff7043"></b></i></div><div><img src="${A.url('ic_l.webp')}" alt="">Float<i><b style="background:#81d4fa"></b></i></div><div><img src="${A.url('ic_f.webp')}" alt="">Fuel<i><b style="background:#42a5f5"></b></i></div><div><img src="${A.url('ic_w.webp')}" alt="">Heavy<i><b style="background:#9e9e9e"></b></i></div></div>
+    <div class="zkbtabs">${ZKB_SLOTS.map(s=>`<button class="zkbtab" data-s="${s}">${ZKB_NAME[s]}</button>`).join('')}</div><div class="zkbdraw"></div>
+    <button class="zkbgo" aria-label="Launch"><img src="${A.url('launch.webp')}" alt="">Launch!</button><div class="zkbtip"></div></div></div>`;
+  const W = app.querySelector('.zkb'), cv = W.querySelector('.zkbship'), g = cv.getContext('2d'), tip = W.querySelector('.zkbtip'), drawer = W.querySelector('.zkbdraw');
+  if(ZA && zsheet){ const P = ZA.poses.think || ZA.poses.idle, c = document.createElement('canvas'); c.width = P.src[2]; c.height = P.src[3]; c.getContext('2d').drawImage(zsheet, P.src[0], P.src[1], P.src[2], P.src[3], 0, 0, P.src[2], P.src[3]); c.className = 'zkbz'; W.appendChild(c); }
+  const say = t=>{ tip.textContent = t; };
+  const save = ()=>{ bp.seen = [...seen]; z.bp = bp; tkZkSave(z); };
+  let pop = { s:null, t:0 };
+  const fitCv = ()=>{ const r = cv.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio||1); cv.width = Math.max(10, r.width*d|0); cv.height = Math.max(10, r.height*d|0); };
+  const render = ()=>{ if(!cv.isConnected) return; const mb = zkbDraw(g, A, bp.lo, { measure:true }).box, dp = Math.min(2, window.devicePixelRatio||1), k = Math.min(cv.width/Math.max(420, mb.x1 - mb.x0 + 60), cv.height/Math.max(240, mb.y1 - mb.y0 + 50), 1.5*dp); g.setTransform(1,0,0,1,0,0); g.clearRect(0, 0, cv.width, cv.height); g.setTransform(k, 0, 0, k, cv.width/2, cv.height/2);
+    const bob = lite ? 0 : Math.sin(performance.now()/700)*4; g.translate(0, bob);
+    if(pop.s && !lite){ const u = (performance.now() - pop.t)/350; if(u >= 1) pop.s = null; }
+    zkbDraw(g, A, bp.lo, { glow: lite ? null : slot, center:true });
+    if(!lite) requestAnimationFrame(render); };
+  const bars = ()=>{ const S = zkbStats(bp.lo, A.M), b = W.querySelectorAll('.zkbstat i b'); const pc = v=>Math.max(6, Math.min(100, v))+'%'; b[0].style.width = pc(S.T*7); b[1].style.width = pc(S.L*7); b[2].style.width = pc(S.F*9); b[3].style.width = pc(S.W*4); return S; };
+  const fillDrawer = ()=>{ W.querySelectorAll('.zkbtab').forEach(t=>{ t.classList.toggle('on', t.dataset.s===slot); t.classList.toggle('new', A.M.fam.some(f=>earned.has(f+'_'+t.dataset.s) && !seen.has(f+'_'+t.dataset.s))); });
+    drawer.innerHTML = A.M.fam.map(f=>{ const k = f+'_'+slot, have = earned.has(k); return `<button class="zkbp${have ? '' : ' lock'}${bp.lo[slot]===k ? ' on' : ''}${have && !seen.has(k) ? ' new' : ''}" data-k="${k}" aria-label="${have ? A.M.parts[k][4] : 'locked part'}"><img src="${A.url('p/'+k+'.webp')}" alt=""></button>`; }).join('');
+    drawer.querySelectorAll('.zkbp').forEach(b=>b.onclick = ()=>{ const k = b.dataset.k; if(!earned.has(k)){ sfx.thud(); say('Win games in my saucer to unlock more parts!'); return; }
+      seen.add(k); if(bp.lo[slot]===k){ if(slot==='body'){ sfx.oops(); say('Every rocket needs a body!'); return; } delete bp.lo[slot]; sfx.pop(); say('Off it comes!'); }
+      else { bp.lo[slot] = k; tone(520, .08, 'triangle', .2); tone(780, .12, 'triangle', .18, .07); pop = { s:slot, t:performance.now() }; say(['Snap! Perfect fit.','Ooh, very shiny.','Excellent engineering!','Zook approves!'][Math.random()*4|0]); }
+      save(); fillDrawer(); bars(); if(lite) render(); }); };
+  W.querySelectorAll('.zkbtab').forEach(t=>t.onclick = ()=>{ sfx.pop(); slot = t.dataset.s; fillDrawer(); if(lite) render(); });
+  W.querySelector('.zkback').onclick = ()=>{ sfx.pop(); save(); showZookHub(); };
+  W.querySelector('.zkbgo').onclick = ()=>{ save(); zkbFly(A); };
+  const nNew = [...earned].filter(k=>!seen.has(k)).length;
+  say(focus ? 'Your new part is here! Tap it to snap it on.' : nNew ? `You have ${nNew} new part${nNew>1?'s':''}! Look for the yellow tabs.` : 'Tap a part to put it on your rocket. Then press Launch!');
+  fitCv(); bars(); fillDrawer(); render(); try{ music.play('travel'); }catch(e){}
+}
+
+function zkbFly(A){
+  hush(); const lite = tkLite(), z = tkZkState(), bp = zkbBP(z), lo = bp.lo, S = zkbStats(lo, A.M), D = S.d;
+  app.innerHTML = `<div class="screen"><div class="zkf"><canvas></canvas><button class="big ghost zkback">&#8592; Rocket Lab</button><div class="zkfhud">🚀 0 m</div><div class="zkflights"><i></i><i></i><i></i></div></div></div>`;
+  const F = app.querySelector('.zkf'), cv = F.querySelector('canvas'), g = cv.getContext('2d'), hud = F.querySelector('.zkfhud'); let alive = true, raf = 0;
+  F.querySelector('.zkback').onclick = ()=>{ alive = false; cancelAnimationFrame(raf); sfx.pop(); showZookLab(); };
+  const d = Math.min(2, window.devicePixelRatio||1); const fit = ()=>{ cv.width = F.clientWidth*d|0; cv.height = F.clientHeight*d|0; }; fit();
+  const PX = 9, T = Math.max(5, Math.min(12, 3.2 + D/42)), pf = Math.max(0.25, Math.min(0.85, S.pw/(S.pw + S.gd || 1))), tBurn = T*pf, peak = Math.min(0.5, 0.18 + D/900);
+  const best = bp.best; const xAt = u=>D*(1 - Math.pow(1 - u, 2.2)); let puffs = [];
+  const frame = (t)=>{ const Wd = cv.width/d, Ht = cv.height/d, gy = Ht*0.86; g.setTransform(d, 0, 0, d, 0, 0);
+    const u = Math.max(0, Math.min(1, t/T)), x = t < 0 ? 0 : xAt(u), alt = t < 0 ? 0 : Math.pow(Math.sin(Math.PI*Math.min(1, u*1.02)), 0.8)*peak*Ht;
+    const cam = x*PX; const sky = A.im.sky, sw = Ht/sky.height*sky.width, off = -(cam*0.18 % sw);
+    for(let k = -1; k < Wd/sw + 1; k++) g.drawImage(sky, off + k*sw, 0, sw, Ht);
+    g.fillStyle = '#6dbb4a'; g.fillRect(0, gy, Wd, Ht - gy); g.fillStyle = '#5aa53b'; for(let k = 0; k < Wd + 80; k += 80){ const xx = k - (cam % 80); g.fillRect(xx, gy, 40, 6); }
+    const sx = Wd*0.28; g.font = '900 18px Nunito,system-ui,sans-serif'; g.textAlign = 'center';
+    for(let m = 50; m <= Math.max(D, best) + 100; m += 50){ const px = sx + (m - x)*PX; if(px < -60 || px > Wd + 60) continue; const fl = A.im.flag; g.drawImage(fl, px - 4, gy - 64, 40, 64); g.fillStyle = '#fff'; g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 4; g.strokeText(m+' m', px + 6, gy + 26); g.fillText(m+' m', px + 6, gy + 26); }
+    if(best > 0){ const px = sx + (best - x)*PX; if(px > -80 && px < Wd + 80){ g.fillStyle = '#ffd54f'; g.fillRect(px - 3, gy - 120, 6, 120); g.beginPath(); g.moveTo(px + 3, gy - 120); g.lineTo(px + 52, gy - 104); g.lineTo(px + 3, gy - 88); g.fill(); g.fillStyle = '#5a3b00'; g.font = '900 15px Nunito,system-ui,sans-serif'; g.fillText('BEST', px + 26, gy - 128); } }
+    const burning = t >= 0 && t < tBurn, sput = t >= tBurn && t < tBurn + 1.1; const k = Math.min(Wd/1500, Ht/700)*1.15;
+    if(sput && !lite && Math.random() < 0.18) puffs.push({ x: x - 3, y: alt, a: 1, s: 0.5 + Math.random()*0.4 });
+    puffs.forEach(p=>{ p.a -= 0.012; p.y += 0.3; const px = sx + (p.x - x)*PX - 70*k, py = gy - 70*k - p.y; if(p.a > 0){ g.globalAlpha = p.a*0.8; g.drawImage(A.im.smoke, px - 40*p.s, py - 30*p.s, 80*p.s, 60*p.s); g.globalAlpha = 1; } }); puffs = puffs.filter(p=>p.a > 0);
+    const tilt = t < 0 ? 0 : (u < 0.5 ? -0.12 : 0.1*(u - 0.5)*2) * (lite ? 0.5 : 1), shake = (!lite && t > -0.6 && t < 0.4) ? (Math.random() - 0.5)*4 : 0;
+    g.save(); g.translate(sx + shake, gy - 70*k - alt); g.rotate(tilt); g.scale(k, k); zkbDraw(g, A, lo, { flame: burning ? 1 : sput ? (Math.random() < 0.5 ? 0.6 : 0) : 0, flick: burning && !lite, center:true }); g.restore();
+    if(burning){ const fr = 1 - t/tBurn; g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(Wd - 190, 64, 170, 22); g.fillStyle = '#42a5f5'; g.fillRect(Wd - 187, 67, 164*fr, 16); }
+    hud.textContent = `🚀 ${Math.round(x)} m`; };
+  /* countdown: three lights, then go */
+  const L = F.querySelectorAll('.zkflights i'), cls = ['r','y','g']; frame(-1);
+  const step = (i)=>{ if(!alive) return; if(i < 3){ L[i].className = cls[i]; tone(i < 2 ? 440 : 880, i < 2 ? .18 : .4, 'square', .12); setTimeout(()=>step(i+1), lite ? 900 : 700); return; }
+    F.querySelector('.zkflights').remove(); const t0 = performance.now(); try{ sfx.horn(); }catch(e){}
+    const loop = ()=>{ if(!alive) return; const t = (performance.now() - t0)/1000; frame(Math.min(t, T)); if(t < T + 0.6){ raf = requestAnimationFrame(loop); } else zkbResult(A, F, D, best); }; raf = requestAnimationFrame(loop); };
+  setTimeout(()=>step(0), 500);
+}
+
+function zkbResult(A, F, D, oldBest){ const z = tkZkState(), bp = zkbBP(z), S = zkbStats(bp.lo, A.M); bp.n++; const nb = D > oldBest; if(nb) bp.best = D; z.bp = bp; tkZkSave(z);
+  const st = ZKB_STARS.filter(v=>D >= v).length; try{ (st >= 2 || nb) ? (sfx.win(), confetti()) : sfx.chime(); }catch(e){}
+  let tipT = 'What a flight! Zook is impressed.';
+  if(st < 3){ if(S.F <= 3) tipT = 'Tip: a bigger fuel tank might fly farther!'; else if(S.T < 5) tipT = 'Tip: try a stronger engine or flame!'; else if(S.W > 2*S.L + 4) tipT = 'Tip: lighter parts or bigger wings help it float!'; else tipT = 'Tip: try mixing different parts!'; }
+  const w = document.createElement('div'); w.className = 'zkwin';
+  w.innerHTML = `<div class="zkcard"><h2 style="margin:4px 0 8px">Your rocket flew ${D} m!</h2><div class="zkstars">${[0,1,2].map(i=>`<img src="${A.url('medal.webp')}" class="${i < st ? '' : 'off'}" alt="">`).join('')}</div>${nb ? '<div class="zkpb">🏁 New best!</div>' : ''}<p style="font-size:20px;margin:8px 0">${tipT}</p><div class="row"><button class="big green" data-a>&#8635; Fly again</button><button class="big" data-b>🔧 Change my rocket</button></div></div>`;
+  F.appendChild(w); w.querySelector('[data-a]').onclick = ()=>{ sfx.pop(); zkbFly(A); }; w.querySelector('[data-b]').onclick = ()=>{ sfx.pop(); showZookLab(); }; }
+
+/* hub: add the Rocket Lab button; win card: show the part that was just earned */
+{ const _hub = showZookHub; showZookHub = async function(){ await _hub.apply(this, arguments); const h = document.querySelector('#app .zkh'), gs = h && h.querySelector('.zkgames'); if(!gs || gs.querySelector('.zkgb')) return; const b = document.createElement('button'); b.className = 'zkg zkgb'; b.innerHTML = '<span style="font-size:52px;width:70px;text-align:center">🚀</span>Build my rocket'; b.onclick = ()=>{ sfx.pop(); showZookLab(); }; gs.appendChild(b); }; }
+{ const _win = zkWin; zkWin = function(A, wrap, game){ _win.apply(this, arguments); try{ const z = tkZkState(), k = ZKB_ORDER[z.parts - 1], c = wrap.querySelector('.zkwin .zkcard'); if(!k || !c) return;
+    tkPack('zkg').then(G=>{ const e = G.H['p/'+k+'.webp']; if(!e || !c.isConnected) return; const u = URL.createObjectURL(new Blob([tkRaw(G, 'p/'+k+'.webp')], {type:e[2]})); const h = c.querySelector('h2'); h.insertAdjacentHTML('afterend', `<img src="${u}" alt="" style="height:110px;max-width:220px;object-fit:contain;display:block;margin:4px auto">`);
+      const row = c.querySelector('.row'); const b = document.createElement('button'); b.className = 'big'; b.style.background = '#ffd54f'; b.textContent = '🔧 Put it on my rocket'; b.onclick = ()=>{ sfx.pop(); showZookLab(k); }; row.prepend(b); }).catch(()=>{}); }catch(e){} }; }
 
 /* ===== anim13 (v23.54): scrapbook polish. Polaroid cards with washi tape, glossy page buttons, ribbon title, one-shot page-in. ===== */
 document.head.insertAdjacentHTML('beforeend', `<style>
