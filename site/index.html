@@ -4806,7 +4806,7 @@ html.calm .rzbob,html.calm .rzhop,html.calm .rzpop,html.calm .rztalk,html.calm .
 
 /* ===== appdl.js (v23.2): grown-ups can get the Android / Fire tablet app from the gear panel.
    A plain link that opens outside the game (the game page itself cannot save files). Hidden inside the app. ===== */
-const TLB_APK_URL = 'https://github.com/robertgblairjr-afk/traveling-ladybugs-app/raw/main/TravelingLadybugs.apk';
+const TLB_APK_URL = 'https://pub-117426033f4140e1a99daa9b98081d81.r2.dev/TravelingLadybugs.apk'; /* v23.98: the APK lives on Cloudflare R2 (GitHub refuses files over 100 MB) */
 (function(){
   const o = parentReset;
   parentReset = function(){ const r = o.apply(this, arguments);
@@ -7992,7 +7992,7 @@ function tlbCheckUpdate(){ if(!window.TLB_APP || TLB_CHECKED) return; TLB_CHECKE
   fetch('https://raw.githubusercontent.com/robertgblairjr-afk/traveling-ladybugs-app/main/version.json?t=' + Date.now(), {cache:'no-store'})
     .then(r=>r.ok ? r.json() : null).then(v=>{ if(v && +v.code > +(window.TLB_CODE||0)){ TLB_NEWER = v; tlbShowUpdate(); } }).catch(()=>{}); }
 function tlbShowUpdate(){ const scr = app.querySelector('.worldtitle'); if(!scr || !TLB_NEWER || scr.querySelector('#tlbupd')) return;
-  const a = document.createElement('a'); a.id = 'tlbupd'; a.href = TLB_APK_URL; a.className = 'tlbupd';
+  const a = document.createElement('a'); a.id = 'tlbupd'; a.href = (TLB_NEWER.url && /^https:\/\//.test(TLB_NEWER.url)) ? TLB_NEWER.url : TLB_APK_URL; a.className = 'tlbupd';
   a.innerHTML = `<b>&#127881; New version ${TLB_NEWER.name||''} is ready!</b><small>Grown-ups: tap to download, then tap Install. Progress is kept.</small>`;
   scr.appendChild(a); }
 { const base = showTitle; showTitle = function(){ const r = base.apply(this, arguments); tlbCheckUpdate(); tlbShowUpdate(); return r; }; }
